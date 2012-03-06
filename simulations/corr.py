@@ -7,10 +7,10 @@ import math
 
 from os.path import dirname, join, exists
 
-from utils import sphbessel, integrate, units, fftutil
-from utils import cubicspline as cs
+from cosmoutils import sphbessel, integrate, units, fftutil
+from cosmoutils import cubicspline as cs
 
-from utils.cosmology import Cosmology
+from cosmoutils.cosmology import Cosmology
 from gaussianfield import RandomField
 
 #ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value

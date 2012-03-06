@@ -4,8 +4,8 @@ import numpy as np
 from corr import RedshiftCorrelation
 from simulations.maps import Map3d
 
-from utils import cubicspline as cs
-from utils import units
+from cosmoutils import cubicspline as cs
+from cosmoutils import units
 
 
 

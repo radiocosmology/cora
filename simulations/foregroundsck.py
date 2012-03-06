@@ -15,7 +15,7 @@ References
 
 import numpy as np
 
-from utils import cubicspline as cs
+from cosmoutils import cubicspline as cs
 
 from foregroundmap import *
 

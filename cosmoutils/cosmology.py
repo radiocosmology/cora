@@ -150,7 +150,7 @@ class Cosmology(object):
                 
         # Convert to SI
         return H * 1000.0 / mega_parsec
-	    
+        
     def comoving_distance(self, z):
         r"""The comoving distance to redshift z.
 
@@ -247,7 +247,7 @@ class Cosmology(object):
 
 
     def lookback_time(self, z):
-	r""" The lookback time out to redshift z.
+        r""" The lookback time out to redshift z.
 
         Parameters
         ----------
@@ -260,7 +260,7 @@ class Cosmology(object):
             The lookback time to each redshift.
         """
 
-	# Calculate the integrand.
+        # Calculate the integrand.
         def f(z1):
             return 1.0 / (self.H(z1) * (1 + z1))
 
