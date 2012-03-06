@@ -14,7 +14,7 @@ This package has many dependencies. The following are essential:
 
 It is **strongly** recommended that you use optimized versions of `Numpy` and
 `Scipy` compiled against a multithreaded `BLAS` library such as the `Intel MKL
-<http://www.intel.com/software/products/mkl/>`_ `ACML
+<http://www.intel.com/software/products/mkl/>`_ or for AMD chips `ACML
 <http://developer.amd.com/libraries/acml>`_.
 
 For full functionality there are many other packages which are required:
