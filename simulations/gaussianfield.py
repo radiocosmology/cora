@@ -2,7 +2,7 @@
 import numpy as np
 import math
 
-from utils import fftutil, units
+from cosmoutils import fftutil, units
 
 from maps import *
 
@@ -171,7 +171,7 @@ class Cmb(RandomFieldA2):
     def __init__(self, psfile = None, cambnorm = True):
         """ Initialise the CMB field class. """
 
-        from utils.cubicspline import LogInterpolater
+        from cosmoutils.cubicspline import LogInterpolater
                 
         if(psfile == None):
             from os.path import dirname, join

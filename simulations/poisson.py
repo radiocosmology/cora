@@ -5,7 +5,7 @@ from scipy.optimize import fminbound
 from scipy.integrate import quad, cumtrapz
 
 
-from utils import cubicspline as cs
+from cosmoutils import cubicspline as cs
 
 
 def homogeneous_process(t, rate):

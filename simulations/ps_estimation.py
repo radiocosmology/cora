@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import radialprofile
+from cosmoutils import radialprofile
 
 
 def make_nd_at_ind(arr, nd, ind):
