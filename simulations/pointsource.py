@@ -257,14 +257,7 @@ class DiMatteo(PointSourceModel):
 
     def spectral_realisation(self, flux, freq):
         r"""Power-law spectral function with Gaussian distributed index."""
-        #flux = np.atleast_1d(flux)
-        #ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
-        #
-        #ia = ind[:,np.newaxis]
-        #fa = (freq / self.spectral_pivot)[np.newaxis,:]
-        #aa = flux[:,np.newaxis]
-        #return np.squeeze(aa * fa**ia)
-        
+
         ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
 
         return flux * (freq / self.spectral_pivot)**ind

@@ -10,7 +10,7 @@ from maps import *
 
 
 
-class ForegroundMap(Map3d):
+class ForegroundMap(Sky3d):
     r"""Simulate foregrounds with a seperable angular and frequency
     covariance.
 
@@ -21,7 +21,7 @@ class ForegroundMap(Map3d):
     
     _weight_gen = False
 
-    def angular_powerspectrum(self, l):
+    def angular_ps(self, l):
         r"""The angular function A_l. Must be a vectorized function
         taking either np.ndarrays or scalars.
         """
@@ -31,8 +31,9 @@ class ForegroundMap(Map3d):
     def frequency_covariance(self, nu1, nu2):
         pass
 
-    def aps(self, l, nu1, nu2):
-        return (self.angular_powerspectrum(l) * self.frequency_covariance(nu1, nu2))
+
+    def angular_powerspectrum(self, l, nu1, nu2):
+        return (self.angular_ps(l) * self.frequency_covariance(nu1, nu2))
 
 
     def generate_weight(self, regen = False):
@@ -58,10 +59,11 @@ class ForegroundMap(Map3d):
 
         ## Construct a lambda function to evalutate the array of
         ## k-vectors.
-        rf.powerspectrum = lambda karray: self.angular_powerspectrum((karray**2).sum(axis=2)**0.5)
+        rf.powerspectrum = lambda karray: self.angular_ps((karray**2).sum(axis=2)**0.5)
 
         self._ang_field = rf
         self._weight_gen = True
+
 
     def getfield(self):
 

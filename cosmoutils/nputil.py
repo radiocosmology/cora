@@ -1,6 +1,7 @@
 """Utility functions to help with pure numpy stuff."""
 
 import numpy as np
+import scipy.linalg as la
 
 def save_ndarray_list(fname, la):
     """Save a list of numpy arrays to disk.

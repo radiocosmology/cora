@@ -2,15 +2,12 @@
 from os.path import join, dirname
 
 import numpy as np
+import scipy.linalg as la
 import h5py
 import healpy
 
 from cosmoutils import hputil, nputil
 import foregroundsck
-
-
-_datadir = join(dirname(__file__), "data")
-
 
 def clarray(aps, lmax, zarray):
 
@@ -24,53 +21,7 @@ def clarray(aps, lmax, zarray):
 
 
 
-def galactic_synchrotron(nside, frequencies, debug=False, celestial=True):
 
-    haslam = healpy.ud_grade(healpy.read_map(join(_datadir, "haslam.fits")), nside) #hputil.coord_g2c()
-    
-    h_nside = healpy.npix2nside(haslam.size)
-
-    f = h5py.File(join(_datadir, 'skydata.hdf5'), 'r')
-
-    s400 = healpy.ud_grade(f['/sky_400MHz'][:], nside)
-    s800 = healpy.ud_grade(f['/sky_800MHz'][:], nside)
-    nh = 512
-    beam = 1.0
-
-    f.close()
-
-    syn = foregroundsck.Synchrotron()
-
-    lmax = 3*nside - 1
-
-    efreq = np.concatenate((np.array([400.0, 800.0]), frequencies))
-
-    cla = clarray(syn.aps, lmax, efreq) * 1e-6
-
-    fg = mkfullsky(cla, nside)
-
-    sub4 = healpy.smoothing(fg[0], sigma=beam, degree=True)
-    sub8 = healpy.smoothing(fg[1], sigma=beam, degree=True)
-    
-    fgs = mkconstrained(cla, [(0, sub4), (1, sub8)], nside)
-
-    fgt = fg - fgs
-
-    sc = np.log(s800 / s400) / np.log(2.0)
-
-    fg2 = (haslam[np.newaxis, :] * (((efreq / 400.0)[:, np.newaxis]**sc) + (0.25 * fgt / fgs[0].std())))[2:]
-
-    if celestial:
-        for i in range(fg2.shape[0]):
-            fg2[i] = hputil.coord_g2c(fg2[i])
-    
-    if debug:
-        return fg2, fgt, fg, fgs, sc, sub4, sub8, s400, s800
-    else:
-        return fg2
-
-    
-c_syn = galactic_synchrotron
 
 
 

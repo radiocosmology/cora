@@ -2,14 +2,14 @@
 import numpy as np
 
 from corr import RedshiftCorrelation
-from simulations.maps import Map3d
+from simulations import maps
 
 from cosmoutils import cubicspline as cs
 from cosmoutils import units
 
 
 
-class Corr21cm(RedshiftCorrelation, Map3d):
+class Corr21cm(RedshiftCorrelation, maps.Sky3d):
     r"""Correlation function of HI brightness temperature fluctuations.
 
     Incorporates reasonable approximations for the growth factor and
@@ -154,6 +154,40 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         return np.ones_like(z) * 1.0
 
 
+    # Override angular_power spectrum to switch to allow using frequency
+    def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
+
+
+    def mean_nu(self, freq):
+
+        return self.mean(units.nu21 / freq - 1.0)
+
+
     def getfield(self):
         r"""Fetch a realisation of the 21cm signal.
         """
@@ -163,4 +197,6 @@ class Corr21cm(RedshiftCorrelation, Map3d):
         cube = self.realisation(z1, z2, self.x_width, self.y_width, self.nu_num, self.x_num, self.y_num, zspace = False)[::-1,:,:].copy()
 
         return cube
+
+
         

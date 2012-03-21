@@ -41,7 +41,7 @@ class ForegroundSCK(ForegroundMap):
 
     _cf_int = None
 
-    def angular_powerspectrum(self, larray):
+    def angular_ps(self, larray):
         psarray =  self.A*(1e-3*larray)**(-self.beta)
 
         if isinstance(larray, np.ndarray):
@@ -49,19 +49,19 @@ class ForegroundSCK(ForegroundMap):
 
         return psarray
 
-    #def angular_powerspectrum(self, larray):
-    #    return self.angular_ps((larray**2).sum(axis=2)**0.5)
-
     def frequency_covariance(self, nu1, nu2):
         return (self.frequency_variance(nu1) * self.frequency_variance(nu2))**0.5 * self.frequency_correlation(nu1, nu2)
+
 
     def frequency_variance(self, nu):
         r"""Variance on a single frequency slice."""
         return (nu/self.nu_0)**(-2*self.alpha)
 
+
     def frequency_correlation(self, nu1, nu2):
         r"""Correlation between two frequency slices."""
         return np.exp( - np.log(nu1/nu2)**2 / (2*self.zeta**2))
+
 
     def frequency_correlation_dlog(self, dlognu):
         r"""Correlation between two slices as a function of the seperation of the
@@ -110,7 +110,7 @@ class ForegroundSCK(ForegroundMap):
                 larr = np.arange(nmin,nmax+1).astype(np.float64)
                 pl = lpn(nmax, np.cos(theta))[0][nmin:]
                 
-                return ((2*larr+1.0)*pl*self.angular_powerspectrum(larr)).sum() / (4*np.pi)
+                return ((2*larr+1.0)*pl*self.angular_ps(larr)).sum() / (4*np.pi)
 
             tarr = np.linspace(0, np.pi, 1000)
             cfarr = cf(tarr)

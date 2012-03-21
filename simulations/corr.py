@@ -1,3 +1,5 @@
+from os.path import dirname, join, exists
+
 import scipy
 import scipy.ndimage
 import scipy.fftpack
@@ -5,11 +7,8 @@ import scipy.special
 import numpy as np
 import math
 
-from os.path import dirname, join, exists
-
 from cosmoutils import sphbessel, integrate, units, fftutil
 from cosmoutils import cubicspline as cs
-
 from cosmoutils.cosmology import Cosmology
 from gaussianfield import RandomField
 
@@ -509,6 +508,7 @@ class RedshiftCorrelation(object):
         """
         return np.ones_like(z) * 0.0
 
+ 
     _sigma_v = 0.0
     def sigma_v(self, z):
         """Return the pairwise velocity dispersion at a given redshift.
@@ -667,8 +667,8 @@ class RedshiftCorrelation(object):
         return acube #, rsf
 
 
-    def angular_powerspectrum(self, la, za1, za2):
-        r"""The angular powerspectrum C_l(z1, z2).
+    def angular_powerspectrum_full(self, la, za1, za2):
+        r"""The angular powerspectrum C_l(z1, z2). Calculate explicitly.
 
         Parameters
         ----------
@@ -687,14 +687,11 @@ class RedshiftCorrelation(object):
             if not self._vv_only:
                 raise Exception("Only works for vv_only at the moment.")
 
-            b1 = self.bias_z(z1)
-            b2 = self.bias_z(z2)
-            f1 = self.growth_rate(z1)
-            f2 = self.growth_rate(z2)
+            b1, b2 = self.bias_z(z1), self.bias_z(z2)
+            f1, f2 = self.growth_rate(z1), self.growth_rate(z2)
+            pf1, pf2 = self.prefactor(z1), self.prefactor(z2)
             D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
             D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
-            pf1 = self.prefactor(z1)
-            pf2 = self.prefactor(z2)
 
             x1 = self.cosmology.comoving_distance(z1)
             x2 = self.cosmology.comoving_distance(z2)
@@ -704,7 +701,6 @@ class RedshiftCorrelation(object):
             def _int_lin(k):
                 return (k**2 * self.ps_vv(k) * (b1 * sphbessel.jl(l, k*x1) - f1 * sphbessel.jl_d2(l, k*x1)) *
                        (b2 * sphbessel.jl(l, k*x2) - f2 * sphbessel.jl_d2(l, k*x2)))
-                #return (k**2 * self.ps_vv(k) * b1 * b2 * sphbessel.jl(l, k*x1) * sphbessel.jl(l, k*x2))
 
             def _int_log(lk):
                 k = np.exp(lk)
@@ -719,32 +715,17 @@ class RedshiftCorrelation(object):
                         5.0*_int_lin(k + 2*d1) + _int_lin(k + 3*d1)) / 16.0
 
             def _integrator(f, a, b):
-                #return quad(f, a, b, limit=1000, epsrel = 1e-7, full_output=(0 if _feedback else 1))[0]
-                #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10)[0]
                 return integrate.chebyshev(f, a, b, epsrel = 1e-7, epsabs=1e-10)[0]
-                #return romberg(f, a, b, eps = 1e-6)
-            #full_output=(0 if _feedback else 1))[0]
+
             mink = 1e-2 * l / (x1 + x2)
             cutk = 2e0 * l / (x1 + x2)
             cutk2 = 20.0  * l / (x1 + x2)
             maxk = 1e2 * l / (x1 + x2)
 
-            #ka = np.logspace(np.log(mink), np.log(maxk), 1000)
-
             i1 = _integrator(_int_log, np.log(mink), np.log(cutk) )
-            #print i1
             i2 = _integrator(_int_taper, cutk, cutk + d1)
-            #print i2
             i3 = _integrator(_int_offset, cutk, cutk2)
-
             i4 = _integrator(_int_offset, cutk2, maxk)
-            #print i3
-            print i1, i2, i3, i4, i1+i2+i3
-
-            #return ka, _int_lin(ka)
-
-            #cl = (_integrator(_int_log, np.log(mink), np.log(cutk) ) +
-            #      _integrator(_int_lin, cutk, maxk))
 
             cl = (i1 + i2 + i3 + i4) * D1 * D2 * pf1 * pf2 * (2 / np.pi)
 
@@ -763,8 +744,33 @@ class RedshiftCorrelation(object):
             return cla
 
 
-    def angular_powerspectrum_flat(self, la, za1, za2):
-        r"""The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
+
+    _aps_cache = False
+
+    def save_fft_cache(self, fname):
+        """Save FFT angular powerspecturm cache."""
+        if not self._aps_cache:
+            self.angular_powerspectrum_fft(np.array([100]), np.array([1.0]), np.array([1.0]))
+
+        np.savez(fname, dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
+
+
+    def load_fft_cache(self, fname):
+        """Load FFT angular powerspectrum cache.
+        """
+        a = np.load(fname)
+
+        self._aps_dd = a['dd']
+        self._aps_dv = a['dv']
+        self._aps_vv = a['vv']
+
+        self._aps_cache = True
+
+
+    def angular_powerspectrum_fft(self, la, za1, za2):
+        """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
+
+        Uses FFT based method to generate a lookup table for fast computation.
 
         Parameters
         ----------
@@ -778,79 +784,6 @@ class RedshiftCorrelation(object):
         arr : array_like
             The values of C_l(z1, z2)
         """
-
-        def _ps_single(l, z1, z2):
-
-            b1 = self.bias_z(z1)
-            b2 = self.bias_z(z2)
-            f1 = self.growth_rate(z1)
-            f2 = self.growth_rate(z2)
-            D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
-            D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
-            pf1 = self.prefactor(z1)
-            pf2 = self.prefactor(z2)
-
-            x1 = self.cosmology.comoving_distance(z1)
-            x2 = self.cosmology.comoving_distance(z2)
-
-            dx = x1 - x2
-            xc = 0.5*(x1 + x2)
-
-            def _int_lin(kp):
-                return np.cos(kp * dx) * self.powerspectrum(kp, l / xc, z1, z2) / (xc**2 * np.pi)
-
-            def _int_log(lkp):
-                kp = np.exp(lkp)
-                return _int_lin(kp) * kp
-
-            def _integrator(f, a, b):
-                #return quad(f, a, b, limit=1000, epsrel = 1e-10, full_output=(0 if _feedback else 1))[0]
-                #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10)[0]
-                i = integrate.chebyshev(f, a, b, epsrel = 1e-12, epsabs=1e-16)
-                #i = integrate.romberg(f, a, b, epsrel = 1e-15)
-                #print i
-                return i
-                #return romberg(f, a, b, eps = 1e-8)
-
-            i1 = _integrator(_int_lin, 0.0, 2e1)
-
-            return i1
-
-
-        bobj = np.broadcast(la, za1, za2)
-
-        if not bobj.shape:
-            # Broadcast from scalars
-            return _ps_single(la, za1, za2)
-        else:
-            # Broadcast from arrays
-            cla = np.empty(bobj.shape)
-            cla.flat = [ _ps_single(l, z1, z2) for (l, z1, z2) in bobj ]
-
-            return cla
-
-
-    _aps_cache = False
-
-    def save_fft_cache(self, fname):
-        if not self._aps_cache:
-            self.angular_powerspectrum_fft(np.array([100]), np.array([1.0]), np.array([1.0]))
-
-        np.savez(fname, dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
-
-
-    def load_fft_cache(self, fname):
-
-        a = np.load(fname)
-
-        self._aps_dd = a['dd']
-        self._aps_dv = a['dv']
-        self._aps_vv = a['vv']
-
-        self._aps_cache = True
-
-
-    def angular_powerspectrum_fft(self, la, za1, za2):
 
         kperpmin = 1e-4
         kperpmax = 40.0
@@ -881,14 +814,11 @@ class RedshiftCorrelation(object):
         xa1 = self.cosmology.comoving_distance(za1)
         xa2 = self.cosmology.comoving_distance(za2)
 
-        b1 = self.bias_z(za1)
-        b2 = self.bias_z(za2)
-        f1 = self.growth_rate(za1)
-        f2 = self.growth_rate(za2)
+        b1, b2 = self.bias_z(za1), self.bias_z(za2)
+        f1, f2 = self.growth_rate(za1), self.growth_rate(za2)
+        pf1, pf2 = self.prefactor(za1), self.prefactor(za2)
         D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
         D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
-        pf1 = self.prefactor(za1)
-        pf2 = self.prefactor(za2)
 
         xc = 0.5 * (xa1 + xa2)
 
@@ -905,6 +835,11 @@ class RedshiftCorrelation(object):
         psvv = scipy.ndimage.map_coordinates(self._aps_vv, coords, order=2)
 
         return D1*D2*pf1*pf2*(b1*b2*psdd + (f1*b2 + f2*b1)*psdv + f1*f2*psvv) / (xc**2 * np.pi)
+
+
+    ## By default use the flat sky approximation.
+    angular_powerspectrum = angular_powerspectrum_fft
+
 
 
 def inverse_approx(f, x1, x2):

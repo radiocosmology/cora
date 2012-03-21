@@ -2,6 +2,8 @@ import numpy as np
 
 from cosmoutils import units
 
+import skysim
+
 
 class Map2d(object):
     r"""A 2-d sky map.
@@ -12,8 +14,8 @@ class Map2d(object):
         Angular size along each axis (in degrees).
     x_num, y_num : int
         Number of pixels along each angular axis.
-
-        
+    nside : int
+        Resolution of Healpix map (must be power of 2).
     """
     x_width = 5.0
     y_width = 5.0
@@ -54,14 +56,14 @@ class Map2d(object):
     @property
     def nside(self):
         """The resolution of the Healpix map."""
-        return _nside
+        return self._nside
 
     @nside.setter
     def nside(self, value):
         ns = int(value)
         lns = np.log2(ns)
 
-        if int(lns) != 0 or lns < 0:
+        if int(lns) != lns or lns < 0:
             raise Exception("Not a valid value of nside.")
 
         self._nside = ns
@@ -69,7 +71,7 @@ class Map2d(object):
 
 
 
-class Map3d(object):
+class Map3d(Map2d):
     r"""A 3-d sky map.
 
     Attributes
@@ -82,34 +84,31 @@ class Map3d(object):
         Number of pixels along each angular axis.
     nu_num : int
         Number of frequency bins.
+    nside : int
+        Resolution of Healpix map (must be power of 2).
         
     """
-    x_width = 5.0
-    y_width = 5.0
-    
-    x_num = 128
-    y_num = 128
-
     nu_num = 128
 
     nu_lower = 500.0
     nu_upper = 900.0
 
-    _nside = 128
-
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
         r"""Create a Map3d (or subclassed) object the same shape as a given object.
         """
+        #c = Map2d.like_map(cls, mapobj, *args, **kwargs)
+
         c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
         c.y_width = mapobj.y_width
-        c.nu_upper = mapobj.nu_upper
-        c.nu_lower = mapobj.nu_lower
         c.x_num = mapobj.x_num
         c.y_num = mapobj.y_num
-        c.nu_num = mapobj.nu_num
         c._nside = mapobj._nside
+
+        c.nu_upper = mapobj.nu_upper
+        c.nu_lower = mapobj.nu_lower
+        c.nu_num = mapobj.nu_num
 
         return c
 
@@ -121,30 +120,41 @@ class Map3d(object):
 
 
     @property
-    def x_pixels(self):
-        return ((np.arange(self.x_num) + 0.5) * (self.x_width / self.x_num))
-
-    @property
-    def y_pixels(self):
-        return ((np.arange(self.y_num) + 0.5) * (self.y_width / self.y_num))
-
-    @property
     def nu_pixels(self):
         return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
 
-    @property
-    def nside(self):
-        """The resolution of the Healpix map."""
-        return _nside
 
-    @nside.setter
-    def nside(self, value):
-        ns = int(value)
-        lns = np.log2(ns)
 
-        if int(lns) != 0 or lns < 0:
-            raise Exception("Not a valid value of nside.")
 
-        self._nside = ns
+class Sky3d(Map3d):
+
+
+
+    def angular_powerspectrum(self, l, nu1, nu2):
+        """C_l(nu1, nu2) for the given map."""
+
+        raise Exception("Not implemented in base class.")
+
+
+    def mean_nu(self, freq):
+        return np.zeros_like(freq)
+
+
+
+    def getfield(self):
+
+        raise Exception("Not implemented in base class.")
+
+
+    def getsky(self):
+
+        lmax = 3 * self.nside - 1
+        cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
+        
+        return (self.mean_nu(self.nu_pixels)[:, np.newaxis]
+                + skysim.mkfullsky(cla, self.nside))
+
+
+
 
 
