@@ -5,7 +5,7 @@ import numpy as np
 import h5py
 import healpy
 
-from cosmoutils import hputil
+from cosmoutils import hputil, nputil
 import foregroundsck
 
 
@@ -104,7 +104,7 @@ def mkfullsky(corr, nside, alms = False):
     trans = np.zeros_like(corr)
 
     for i in range(maxl+1):
-        trans[i] = matrix_root_manynull(corr[i], truncate=False)
+        trans[i] = nputil.matrix_root_manynull(corr[i], truncate=False)
 
     
     la, ma = healpy.Alm.getlm(maxl)
@@ -175,7 +175,7 @@ def mkconstrained(corr, constraints, nside):
     cv = np.zeros((numz,) + larr.shape, dtype=np.complex128)
 
     # Find eigenmodes, extract the largest nmodes (enough to satisfy
-    # constraints), and then pull out coefficients for eqach constrained
+    # constraints), and then pull out coefficients for each constrained
     # frequency.
     for i in range(maxl+1):
         trans[i] = la.eigh(corr[i])[1][:, -nmodes:].T

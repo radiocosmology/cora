@@ -21,6 +21,7 @@ class Map2d(object):
     x_num = 128
     y_num = 128
 
+    _nside = 128
     
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
@@ -32,6 +33,7 @@ class Map2d(object):
         c.y_width = mapobj.y_width
         c.x_num = mapobj.x_num
         c.y_num = mapobj.y_num
+        c._nside = mapobj._nside
 
         return c
 
@@ -48,6 +50,23 @@ class Map2d(object):
     @property
     def y_pixels(self):
         return ((np.arange(self.y_num) + 0.5) * (self.y_width / self.y_num))
+
+    @property
+    def nside(self):
+        """The resolution of the Healpix map."""
+        return _nside
+
+    @nside.setter
+    def nside(self, value):
+        ns = int(value)
+        lns = np.log2(ns)
+
+        if int(lns) != 0 or lns < 0:
+            raise Exception("Not a valid value of nside.")
+
+        self._nside = ns
+
+
 
 
 class Map3d(object):
@@ -76,6 +95,8 @@ class Map3d(object):
     nu_lower = 500.0
     nu_upper = 900.0
 
+    _nside = 128
+
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
         r"""Create a Map3d (or subclassed) object the same shape as a given object.
@@ -88,6 +109,7 @@ class Map3d(object):
         c.x_num = mapobj.x_num
         c.y_num = mapobj.y_num
         c.nu_num = mapobj.nu_num
+        c._nside = mapobj._nside
 
         return c
 
@@ -109,5 +131,20 @@ class Map3d(object):
     @property
     def nu_pixels(self):
         return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
+
+    @property
+    def nside(self):
+        """The resolution of the Healpix map."""
+        return _nside
+
+    @nside.setter
+    def nside(self, value):
+        ns = int(value)
+        lns = np.log2(ns)
+
+        if int(lns) != 0 or lns < 0:
+            raise Exception("Not a valid value of nside.")
+
+        self._nside = ns
 
 

@@ -38,3 +38,43 @@ def load_ndarray_list(fname):
     la = [ v for i, v in sorted(d1.iteritems(), key=lambda kv: int(kv[0]))]
 
     return la
+
+
+def matrix_root_manynull(mat, threshold = 1e-16, truncate = True):
+    """Square root a matrix.
+
+    An inefficient alternative to the Cholesky decomposition for a
+    matrix with a large dynamic range in eigenvalues. Numerical
+    roundoff causes Cholesky to fail as if the matrix were not
+    positive semi-definite. This does an explicit eigen-decomposition,
+    setting small and negative eigenvalue to zero.
+
+    Parameters
+    ==========
+    mat - ndarray
+        An N x N matrix to decompose.
+    threshold : scalar, optional
+        Set any eigenvalues a factor `threshold` smaller than the
+        largest eigenvalue to zero.
+    truncate : boolean, optional
+        If True (default), truncate the matrix root, to the number of positive
+        eigenvalues.
+
+    Returns
+    =======
+    root : ndarray
+        The decomposed matrix. This is truncated to the number of
+        non-zero eigen values (if truncate is set).
+    num_pos : integer
+            The number of positive eigenvalues (returned only if truncate is set).
+    """
+    evals, evecs = la.eigh(mat)
+
+    evals[np.where(evals < evals.max() * threshold)] = 0.0
+    num_pos = len(np.flatnonzero(evals))
+    
+    if truncate:
+        return (evecs[:,-num_pos:] * evals[np.newaxis,-num_pos:]**0.5), num_pos
+    else:
+        return (evecs * evals[np.newaxis,:]**0.5)
+    

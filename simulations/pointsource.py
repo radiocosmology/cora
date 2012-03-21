@@ -274,7 +274,7 @@ class DiMatteo(PointSourceModel):
 ## Test program run when executing module.
 if __name__=='__main__':
     
-    p = DiMattero()
+    p = DiMatteo()
     r = p.generate_population(1.0)
 
     c = p.getfield(catalogue = True)
