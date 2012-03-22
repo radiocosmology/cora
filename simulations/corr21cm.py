@@ -60,7 +60,7 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
             return np.zeros_like(z)
 
     def omega_HI(self, z):
-        return 1e-3
+        return 5e-4
 
     def x_h(self, z):
         r"""Neutral hydrogen fraction at a given redshift.
