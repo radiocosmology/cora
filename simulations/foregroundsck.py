@@ -1,7 +1,7 @@
 """Simulate foregrounds in the style of Santos, Cooray and Knox [1]_.
 
 These are foregrounds that can be represented with a covariance
-function that seperates with angle and frequency. Th
+function that seperates with angle and frequency.
 
 See Also
 --------
@@ -27,7 +27,7 @@ class ForegroundSCK(ForegroundMap):
 
     Need to set the four attributes `A`, `alpha`, `beta` and
     `zeta`. This class also allows calculation of the angular
-    correlation function.
+    correlation function. The units are the temperature in K.
 
     See Also
     --------
@@ -122,25 +122,25 @@ class ForegroundSCK(ForegroundMap):
         
 
 class Synchrotron(ForegroundSCK):
-    A = 700.0
+    A = 7.00e-4
     alpha = 2.80
     beta = 2.4
     zeta = 4.0
 
 class ExtraGalacticFreeFree(ForegroundSCK):
-    A = 0.014
+    A = 1.40e-8
     alpha = 2.10
     beta = 1.0
     zeta = 35.0
 
 class GalacticFreeFree(ForegroundSCK):
-    A = 0.088
+    A = 8.80e-8
     alpha = 2.15
     beta = 3.0
     zeta = 35.0
 
 class PointSources(ForegroundSCK):
-    A = 57.0
+    A = 5.70e-5
     alpha = 2.07
     beta = 1.1
     zeta = 1.0

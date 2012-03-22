@@ -9,19 +9,13 @@ import healpy
 from cosmoutils import hputil, nputil
 import foregroundsck
 
+
 def clarray(aps, lmax, zarray):
 
     clarray = aps(np.arange(lmax+1)[:, np.newaxis, np.newaxis],
                   zarray[np.newaxis, :, np.newaxis], zarray[np.newaxis, np.newaxis, :])
 
     return clarray
-
-
-
-
-
-
-
 
 
 

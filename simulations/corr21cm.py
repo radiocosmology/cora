@@ -38,7 +38,7 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
     def T_b(self, z):
         r"""Mean 21cm brightness temperature at a given redshift.
 
-        Temperature is in mK.
+        Temperature is in K.
 
         Parameters
         ----------
@@ -50,7 +50,7 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
         T_b : array_like
         """
 
-        return (0.3 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
+        return (3.0e-4 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
     def mean(self, z):
