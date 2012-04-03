@@ -36,7 +36,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         efreq = np.concatenate((np.array([400.0, 800.0]), self.nu_pixels))
 
-        cla = skysim.clarray(syn.angular_powerspectrum, lmax, efreq) * 1e-6
+        cla = skysim.clarray(syn.angular_powerspectrum, lmax, efreq)
 
         fg = skysim.mkfullsky(cla, self.nside)
 
