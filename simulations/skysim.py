@@ -7,7 +7,6 @@ import h5py
 import healpy
 
 from cosmoutils import hputil, nputil
-import foregroundsck
 
 
 def clarray(aps, lmax, zarray):

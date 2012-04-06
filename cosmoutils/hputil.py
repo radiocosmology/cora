@@ -154,7 +154,7 @@ def _make_half_alm(alm_full):
 
     
 
-def sphtrans_real(hpmap, lmax = None, lside = None):
+def sphtrans_real(hpmap, lmax=None, lside=None):
     """Spherical Harmonic transform of a real map.
 
     Parameters
@@ -444,4 +444,22 @@ def coord_x2y(map, x, y):
 # Quick functions for performing specified transforms.
 coord_g2c = lambda map: coord_x2y(map, 'G', 'C')
 coord_c2g = lambda map: coord_x2y(map, 'C', 'G')
+
+
+
+def sph_ps(map1, map2=None, lmax=None):
+
+    lmax = lmax if lmax is not None else (3*healpy.get_nside(map1) - 1)
+
+    alm1 = sphtrans_real(map1, lmax)
+    alm2 = sphtrans_real(map2, lmax) if map is not None else alm1
+
+    prod = alm1 * alm2.conj()
+
+    s = prod[:, 0] + 2 * prod[:, 1:].sum(axis=1).real
+
+    cl = s / (2.0*np.arange(lmax+1)+1.0)
+    
+    return cl
+
 
