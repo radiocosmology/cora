@@ -379,10 +379,10 @@ def sphtrans_sky(skymap, lmax=None):
     if lmax is None:
         lmax = 3*healpy.npix2nside(skymap.shape[1]) - 1
 
-    alm_freq = np.empty((nfreq, lmax+1, 2*lmax + 1), dtype=np.complex128)
+    alm_freq = np.empty((nfreq, lmax+1, lmax + 1), dtype=np.complex128)
 
     for i in range(nfreq):
-        alm_freq[i] = sphtrans_complex(skymap[i].astype(np.complex128), lmax)
+        alm_freq[i] = sphtrans_real(skymap[i].astype(np.float64), lmax)
 
     return alm_freq
 
@@ -406,7 +406,7 @@ def sphtrans_inv_sky(alm, nside):
     sky_freq = np.empty((nfreq, healpy.nside2npix(nside)), dtype=np.complex128)
 
     for i in range(nfreq):
-        sky_freq[i] = sphtrans_inv_complex(alm[i], nside)
+        sky_freq[i] = sphtrans_inv_real(alm[i], nside)
 
     return sky_freq
 
