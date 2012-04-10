@@ -64,7 +64,7 @@ class ConstrainedGalaxy(maps.Sky3d):
                 _haslam_url = 'http://lambda.gsfc.nasa.gov/data/foregrounds/haslam/lambda_haslam408_dsds.fits'
                 
                 print "Downloading %s ...." % _haslam_url
-                urrlib.urlretrieve(_haslam_url, _haslam_file)
+                urllib.urlretrieve(_haslam_url, _haslam_file)
                 print "Done."
 
             elif choice == 'n':
