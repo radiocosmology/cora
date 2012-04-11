@@ -38,11 +38,12 @@ class ForegroundSCK(ForegroundMap):
     """
 
     nu_0 = 130.0
+    l_0 = 1000.0
 
     _cf_int = None
 
     def angular_ps(self, larray):
-        psarray =  self.A*(1e-3*larray)**(-self.beta)
+        psarray =  self.A*(larray / self.l_0)**(-self.beta)
 
         if isinstance(larray, np.ndarray):
             psarray[np.where(larray == 0)] = 0.0
