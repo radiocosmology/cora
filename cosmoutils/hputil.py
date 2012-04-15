@@ -8,6 +8,9 @@ import healpy
 import numpy as np
 import os
 
+_weight = False
+_iter = 1
+
 ### Healpy SH routines seem to crash occasionally if using OMP, do disable.
 #os.environ['OMP_NUM_THREADS'] = '1'
 
@@ -184,7 +187,7 @@ def sphtrans_real(hpmap, lmax=None, lside=None):
 
     alm = np.zeros([lside+1, lside+1], dtype=np.complex128)
 
-    tlm = healpy.map2alm(np.ascontiguousarray(hpmap), lmax=lmax)
+    tlm = healpy.map2alm(np.ascontiguousarray(hpmap), lmax=lmax, use_weights=_weight, iter=_iter)
 
     alm[np.triu_indices(lmax+1)] = tlm
 

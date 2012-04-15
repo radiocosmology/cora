@@ -15,7 +15,13 @@ import skysim
 _datadir = join(dirname(__file__), "data")
 
 
-
+class FullSkySynchrotron(foregroundsck.Synchrotron):
+    """Match up Synchrotron amplitudes to thise found in La Porta et al. 2008,
+    for galactic latitudes abs(b) > 5 degrees"""
+    A = 6.6e-3
+    beta = 2.8
+    nu_0 = 408.0
+    l_0 = 100.0
 
 
 
@@ -85,7 +91,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         haslam = healpy.smoothing(healpy.ud_grade(self._haslam, self.nside), degree=True, fwhm=3.0) #hputil.coord_g2c()
         
         beam = 1.0
-        syn = foregroundsck.Synchrotron()
+        syn = FullSkySynchrotron()
 
         lmax = 3*self.nside - 1
 
