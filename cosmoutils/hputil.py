@@ -406,7 +406,7 @@ def sphtrans_inv_sky(alm, nside):
     """
     nfreq = alm.shape[0]
 
-    sky_freq = np.empty((nfreq, healpy.nside2npix(nside)), dtype=np.complex128)
+    sky_freq = np.empty((nfreq, healpy.nside2npix(nside)), dtype=np.float64)
 
     for i in range(nfreq):
         sky_freq[i] = sphtrans_inv_real(alm[i], nside)
