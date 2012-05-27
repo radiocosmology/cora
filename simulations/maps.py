@@ -124,6 +124,33 @@ class Map3d(Map2d):
         return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
 
 
+    @classmethod
+    def like_kiyo_map(cls, mapobj, *args, **kwargs):
+        r"""Crease a Map3d (or subclassed) object based on one of kiyo's map
+        objects
+        """
+        c = cls(*args, **kwargs)
+
+        freq_axis = mapobj.get_axis('freq')
+        ra_axis = mapobj.get_axis('ra')
+        dec_axis = mapobj.get_axis('dec')
+
+        ra_fact = sp.cos(sp.pi * mapobj.info['dec_centre'] / 180.0)
+        c.x_width = (max(ra_axis) - min(ra_axis)) * ra_fact
+        c.y_width = max(dec_axis) - min(dec_axis)
+        (c.x_num, c.y_num) = (len(ra_axis), len(dec_axis))
+
+        c.nu_lower = min(freq_axis)/1.e6
+        c.nu_upper = max(freq_axis)/1.e6
+        c.nu_num = len(freq_axis)
+
+        print "Map3D: %dx%d field (%fx%f deg) from nu=%f to nu=%f (%d bins)" % \
+                 (c.x_num, c.y_num, c.x_width, c.y_width,
+                  c.nu_lower, c.nu_upper, c.nu_num)
+
+        return c
+
+
 
 
 class Sky3d(Map3d):

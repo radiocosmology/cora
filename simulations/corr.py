@@ -191,9 +191,47 @@ class RedshiftCorrelation(object):
         else:
             ps = (b1*b2*self.ps_dd(k) + mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
 
-
         return D1*D2*pf1*pf2*ps
 
+
+    def powerspectrum_1D(self, k_vec, z1, z2, numz):
+        r"""A vectorized routine for calculating the redshift space powerspectrum.
+
+        Parameters
+        ----------
+        k_vec: array_like
+            The magnitude of the k-vector
+        redshift: scalar
+            Redshift at which to evaluate other parameters
+
+        Returns
+        -------
+        ps: array_like
+            The redshift space power spectrum at the given k-vector and redshift.
+
+        Note that this uses the same ps_vv as the realisation generator until
+        the full dd, dv, vv calculation is ready.
+
+        TODO: evaluate this using the same weight function in z as the data.
+        """
+        c1 = self.cosmology.comoving_distance(z1)
+        c2 = self.cosmology.comoving_distance(z2)
+        # Construct an array of the redshifts on each slice of the cube.
+        comoving_inv = cosmo.inverse_approx(self.cosmology.comoving_distance, z1, z2)
+        da = np.linspace(c1, c2, numz+1, endpoint=True)
+        za = comoving_inv(da)
+
+        # Calculate the bias and growth factors for each slice of the cube.
+        mz = self.mean(za)
+        bz = self.bias_z(za)
+        fz = self.growth_rate(za)
+        Dz = self.growth_factor(za) / self.growth_factor(self.ps_redshift)
+        pz = self.prefactor(za)
+
+        dfactor = np.mean(Dz * pz * bz)
+        vfactor = np.mean(Dz * pz * fz)
+
+        return self.ps_vv(k_vec) * dfactor * dfactor
 
 
     def redshiftspace_correlation(self, pi, sigma, z1 = None, z2 = None):
@@ -373,8 +411,6 @@ class RedshiftCorrelation(object):
         rnum : integer
             The number of points to generate (using a log spacing).
         """
-
-
         ra  = np.logspace(np.log10(rmin), np.log10(rmax), rnum)
 
         vv0 = _integrate(ra, 0, self.ps_vv)
@@ -556,14 +592,17 @@ class RedshiftCorrelation(object):
         df = vf0
 
         # Construct the line of sight velocity field.
-        vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0))
+        # TODO: is the s=rfv._n the correct thing here?
+        vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0), s=rfv._n)
 
         #return (df, vf, rfv, kvec)
         return (df, vf) #, rfv)
 
 
-
-    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy, zspace = True):
+    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
+                    zspace=True, refinement=1, report_physical=False,
+                    density_only=False, no_mean=False, no_evolution=False,
+                    pad=5):
         r"""Simulate a redshift-space volume.
 
         Generates a 3D (angle-angle-redshift) volume from the given
@@ -586,6 +625,15 @@ class RedshiftCorrelation(object):
             If True (default) redshift bins are equally spaced in
             redshift. Otherwise space equally in the scale factor
             (useful for generating an equal range in frequency).
+        density_only: boolean
+            no velocity contribution
+        no_mean: boolean
+            do not add the mean temperature
+        no_evolution: boolean
+            do not let b(z), D(z) etc. evolve: take their mean
+        pad: integer
+            number of pixels over which to pad the physical region for
+            interpolation onto freq, ra, dec; match spline order?
 
         Returns
         -------
@@ -597,21 +645,32 @@ class RedshiftCorrelation(object):
         d2 = self.cosmology.proper_distance(z2)
         c1 = self.cosmology.comoving_distance(z1)
         c2 = self.cosmology.comoving_distance(z2)
+        c_center = (c1 + c2) / 2.
 
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
         d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
-        #n = np.array([numz, int(c2 / c1 * numx), int(c2 / c1 * numy)])
+        # Note that the ratio of deltas in Ra, Dec in degrees may
+        # be different than the Ra, Dec in physical coordinates due to
+        # rounding onto this grid
         n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
         # Enlarge cube size by 1 in each dimension, so raytraced cube
         # sits exactly within the gridded points.
-        d = d * (n + 1) / n
-        n = n + 1
+        d = d * (n + pad).astype(float) / n.astype(float)
+        c1 = c_center - (c_center - c1)*(n[0] + pad) / float(n[0])
+        c2 = c_center + (c2 - c_center)*(n[0] + pad) / float(n[0])
+        n = n + pad
+        # now multiply by scaling for a finer sub-grid
+        n = refinement*n
 
-        print "Generating cube: %f x %f x %f Mpc^3" % (d[0], d[1], d[2])
+        print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
+              (c1, c2, d[1], d[2], n[0], n[1], n[2])
 
         cube = self._realisation_dv(d, n)
+        # TODO: this is probably unnecessary now (realisation used to change
+        # shape through irfftn)
+        n = cube[0].shape
 
 
         # Construct an array of the redshifts on each slice of the cube.
@@ -627,11 +686,20 @@ class RedshiftCorrelation(object):
         pz = self.prefactor(za)
 
         # Construct the observable and velocity fields.
-        df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]
-        vf = cube[1] * (Dz * pz * fz)[:,np.newaxis,np.newaxis]
+        if not no_evolution:
+            df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]
+            vf = cube[1] * (Dz * pz * fz)[:,np.newaxis,np.newaxis]
+        else:
+            df = cube[0] * np.mean(Dz * pz * bz)
+            vf = cube[1] * np.mean(Dz * pz * fz)
 
         # Construct the redshift space cube.
-        rsf = (df + vf) + mz[:,np.newaxis,np.newaxis]
+        rsf = df
+        if not density_only:
+            rsf += vf
+
+        if not no_mean:
+            rsf += mz[:,np.newaxis,np.newaxis]
 
         # Find the distances that correspond to a regular redshift
         # spacing (or regular spacing in a).
@@ -644,8 +712,8 @@ class RedshiftCorrelation(object):
         xa = self.cosmology.comoving_distance(za)
 
         # Construct the angular offsets into cube
-        tx = np.linspace(-thetax / 2, thetax / 2, numx) * units.degree
-        ty = np.linspace(-thetay / 2, thetay / 2, numy) * units.degree
+        tx = np.linspace(-thetax / 2., thetax / 2., numx) * units.degree
+        ty = np.linspace(-thetay / 2., thetay / 2., numy) * units.degree
 
         #tgridx, tgridy = np.meshgrid(tx, ty)
         tgridy, tgridx = np.meshgrid(ty, tx)
@@ -653,18 +721,25 @@ class RedshiftCorrelation(object):
         acube = np.zeros((numz, numx, numy))
 
         # Iterate over redshift slices, constructing the coordinates
-        # and interpolating into the 3d cube.
+        # and interpolating into the 3d cube. Note that the multipliers scale
+        # from 0 to 1, or from i=0 to i=N-1
         for i in range(numz):
-            zi = (xa[i] - c1) / (c2-c1) * numz
-            tgrid2[0,:,:] = zi
-            tgrid2[1,:,:] = (tgridx * da[i])  / d[1] * numx + 0.5*n[1]
-            tgrid2[2,:,:] = (tgridy * da[i])  / d[2] * numy + 0.5*n[2]
+            tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0] - 1.)
+            tgrid2[1,:,:] = (tgridx * da[i]) / d[1] * (n[1] - 1.) + \
+                            0.5*(n[1] - 1.)
+            tgrid2[2,:,:] = (tgridy * da[i]) / d[2] * (n[2] - 1.) + \
+                            0.5*(n[2] - 1.)
 
             #if(zi > numz - 2):
-            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
+            # TODO: what order here?; do end-to-end P(k) study
+            #acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
+            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
 
+        if report_physical:
+            return acube, rsf, (c1, c2, d[1], d[2])
+        else:
+            return acube
 
-        return acube #, rsf
 
 
     def angular_powerspectrum_full(self, la, za1, za2):
@@ -839,33 +914,6 @@ class RedshiftCorrelation(object):
 
     ## By default use the flat sky approximation.
     angular_powerspectrum = angular_powerspectrum_fft
-
-
-
-def inverse_approx(f, x1, x2):
-    r"""Generate the inverse function on the interval x1 to x2.
-
-    Periodically sample a function and use interpolation to construct
-    its inverse. Function must be monotonic on the given interval.
-
-    Parameters
-    ----------
-    f : callable
-        The function to invert, must accept a single argument.
-    x1, x2 : scalar
-        The lower and upper bounds of the interval on which to
-        construct the inverse.
-
-    Returns
-    -------
-    inv : cubicspline.Interpolater
-        A callable function holding the inverse.
-    """
-
-    xa = np.linspace(x1, x2, 1000)
-    fa = f(xa)
-
-    return cs.Interpolater(fa, xa)
 
 
 @np.vectorize
