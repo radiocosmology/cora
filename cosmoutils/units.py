@@ -53,6 +53,9 @@ a_rad = 4*stefan_boltzmann / c
 # 21cm transition frequency (in MHz)
 nu21 = 1420.40575177
 
+# Boltzmann constant
+k_B = 1.3806503e-23
+
 
 #### Angular units (in radians) ####
 degree     = 2 * math.pi / 360

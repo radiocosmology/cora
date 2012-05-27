@@ -4,9 +4,13 @@ import numpy.random as rnd
 
 from scipy.optimize import newton
 
+from cosmoutils import units
+
 import poisson as ps
 
 from maps import *
+
+import foregroundsck
 
 class PointSourceModel(Map3d):
     r"""Represents a population of astrophysical point sources.
@@ -145,8 +149,41 @@ class PointSourceModel(Map3d):
             return c
         else:
             return c, fluxes
-            
+
+
+    def getsky(self):
+        """Simulate a map of point sources.
+
+        Returns
+        -------
+        sky : ndarray [nfreq, npix]
+            Map of the brightness temperature on the sky (in K).
+        """
+
+        if self.flux_min < 0.1:
+            print "This is going to take a long time. Try raising the flux limit."
+
+        npix = 12*self.nside**2
+
+        sky = np.zeros((self.nu_num, npix), dtype=np.float64)
+
+        pxarea = 4*np.pi / npix
         
+        fluxes = self.generate_population(4*np.pi / (np.pi / 180)**2)
+
+        freq = self.nu_pixels
+        
+        sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
+
+        for i in xrange(sr.shape[0]):
+            # Pick random pixel
+            ix = int(rnd.rand() * npix)
+
+            sky[:, ix] += sr[i,:]
+
+        # Convert flux map in Jy to brightness temperature map in K.
+        sky = sky * 1e-26 * units.c**2 / (2 * units.k_B * self.nu_pixels[:, np.newaxis]**2 * 1e12 * pxarea)
+        return sky
 
 
 class PowerLawModel(PointSourceModel):
@@ -261,6 +298,27 @@ class DiMatteo(PointSourceModel):
         ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
 
         return flux * (freq / self.spectral_pivot)**ind
+
+
+
+class CombinedPointSources(foregroundsck.PointSources, DiMatteo):
+    """Combined class for efficiently generating full sky point source maps.
+
+    For S < S_{cut} = 0.1 Jy use a Gaussian approximation to generate a map,
+    and for S > S_{cut} generate a synthetic population. Amplitude of
+    foregroundsck.PointSources class rescaled for a maximum flux of 0.1.
+    """ 
+    A = 3.55e-5
+    nu_0 = 408.0
+    l_0 = 100.0
+
+    flux_min = 0.1
+
+    def getsky(self):
+
+        sky = foregroundsck.PointSources.getsky(self) + DiMatteo.getsky(self)
+
+        return sky
 
 
 
