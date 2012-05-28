@@ -715,7 +715,7 @@ class RedshiftCorrelation(object):
                         5.0*_int_lin(k + 2*d1) + _int_lin(k + 3*d1)) / 16.0
 
             def _integrator(f, a, b):
-                return integrate.chebyshev(f, a, b, epsrel = 1e-7, epsabs=1e-10)[0]
+                return integrate.chebyshev(f, a, b, epsrel = 1e-8, epsabs=1e-10)
 
             mink = 1e-2 * l / (x1 + x2)
             cutk = 2e0 * l / (x1 + x2)
@@ -767,6 +767,7 @@ class RedshiftCorrelation(object):
         self._aps_cache = True
 
 
+    _freq_window = 0.0
     def angular_powerspectrum_fft(self, la, za1, za2):
         """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
 
@@ -801,7 +802,7 @@ class RedshiftCorrelation(object):
             k = (kpar**2 + kperp**2)**0.5
             mu2 = kpar**2 / k**2
 
-            self._dd = self.ps_vv(k)
+            self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2*np.pi))**2
             self._dv = self._dd * mu2
             self._vv = self._dd * mu2**2
 

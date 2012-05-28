@@ -19,6 +19,8 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
 
     add_mean = False
 
+    _kstar = 5.0
+
     def __init__(self, ps = None, redshift = 0.0, **kwargs):
         from os.path import join, dirname
         if ps == None:
@@ -26,9 +28,8 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
             psfile = join(dirname(__file__),"data/ps_z1.5.dat")
             redshift = 1.5
 
-            kstar = 5.0
             c1 = cs.LogInterpolater.fromfile(psfile)
-            ps = lambda k: np.exp(-0.5 * k**2 / kstar**2) * c1(k)
+            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * c1(k)
 
         RedshiftCorrelation.__init__(self, ps_vv = ps, redshift = redshift)
         self._load_cache(join(dirname(__file__),"data/corr_z1.5.dat"))
@@ -181,6 +182,35 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
             z2 = nu2
 
         return RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
+
+
+    # Override angular_power spectrum to switch to allow using frequency
+    def angular_powerspectrum_full(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum by explicit integration.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return RedshiftCorrelation.angular_powerspectrum_full(self, l, z1, z2)
 
 
     def mean_nu(self, freq):
