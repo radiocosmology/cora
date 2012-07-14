@@ -54,9 +54,10 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
         return (3.9e-4 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
+
     def mean(self, z):
         if self.add_mean:
-            return self.T_b(z)
+            return self.T_b(z)            
         else:
             return np.zeros_like(z)
 
@@ -150,10 +151,9 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
 
 
     def bias_z(self, z):
-        r"""It's unclear what the bias should be. Using 1 for the moment. """
+        r"""Changing the bias from 1 to 3, based on EoR bias estimates in Santos 2004 (arXiv: 0408515)"""
 
         return np.ones_like(z) * 1.0
-
 
     # Override angular_power spectrum to switch to allow using frequency
     def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
@@ -229,4 +229,49 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
         return cube
 
 
+class EoR21cm(Corr21cm):
+
+    def T_b(self, z):
+        
+        r"""Mean 21cm brightness temperature at a given redshift.
+
+        Temperature is in K.
+
+        Parameters
+        ----------
+        z : array_like
+            Redshift to calculate at.
+
+        Returns
+        -------
+        T_b : array_like
+        """
+
+        return (23e-3 * (self.cosmology.omega_b * (self.cosmology.H0 / 100.0)**2 / 0.02) * ((0.15 / self.cosmology.omega_m * (self.cosmology.H0 / 100.0)**2) * ((1.0 + z)/10))**0.5 * ((self.cosmology.H0 / 100.0) / 0.7)**-1)
+
+
+    def omega_HI(self, z):
+        return 5e-3    
+
+    def x_h(self, z):
+        r"""Neutral hydrogen fraction at a given redshift.
+
+        Just returns a constant at the moment. Need to add a more
+        sophisticated model.
+
+        Parameters
+        ----------
+        z : array_like
+            Redshift to calculate at.
+
+        Returns
+        -------
+        x_e : array_like
+        """
+        return 0.25
+
+    def bias_z(self, z):
+        r"""Changing the bias from 1 to 3, based on EoR bias estimates in Santos 2004 (arXiv: 0408515)"""
+
+        return np.ones_like(z) * 3.0
         
