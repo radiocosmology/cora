@@ -51,7 +51,7 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
         T_b : array_like
         """
 
-        return (3.0e-4 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
+        return (3.9e-4 * ((self.cosmology.omega_m + self.cosmology.omega_l * (1+z)**-3) / 0.29)**-0.5
                 * ((1.0 + z) / 2.5)**0.5 * (self.omega_HI(z) / 1e-3))
 
     def mean(self, z):
@@ -61,7 +61,7 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
             return np.zeros_like(z)
 
     def omega_HI(self, z):
-        return 5e-4
+        return 1e-3
 
     def x_h(self, z):
         r"""Neutral hydrogen fraction at a given redshift.

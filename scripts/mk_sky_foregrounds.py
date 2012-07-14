@@ -27,6 +27,7 @@ cs = gal.getsky()
 
 # Fetch point source maps
 ps = pointsource.CombinedPointSources.like_map(gal)
+ps.flux_max = 100.0
 cs = cs + ps.getsky()
 
 # Save map
