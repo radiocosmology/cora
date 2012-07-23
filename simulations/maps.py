@@ -154,6 +154,11 @@ class Sky3d(Map3d):
         return (self.mean_nu(self.nu_pixels)[:, np.newaxis]
                 + skysim.mkfullsky(cla, self.nside))
 
+    def getalms(self, lmax):
+
+        cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
+        
+        return skysim.mkfullsky(cla, self.nside, alms=True)
 
 
 
