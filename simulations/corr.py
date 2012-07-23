@@ -217,7 +217,7 @@ class RedshiftCorrelation(object):
         c1 = self.cosmology.comoving_distance(z1)
         c2 = self.cosmology.comoving_distance(z2)
         # Construct an array of the redshifts on each slice of the cube.
-        comoving_inv = cosmo.inverse_approx(self.cosmology.comoving_distance, z1, z2)
+        comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
         da = np.linspace(c1, c2, numz+1, endpoint=True)
         za = comoving_inv(da)
 
@@ -971,4 +971,30 @@ def _integrate(r, l, psfunc):
     if _feedback:
         print r1, r2, r3
 
-    return r1+r3+r3
+    return r1+r2+r3
+
+
+def inverse_approx(f, x1, x2):
+    r"""Generate the inverse function on the interval x1 to x2.
+
+    Periodically sample a function and use interpolation to construct
+    its inverse. Function must be monotonic on the given interval.
+
+    Parameters
+    ----------
+    f : callable
+        The function to invert, must accept a single argument.
+    x1, x2 : scalar
+        The lower and upper bounds of the interval on which to
+        construct the inverse.
+
+    Returns
+    -------
+    inv : cubicspline.Interpolater
+        A callable function holding the inverse.
+    """
+
+    xa = np.linspace(x1, x2, 1000)
+    fa = f(xa)
+
+    return cs.Interpolater(fa, xa)
