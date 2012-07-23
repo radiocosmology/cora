@@ -235,7 +235,7 @@ class Corr21cm(RedshiftCorrelation, maps.Sky3d):
         return cube
 
 
-	def get_kiyo_field(self, refinement=1):
+    def get_kiyo_field(self, refinement=1):
         r"""Fetch a realisation of the 21cm signal (NOTE: in K)
         """
         z1 = units.nu21 / self.nu_upper - 1.0
