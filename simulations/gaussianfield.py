@@ -120,7 +120,8 @@ class RandomField(object):
         f = np.random.standard_normal(s) + 1.0J * np.random.standard_normal(s)
         f *= self._kweight
         
-        r = np.fft.irfftn(f)
+        # TODO: is self._n argument here correct?
+        r = np.fft.irfftn(f, s=self._n)
         return r
            
 
