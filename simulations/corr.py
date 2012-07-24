@@ -577,20 +577,25 @@ class RedshiftCorrelation(object):
 
         # Generate an underlying random field realisation of the
         # matter distribution.
+
+        print "Gen field."
         rfv = RandomField(npix = n, wsize = d)
         rfv.powerspectrum = psv
 
         vf0 = rfv.getfield()
 
         # Construct an array of \mu^2 for each Fourier mode.
+        print "Construct kvec"
         spacing = rfv._w / rfv._n
         kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
+        print "Construct mu2"
         mu2arr = kvec[...,0]**2 / (kvec**2).sum(axis=3)
         mu2arr.flat[0] = 0.0
         del kvec
 
         df = vf0
 
+        print "FFT vel"
         # Construct the line of sight velocity field.
         # TODO: is the s=rfv._n the correct thing here?
         vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0), s=rfv._n)
