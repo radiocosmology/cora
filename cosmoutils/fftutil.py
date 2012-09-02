@@ -11,7 +11,7 @@ try:
     _use_anfft = True
 except ImportError:
     _use_anfft = False
-
+    warnings.warn("Cannot load anfft for parallel FFT routines.")
 
 
 def rfftfreqn(n, d = None):
