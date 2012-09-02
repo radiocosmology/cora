@@ -735,7 +735,7 @@ class RedshiftCorrelation(object):
         # and interpolating into the 3d cube. Note that the multipliers scale
         # from 0 to 1, or from i=0 to i=N-1
         for i in range(numz):
-            print "Slice:", i
+            #print "Slice:", i
             tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0] - 1.)
             tgrid2[1,:,:] = (tgridx * da[i]) / d[1] * (n[1] - 1.) + \
                             0.5*(n[1] - 1.)
