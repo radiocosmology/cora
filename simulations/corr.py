@@ -598,7 +598,7 @@ class RedshiftCorrelation(object):
         print "FFT vel"
         # Construct the line of sight velocity field.
         # TODO: is the s=rfv._n the correct thing here?
-        vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0), s=rfv._n)
+        vf = fftutil.irfftn(mu2arr * fftutil.rfftn(vf0))
 
         #return (df, vf, rfv, kvec)
         return (df, vf) #, rfv)
@@ -660,13 +660,18 @@ class RedshiftCorrelation(object):
         # rounding onto this grid
         n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
-        # Enlarge cube size by 1 in each dimension, so raytraced cube
+        # Fix padding such the n + pad is even in the last element
+        if (n[-1] + pad) % 2 != 0:
+            pad += 1
+
+        # Enlarge cube size by pad in each dimension, so raytraced cube
         # sits exactly within the gridded points.
         d = d * (n + pad).astype(float) / n.astype(float)
         c1 = c_center - (c_center - c1)*(n[0] + pad) / float(n[0])
         c2 = c_center + (c2 - c_center)*(n[0] + pad) / float(n[0])
         n = n + pad
-        # now multiply by scaling for a finer sub-grid
+
+        # now multiply by scaling for a finer sub-grid.
         n = refinement*n
 
         print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \

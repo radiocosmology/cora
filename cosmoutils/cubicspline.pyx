@@ -7,10 +7,14 @@ import numpy as np
 cimport numpy as np
 cimport cython
 
+from cython.parallel import prange
+
 # Import functions from math.h
 cdef extern from "math.h":
     double exp(double x)
     double log(double x)
+
+cimport libc.math
 
 dbltype = np.int
 ctypedef np.float64_t dbltype_t
@@ -49,6 +53,10 @@ cdef class Interpolater(object):
     cdef np.ndarray __data_
     cdef np.ndarray __y2_
 
+    cdef double * _data_p
+    cdef double * _y2_p
+    cdef Py_ssize_t _n
+
 
     fromfile = classmethod(_int_fromfile)
     
@@ -78,27 +86,49 @@ cdef class Interpolater(object):
         if(np.isinf(data).any() or np.isnan(data).any()):
             raise InterpolationException("Some values invalid.")
 
-        self.__data_ = data
+        self.__data_ = np.ascontiguousarray(data)
         self.__gen_spline_()
+
+        self._data_p = <double *>self.__data_.data
+        self._y2_p = <double *>self.__y2_.data
+        self._n = <Py_ssize_t>self.__data_.shape[0]
 
 
     def value(self, x):
         """Returns the value of the function at x. """
-            
-        return self.value_cdef(x)
+        if isinstance(x, np.ndarray):
+            return self.value_array(x)
+        
+        return self.value_cdef(x)            
+        
 
 
     def __call__(self, x):
         """Returns the value of the function at x. """
-        if isinstance(x, np.ndarray):
-            r = np.empty_like(x)
-            for index, xv in np.ndenumerate(x):
-                r[index] = self.value_cdef(xv)
-            return r
-        
-        return self.value_cdef(x)
+        return self.value(x)
 
-    cdef dbltype_t value_cdef(self, dbltype_t x):
+    @cython.boundscheck(False)
+    def value_array(self, x):
+
+        cdef np.ndarray[dbltype_t, ndim=1] xr
+        cdef np.ndarray[dbltype_t, ndim=1] rr
+
+        cdef Py_ssize_t i, nr
+
+        xr = x.ravel()
+        rr = np.empty_like(xr)
+
+        nr = xr.size
+
+        for i in prange(nr, nogil=True):
+            rr[i] = self.value_cdef(xr[i])
+
+        return rr.reshape(x.shape)
+
+
+    @cython.cdivision(True)
+    @cython.boundscheck(False)
+    cdef dbltype_t value_cdef(self, dbltype_t x) nogil:
         """Returns the value of the function at x. 
 
         Cdef'd function to do the work.
@@ -107,43 +137,46 @@ cdef class Interpolater(object):
         cdef int kl,kh,kn
         cdef dbltype_t h,a,b,c,d
 
-        cdef np.ndarray[dbltype_t, ndim=2] data = self.__data_
-        cdef np.ndarray[dbltype_t, ndim=1] y2 = self.__y2_
+        cdef double * data = self._data_p
+        cdef double * y2 = self._y2_p
+
+        # cdef np.ndarray[dbltype_t, ndim=2] data = self.__data_
+        # cdef np.ndarray[dbltype_t, ndim=1] y2 = self.__y2_
 
         kl = 0
-        kh = data.shape[0]
+        kh = self._n
 
-        if(x < data[0,0]):
+        if(x < data[0]):
             # Extrapolate gradient from first point
-            h = data[1,0] - data[0,0]
-            a = (data[1,1] - data[0,1]) / h
-            return (a - h * y2[1] / 6) * (x - data[0,0]) + data[0,1]
+            h = data[2] - data[0]
+            a = (data[3] - data[1]) / h
+            return (a - h * y2[1] / 6) * (x - data[0]) + data[1]
 
-        if(x >= data[kh-1,0]):
+        if(x >= data[2*(kh-1)]):
             # Extrapolate gradient from last point
             kh = kh-1
-            h = data[kh,0] - data[kh-1,0]
-            a = (data[kh,1] - data[kh-1,1]) / h
-            return (a + h * y2[kh-1] / 6) * (x - data[kh,0]) + data[kh,1]
+            h = data[2*kh] - data[2*(kh-1)]
+            a = (data[2*kh+1] - data[2*(kh-1)+1]) / h
+            return (a + h * y2[kh-1] / 6) * (x - data[2*kh]) + data[2*kh+1]
 
         # Use bisection to locate the interval
         while(kh - kl > 1):
             kn = (kh + kl) / 2
-            if(data[kn, 0] > x):
+            if(data[2*kn] > x):
                 kh = kn
             else:
                 kl = kn
 
         # Define variables as in NR.
-        h = data[kh, 0] - data[kl, 0]
+        h = data[2*kh] - data[2*kl]
 
-        a = (data[kh, 0] - x) / h
-        b = (x - data[kl, 0]) / h
+        a = (data[2*kh] - x) / h
+        b = (x - data[2*kl]) / h
         c = (a**3 - a) * h**2 / 6
         d = (b**3 - b) * h**2 / 6
         
         # Return the spline interpolated value.
-        return (a * data[kl, 1] + b * data[kh, 1] 
+        return (a * data[2*kl+1] + b * data[2*kh+1] 
                 + c * y2[kl] + d * y2[kh])
 
 
@@ -232,22 +265,31 @@ cdef class LogInterpolater(Interpolater):
 
         Interpolater.__init__(self, np.log(data))
 
-    def value(self, dbltype_t x):
+    def value(self, x):
         """ Return the value of the log-interpolated function."""
-
-        return exp(Interpolater.value_cdef(self, log(x)))
-
-
-    def __call__(self, x):
-        """Returns the value of the function at x. """
         if isinstance(x, np.ndarray):
-            x = np.log(x)
-            r = np.empty_like(x)
-            for index, xv in np.ndenumerate(x):
-                r[index] = self.value_cdef(xv)
-            return np.exp(r)
+            return self.value_log_array(x)
         
-        return np.exp(self.value_cdef(np.log(x)))
+        return libc.math.exp(self.value_cdef(libc.math.log(x)))
+
+
+    @cython.boundscheck(False)
+    def value_log_array(self, x):
+
+        cdef np.ndarray[dbltype_t, ndim=1] xr
+        cdef np.ndarray[dbltype_t, ndim=1] rr
+
+        cdef Py_ssize_t i, nr
+
+        xr = x.ravel()
+        rr = np.empty_like(xr)
+
+        nr = xr.size
+
+        for i in prange(nr, nogil=True):
+            rr[i] = libc.math.exp(self.value_cdef(libc.math.log(xr[i])))
+
+        return rr.reshape(x.shape)
 
 
 
