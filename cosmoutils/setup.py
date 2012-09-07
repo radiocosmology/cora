@@ -21,6 +21,9 @@ setup(
                            ),
                  Extension('_sphbessel_c', ['_sphbessel_c.pyx'],
                            include_dirs=[np.get_include()],
-                           libraries=['gsl', 'gslcblas']) ],  
+                           libraries=['gsl', 'gslcblas']),
+                 Extension('trilinearmap', ['trilinearmap.pyx'],
+                           include_dirs=[np.get_include()])
+                 ],  
    cmdclass = {'build_ext': build_ext}  
 )
