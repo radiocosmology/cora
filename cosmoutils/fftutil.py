@@ -69,12 +69,14 @@ def rfftn(arr):
         warnings.warn("Last axis length not multiple of 2. fftwrap.irfftn will not reproduce this exactly.")
     
     if _use_anfft:
+        print "Parallel FFT."
         return anfft.rfftn(arr)
     else:
         return np.fft.rfftn(arr)
 
 def irfftn(arr):
     if _use_anfft:
+        print "Parallel FFT."
         return anfft.irfftn(arr)
     else:
         return np.fft.irfftn(arr)
