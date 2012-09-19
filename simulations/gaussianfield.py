@@ -121,7 +121,7 @@ class RandomField(object):
         f *= self._kweight
         
         # TODO: is self._n argument here correct?
-        r = np.fft.irfftn(f, s=self._n)
+        r = fftutil.irfftn(f)
         return r
            
 

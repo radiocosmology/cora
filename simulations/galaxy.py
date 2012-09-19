@@ -16,13 +16,26 @@ _datadir = join(dirname(__file__), "data")
 
 
 class FullSkySynchrotron(foregroundsck.Synchrotron):
-    """Match up Synchrotron amplitudes to thise found in La Porta et al. 2008,
+    """Match up Synchrotron amplitudes to those found in La Porta et al. 2008,
     for galactic latitudes abs(b) > 5 degrees"""
     A = 6.6e-3
     beta = 2.8
     nu_0 = 408.0
     l_0 = 100.0
 
+
+class FullSkyPolarisedSynchrotron(foregroundsck.Synchrotron):
+
+    """Polarised Synchrotron amplitudes. Use same spectral shape,
+    but with polarisation fraction=0.5, and a reduced correlation
+    length (zeta=0.64), estimated from Faraday rotation=2pi, with RM=16.7 from
+    http://adsabs.harvard.edu/abs/2009ApJ...702.1230T"""
+
+    A = 1.65e-3
+    beta = 2.8
+    nu_0 = 408.0
+    l_0 = 100.0
+    zeta = 0.64
 
 
 def map_variance(input_map, nside):

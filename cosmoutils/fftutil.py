@@ -1,6 +1,19 @@
 
 import numpy as np
 
+import numpy as np
+import warnings
+
+_use_anfft = True
+
+try:
+    import anfft
+    _use_anfft = True
+except ImportError:
+    _use_anfft = False
+    warnings.warn("Cannot load anfft for parallel FFT routines.")
+
+
 def rfftfreqn(n, d = None):
     """Generate an array of FFT frequencies for an n-dimensional *real* transform.
 
@@ -47,4 +60,24 @@ def rfftfreqn(n, d = None):
     rollarr[...,:] /= d
             
     return rollarr
+
+
+    
+def rfftn(arr):
+
+    if arr.shape[-1] % 2 != 0:
+        warnings.warn("Last axis length not multiple of 2. fftwrap.irfftn will not reproduce this exactly.")
+    
+    if _use_anfft:
+        print "Parallel FFT."
+        return anfft.rfftn(arr)
+    else:
+        return np.fft.rfftn(arr)
+
+def irfftn(arr):
+    if _use_anfft:
+        print "Parallel IFFT."
+        return anfft.irfftn(arr)
+    else:
+        return np.fft.irfftn(arr)
 

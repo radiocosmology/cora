@@ -577,23 +577,28 @@ class RedshiftCorrelation(object):
 
         # Generate an underlying random field realisation of the
         # matter distribution.
+
+        print "Gen field."
         rfv = RandomField(npix = n, wsize = d)
         rfv.powerspectrum = psv
 
         vf0 = rfv.getfield()
 
         # Construct an array of \mu^2 for each Fourier mode.
+        print "Construct kvec"
         spacing = rfv._w / rfv._n
         kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
+        print "Construct mu2"
         mu2arr = kvec[...,0]**2 / (kvec**2).sum(axis=3)
         mu2arr.flat[0] = 0.0
         del kvec
 
         df = vf0
 
+        print "FFT vel"
         # Construct the line of sight velocity field.
         # TODO: is the s=rfv._n the correct thing here?
-        vf = np.fft.irfftn(mu2arr * np.fft.rfftn(vf0), s=rfv._n)
+        vf = fftutil.irfftn(mu2arr * fftutil.rfftn(vf0))
 
         #return (df, vf, rfv, kvec)
         return (df, vf) #, rfv)
@@ -655,13 +660,18 @@ class RedshiftCorrelation(object):
         # rounding onto this grid
         n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
 
-        # Enlarge cube size by 1 in each dimension, so raytraced cube
+        # Fix padding such the n + pad is even in the last element
+        if (n[-1] + pad) % 2 != 0:
+            pad += 1
+
+        # Enlarge cube size by pad in each dimension, so raytraced cube
         # sits exactly within the gridded points.
         d = d * (n + pad).astype(float) / n.astype(float)
         c1 = c_center - (c_center - c1)*(n[0] + pad) / float(n[0])
         c2 = c_center + (c2 - c_center)*(n[0] + pad) / float(n[0])
         n = n + pad
-        # now multiply by scaling for a finer sub-grid
+
+        # now multiply by scaling for a finer sub-grid.
         n = refinement*n
 
         print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
@@ -711,6 +721,7 @@ class RedshiftCorrelation(object):
         da = self.cosmology.proper_distance(za)
         xa = self.cosmology.comoving_distance(za)
 
+        print "Constructing mapping.."
         # Construct the angular offsets into cube
         tx = np.linspace(-thetax / 2., thetax / 2., numx) * units.degree
         ty = np.linspace(-thetay / 2., thetay / 2., numy) * units.degree
@@ -724,6 +735,7 @@ class RedshiftCorrelation(object):
         # and interpolating into the 3d cube. Note that the multipliers scale
         # from 0 to 1, or from i=0 to i=N-1
         for i in range(numz):
+            #print "Slice:", i
             tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0] - 1.)
             tgrid2[1,:,:] = (tgridx * da[i]) / d[1] * (n[1] - 1.) + \
                             0.5*(n[1] - 1.)
