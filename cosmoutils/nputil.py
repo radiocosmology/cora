@@ -79,3 +79,23 @@ def matrix_root_manynull(mat, threshold = 1e-16, truncate = True):
     else:
         return (evecs * evals[np.newaxis,:]**0.5)
     
+
+
+
+def complex_std_normal(shape):
+    """Get a set of complex standard normal variables.
+
+    Parameters
+    ----------
+    shape : tuple
+        Shape of the array of variables.
+
+    Returns
+    -------
+    var : np.ndarray[shape]
+        Complex gaussian variates.
+    """
+
+    return (np.random.standard_normal(shape) + 1.0J * np.random.standard_normal(shape)) / 2**0.5
+
+
