@@ -378,15 +378,22 @@ def sphtrans_sky(skymap, lmax=None):
     alms : np.ndarray[frequencies, l, m]
     """
     nfreq = skymap.shape[0]
+    pol = (len(skymap.shape) == 3)
 
     if lmax is None:
         lmax = 3*healpy.npix2nside(skymap.shape[1]) - 1
 
-    alm_freq = np.empty((nfreq, lmax+1, lmax + 1), dtype=np.complex128)
+    if pol:
+        alm_freq = np.empty((nfreq, 3, lmax+1, lmax + 1), dtype=np.complex128)
+    else:
+        alm_freq = np.empty((nfreq, lmax+1, lmax + 1), dtype=np.complex128)
 
     for i in range(nfreq):
-        alm_freq[i] = sphtrans_real(skymap[i].astype(np.float64), lmax)
-
+        if pol:
+            alm_freq[i] = np.array(sphtrans_real_pol(skymap[i].astype(np.float64), lmax))
+        else:
+            alm_freq[i] = sphtrans_real(skymap[i].astype(np.float64), lmax)
+        
     return alm_freq
 
 
@@ -405,11 +412,15 @@ def sphtrans_inv_sky(alm, nside):
     skymaps : np.ndarray[freq, healpix_index]
     """
     nfreq = alm.shape[0]
+    pol = alm.shape[1] == 3
 
-    sky_freq = np.empty((nfreq, healpy.nside2npix(nside)), dtype=np.float64)
-
+    sky_freq = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
+    
     for i in range(nfreq):
-        sky_freq[i] = sphtrans_inv_real(alm[i], nside)
+        if pol:
+            sky_freq[i] = sphtrans_inv_real(alm[i], nside)
+        else:
+            sky_freq[i, 0] = sphtrans_inv_real(alm[i, 0], nside)
 
     return sky_freq
 
