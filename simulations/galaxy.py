@@ -64,8 +64,8 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         self._load_data()
 
-        vm = map_variance(healpy.smoothing(self._haslam, sigma=0.5, degree=True), 16)
-        self._amp_map = healpy.smoothing(healpy.ud_grade(vm**0.5, 512), sigma=2.0, degree=True)
+        vm = map_variance(healpy.smoothing(self._haslam, sigma=np.radians(0.5)), 16)
+        self._amp_map = healpy.smoothing(healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0))
 
 
     def _load_data(self):
@@ -92,16 +92,16 @@ class ConstrainedGalaxy(maps.Sky3d):
                 print "Please respond with 'y' or 'n'."
         
         self._haslam = healpy.read_map(join(_datadir, "haslam.fits"))
-        self._sp_ind = h5py.File(_sp_ind_file)['spectral_index'][:]
+        self._sp_ind = h5py.File(_sp_ind_file, 'r')['spectral_index'][:]
 
         # Upgrade the map resolution to the same as the Healpix map (nside=512).
-        self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512),  degree=True, sigma=1.0)
+        self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
 
 
     def getsky(self, debug=False, celestial=True):
 
         # Read in data files.
-        haslam = healpy.smoothing(healpy.ud_grade(self._haslam, self.nside), degree=True, fwhm=3.0) #hputil.coord_g2c()
+        haslam = healpy.smoothing(healpy.ud_grade(self._haslam, self.nside), fwhm=np.radians(3.0)) #hputil.coord_g2c()
         
         beam = 1.0
         syn = FullSkySynchrotron()
@@ -114,14 +114,14 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         fg = skysim.mkfullsky(cla, self.nside)
 
-        sub408 = healpy.smoothing(fg[0], fwhm=3.0, degree=True)
-        sub1420 = healpy.smoothing(fg[1], fwhm=5.8, degree=True)
+        sub408 = healpy.smoothing(fg[0], fwhm=np.radians(3.0))
+        sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8))
     
         fgs = skysim.mkconstrained(cla, [(0, sub408), (1, sub1420)], self.nside)
 
         sc = healpy.ud_grade(self._sp_ind, self.nside)
         am = healpy.ud_grade(self._amp_map, self.nside)
-        mv = healpy.smoothing(map_variance(healpy.smoothing(fg[0], sigma=0.5, degree=True), 16)**0.5, degree=True, sigma=1.0).mean()
+        mv = healpy.smoothing(map_variance(healpy.smoothing(fg[0], sigma=np.radians(0.5)), 16)**0.5, sigma=np.radians(1.0)).mean()
 
         fgt = (am / mv) * (fg - fgs)
 
