@@ -135,3 +135,29 @@ class ConstrainedGalaxy(maps.Sky3d):
             return fg2, fg, fgs, fgt
 
         return fg2
+
+
+
+    def getpolsky(self):
+
+        nside = self.nside
+        tmap = self.getsky()
+
+        cl = np.arange(3.0*nside-1)**(-FullSkySynchrotron.beta)
+        cl[0] = 0.0
+
+        qamp = healpy.synfast(cl, nside)
+        uamp = healpy.synfast(cl, nside)
+
+        polfrac = (qamp**2 + uamp**2).mean()**0.5
+
+        qamp = qamp / polfrac * 0.3
+        uamp = uamp / polfrac * 0.3
+
+        tqumap = np.zeros((tmap.shape[0], 3, tmap.shape[1]), dtype=tmap.dtype)
+
+        tqumap[:, 0] = tmap
+        tqumap[:, 1] = qamp * tmap
+        tqumap[:, 2] = uamp * tmap
+
+        return tqumap

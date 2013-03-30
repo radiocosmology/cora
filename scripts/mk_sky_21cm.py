@@ -12,6 +12,7 @@ parser.add_argument('freq_lower', help='Lowest frequency channel.', type=float)
 parser.add_argument('freq_upper', help='Highest frequency channel.', type=float)
 parser.add_argument('nfreq', help='Number of frequency channels.', type=int)
 parser.add_argument('mapname', help='Name of the file to save into.')
+parser.add_argument('--pol', help='Polarised or not.', action='store_true')
 args = parser.parse_args()
 
 # Read in arguments.
@@ -22,7 +23,7 @@ cr.nu_upper = args.freq_upper
 cr.nu_num = args.nfreq
 
 # Generate signal realisation and save.
-sg_map = cr.getsky()
+sg_map = cr.getpolsky() if args.pol else cr.getsky()
 f = h5py.File(args.mapname, 'w')
 f.create_dataset("map", data=sg_map)
 f.close()

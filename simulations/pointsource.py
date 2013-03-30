@@ -194,13 +194,16 @@ class PointSourceModel(Map3d):
 
         sky_I = self.getsky()
 
+        sky_IQU = np.zeros((sky_I.shape[0], 3, sky_I.shape[1]), dtype=sky_I.dtype)
+
         q_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
         u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
 
-        sky_Q = sky_I * q_frac
-        sky_U = sky_I * u_frac
+        sky_IQU[:, 0] = sky_I
+        sky_IQU[:, 1] = sky_I * q_frac
+        sky_IQU[:, 2] = sky_I * u_frac
 
-        return [sky_I, sky_Q, sky_U]
+        return sky_IQU
 
 
 
@@ -331,6 +334,7 @@ class CombinedPointSources(foregroundsck.PointSources, DiMatteo):
     l_0 = 100.0
 
     flux_min = 0.1
+    #flux_max = 100.0
 
     def getsky(self):
 
@@ -338,6 +342,13 @@ class CombinedPointSources(foregroundsck.PointSources, DiMatteo):
 
         return sky
 
+    def getpolsky(self):
+
+        sky = DiMatteo.getpolsky(self)
+
+        sky[:, 0] += foregroundsck.PointSources.getsky(self)
+
+        return sky
 
 
 ## Test program run when executing module.

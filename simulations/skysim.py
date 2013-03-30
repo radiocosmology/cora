@@ -44,7 +44,8 @@ def clarray(aps, lmax, zarray, zromb=3):
                    zarray[np.newaxis, :, np.newaxis], zarray[np.newaxis, np.newaxis, :])
 
     else:
-        zhalf = np.abs(zarray[1] - zarray[0]) / 2.0
+        zsort = np.sort(zarray)
+        zhalf = np.abs(zsort[1] - zsort[0]) / 2.0
         zlen = zarray.size
         zint = 2**zromb + 1
         zspace = 2.0*zhalf / 2**zromb

@@ -1,7 +1,5 @@
-import sys
 import argparse
 
-import numpy as np
 import h5py
 
 from simulations import galaxy, pointsource
@@ -13,6 +11,8 @@ parser.add_argument('freq_lower', help='Lowest frequency channel.', type=float)
 parser.add_argument('freq_upper', help='Highest frequency channel.', type=float)
 parser.add_argument('nfreq', help='Number of frequency channels.', type=int)
 parser.add_argument('mapname', help='Name of the file to save into.')
+parser.add_argument('--pol', help='Polarised or not.', action='store_true')
+
 args = parser.parse_args()
 
 # Read in arguments.
@@ -23,11 +23,11 @@ gal.nu_upper = args.freq_upper
 gal.nu_num = args.nfreq
 
 # Fetch galactic sky
-cs = gal.getsky()
+cs = gal.getpolsky() if args.pol else gal.getsky()
 
 # Fetch point source maps
 ps = pointsource.CombinedPointSources.like_map(gal)
-cs = cs + ps.getsky()
+cs = cs + (ps.getpolsky() if args.pol else ps.getsky())
 
 # Save map
 f = h5py.File(args.mapname, 'w')

@@ -181,6 +181,18 @@ class Sky3d(Map3d):
         return (self.mean_nu(self.nu_pixels)[:, np.newaxis]
                 + skysim.mkfullsky(cla, self.nside))
 
+
+    def getpolsky(self):
+
+        sky_I = self.getsky()
+
+        sky_IQU = np.zeros((sky_I.shape[0], 3, sky_I.shape[1]), dtype=sky_I.dtype)
+
+        sky_IQU[:, 0] = sky_I
+        
+        return sky_IQU
+
+
     def getalms(self, lmax):
 
         cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
