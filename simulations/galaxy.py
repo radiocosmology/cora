@@ -1,5 +1,3 @@
-
-
 from os.path import join, dirname, exists
 
 import numpy as np
@@ -95,6 +93,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         self._sp_ind = h5py.File(_sp_ind_file, 'r')['spectral_index'][:]
 
         # Upgrade the map resolution to the same as the Healpix map (nside=512).
+
         self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
 
 
@@ -121,6 +120,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         sc = healpy.ud_grade(self._sp_ind, self.nside)
         am = healpy.ud_grade(self._amp_map, self.nside)
+
         mv = healpy.smoothing(map_variance(healpy.smoothing(fg[0], sigma=np.radians(0.5)), 16)**0.5, sigma=np.radians(1.0)).mean()
 
         fgt = (am / mv) * (fg - fgs)

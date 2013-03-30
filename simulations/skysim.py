@@ -3,18 +3,70 @@ from os.path import join, dirname
 
 import numpy as np
 import scipy.linalg as la
+import scipy.integrate as si
 import h5py
 import healpy
 
 from cosmoutils import hputil, nputil
 
 
-def clarray(aps, lmax, zarray):
+# def clarray(aps, lmax, zarray):
 
-    clarray = aps(np.arange(lmax+1)[:, np.newaxis, np.newaxis],
-                  zarray[np.newaxis, :, np.newaxis], zarray[np.newaxis, np.newaxis, :])
+#     clarray = aps(np.arange(lmax+1)[:, np.newaxis, np.newaxis],
+#                   zarray[np.newaxis, :, np.newaxis], zarray[np.newaxis, np.newaxis, :])
 
-    return clarray
+#     return clarray
+
+
+
+def clarray(aps, lmax, zarray, zromb=3):
+    """Calculate an array of C_l(z, z').
+
+    Parameters
+    ----------
+    aps : function
+        The angular power spectrum to calculate.
+    lmax : integer
+        Maximum l to calculate up to.
+    zarray : array_like
+        Array of z's to calculate at.
+    zromb : integer
+        The Romberg order for integrating over frequency samples.
+
+    Returns
+    -------
+    aps : np.ndarray[lmax+1, len(zarray), len(zarray)]
+        Array of the C_l(z,z') values.
+    """
+
+    if zromb == 0:
+        return aps(np.arange(lmax+1)[:, np.newaxis, np.newaxis],
+                   zarray[np.newaxis, :, np.newaxis], zarray[np.newaxis, np.newaxis, :])
+
+    else:
+        zhalf = np.abs(zarray[1] - zarray[0]) / 2.0
+        zlen = zarray.size
+        zint = 2**zromb + 1
+        zspace = 2.0*zhalf / 2**zromb
+
+        za = (zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]).flatten()
+
+        lsections = np.array_split(np.arange(lmax+1), lmax / 50)
+
+        cla = np.zeros((lmax+1, zlen, zlen), dtype=np.float64)
+
+        for lsec in lsections:
+            clt = aps(lsec[:, np.newaxis, np.newaxis],
+                      za[np.newaxis, :, np.newaxis], za[np.newaxis, np.newaxis, :])
+
+            clt = clt.reshape(-1, zlen, zint, zlen, zint)
+
+            clt = si.romb(clt, dx=zspace, axis=4)
+            clt = si.romb(clt, dx=zspace, axis=2)
+
+            cla[lsec] = clt
+
+        return cla
 
 
 

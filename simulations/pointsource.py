@@ -33,6 +33,8 @@ class PointSourceModel(Map3d):
     flux_min = 1e-4
     flux_max = None
 
+    sigma_pol_frac = 0.1
+
 
     def source_count(self, flux):
         r"""The expected number of sources per unit flux (Jy) in one square degree.
@@ -184,6 +186,22 @@ class PointSourceModel(Map3d):
         # Convert flux map in Jy to brightness temperature map in K.
         sky = sky * 1e-26 * units.c**2 / (2 * units.k_B * self.nu_pixels[:, np.newaxis]**2 * 1e12 * pxarea)
         return sky
+
+
+    def getpolsky(self):
+        """Simulate polarised point sources.
+        """
+
+        sky_I = self.getsky()
+
+        q_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
+        u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
+
+        sky_Q = sky_I * q_frac
+        sky_U = sky_I * u_frac
+
+        return [sky_I, sky_Q, sky_U]
+
 
 
 class PowerLawModel(PointSourceModel):

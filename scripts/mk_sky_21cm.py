@@ -1,11 +1,9 @@
-import sys
 import argparse
 
-import numpy as np
 import h5py
 
 from simulations import corr21cm
-from cylsim import skymodel
+
 
 # Read in arguments.
 parser = argparse.ArgumentParser(description="Generate a simulated 21cm sky.")
