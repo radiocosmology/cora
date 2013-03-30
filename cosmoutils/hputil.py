@@ -8,8 +8,8 @@ import healpy
 import numpy as np
 import os
 
-_weight = False
-_iter = 1
+_weight = True
+_iter = 2
 
 ### Healpy SH routines seem to crash occasionally if using OMP, do disable.
 #os.environ['OMP_NUM_THREADS'] = '1'
