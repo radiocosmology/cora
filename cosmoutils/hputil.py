@@ -334,6 +334,30 @@ def sphtrans_inv_real(alm, nside):
     return healpy.alm2map(almp, nside)
 
 
+def sphtrans_inv_real_pol(alm, nside):
+    """Inverse spherical harmonic transform onto a real polarised field.
+
+    Parameters
+    ----------
+    alm : np.ndarray[3, lmax+1, lmax+1]
+        The array of alms. Only expects the real half of the array. The first
+        index is over polarisation [T, Q, U].
+    nside : integer
+        The Healpix resolution of the final map.
+
+    Returns
+    -------
+    hpmaps : np.ndarray[3, 12*nside**2]
+        The T, Q and U maps of the sky.
+    """
+    if alm.shape[1] != alm.shape[2] or alm.shape[0] != 3:
+        raise Exception("a_lm array wrong shape.")
+
+    almp = [ pack_alm(alm[0]), pack_alm(alm[1]), pack_alm(alm[2]) ]
+
+    return np.array(healpy.alm2map(almp, nside))
+
+
 
 def sphtrans_inv_complex(alm, nside):
     """Inverse spherical harmonic transform onto a complex field.
@@ -400,16 +424,19 @@ def sphtrans_sky(skymap, lmax=None):
 def sphtrans_inv_sky(alm, nside):
     """Invert a set of alms back into a 3d sky.
 
+    If the polarisation dimension is length=3, this will automatically do the
+    polarised transform.
+
     Parameters
     ----------
-    alm : np.ndarray[freq, l, m]
+    alm : np.ndarray[freq, pol, l, m]
         Expects the full range (both positive and negative m).
     nside : integer
         Resolution of final Healpix maps.
 
     Returns
     -------
-    skymaps : np.ndarray[freq, healpix_index]
+    skymaps : np.ndarray[freq, npol, healpix_index]
     """
     nfreq = alm.shape[0]
     pol = alm.shape[1] == 3
@@ -418,7 +445,7 @@ def sphtrans_inv_sky(alm, nside):
     
     for i in range(nfreq):
         if pol:
-            sky_freq[i] = sphtrans_inv_real(alm[i], nside)
+            sky_freq[i] = sphtrans_inv_real_pol(alm[i], nside)
         else:
             sky_freq[i, 0] = sphtrans_inv_real(alm[i, 0], nside)
 
