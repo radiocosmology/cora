@@ -195,7 +195,7 @@ class RedshiftCorrelation(object):
 
 
     def powerspectrum_1D(self, k_vec, z1, z2, numz):
-        r"""A vectorized routine for calculating the redshift space powerspectrum.
+        r"""A vectorized routine for calculating the real space powerspectrum.
 
         Parameters
         ----------
@@ -491,8 +491,7 @@ class RedshiftCorrelation(object):
         The linear growth rate at a particular redshift defined as:
         .. math:: f = \frac{d\ln{D_+}}{d\ln{a}}
 
-        For the
-        moment assume that \Omega_m ~ 1, and thus the growth rate is
+        For the moment assume that \Omega_m ~ 1, and thus the growth rate is
         unity.
 
         Parameters
