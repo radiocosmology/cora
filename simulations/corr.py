@@ -84,6 +84,7 @@ class RedshiftCorrelation(object):
     ps_dd = None
     ps_dv = None
 
+    ps_2d = False
 
     ps_redshift = 0.0
     bias = 1.0
@@ -184,10 +185,14 @@ class RedshiftCorrelation(object):
 
         k2 = kpar**2 + kperp**2
         k = k2**0.5
+        mu = kpar / k
         mu2 = kpar**2 / k2
 
         if self._vv_only:
-            ps = self.ps_vv(k) * (b1 + mu2 * f1) * (b2 + mu2 * f2)
+            if self.ps_2d:
+                ps = self.ps_vv(k, mu) * (b1 + mu2 * f1) * (b2 + mu2 * f2)
+            else:
+                ps = self.ps_vv(k) * (b1 + mu2 * f1) * (b2 + mu2 * f2)
         else:
             ps = (b1*b2*self.ps_dd(k) + mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
 
@@ -875,8 +880,8 @@ class RedshiftCorrelation(object):
         kperpmin = 1e-4
         kperpmax = 40.0
         nkperp = 500
-        kparmax = 40.0
-        nkpar = 16384
+        kparmax = 20.0
+        nkpar = 32768
 
         if not self._aps_cache:
 
@@ -886,9 +891,14 @@ class RedshiftCorrelation(object):
             kpar = np.linspace(0, kparmax, nkpar)[np.newaxis,:]
 
             k = (kpar**2 + kperp**2)**0.5
+            mu = kpar / k
             mu2 = kpar**2 / k**2
 
-            self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2*np.pi))**2
+            if self.ps_2d:
+                self._dd = self.ps_vv(k, mu) * np.sinc(kpar * self._freq_window / (2*np.pi))**2
+            else:
+                self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2*np.pi))**2
+
             self._dv = self._dd * mu2
             self._vv = self._dd * mu2**2
 
