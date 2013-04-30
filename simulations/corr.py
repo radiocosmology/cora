@@ -924,6 +924,10 @@ class RedshiftCorrelation(object):
         rpar = np.abs(xa2 - xa1)
 
         coords = np.empty((2,) + kperp.shape)
+
+        # Bump anything that is zero upwards to avoid a log zero warning.
+        kperp[np.where(kperp == 0.0)] = 1e-10
+
         coords[0,...] = np.log10(kperp / kperpmin) / np.log10(kperpmax / kperpmin) * (nkperp-1)
         coords[1,...] = rpar / (math.pi / kparmax)
 
