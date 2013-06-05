@@ -12,6 +12,39 @@ from maps import *
 
 import foregroundsck
 
+
+def faraday_rotate(polmap, rm_map, frequencies):
+    """Faraday rotate a set of sky maps.
+
+    Parameters
+    ----------
+    polmap : np.ndarray[freq, pol, pixel]
+        The maps of the sky (assumed to be packed as T, Q, U and optionally V.
+    rm_map : np.ndarray[pixel]
+        The rotation measure across the sky (in radians / m^2).
+    frequencies : np.ndarray[freq]
+        The frequencies in the map in MHz.
+
+    Returns
+    -------
+    rot_map : np.ndarray[freq, pol, pixel]
+        The Faraday rotated map.
+    """
+    
+    qu_complex = polmap[:, 0] + 1.0J * polmap[:, 1]
+
+    wv = 1e-6 * units.c / frequencies
+
+    faraday = np.exp(-2.0J * wv[:, np.newaxis] * rm_map[np.newaxis, :])
+
+    qu_complex = qu_complex * faraday
+
+    polmap[:, 1] = qu_complex.real
+    polmap[:, 2] = qu_complex.imag
+
+    return polmap
+
+
 class PointSourceModel(Map3d):
     r"""Represents a population of astrophysical point sources.
 
@@ -28,16 +61,23 @@ class PointSourceModel(Map3d):
     flux_max : {float, None}
         The upper flux limit of sources to include. If `None` then
         include all sources (with a high probability).
+    faraday : boolean
+        Whether to Faraday rotate polarisation maps (default is True).
+    sigma_pol_frac : scalar
+        The standard deviation of the polarisation fraction of sources.
+        Default is 0.03. See http://adsabs.harvard.edu/abs/2004A&A...415..549R
     """
 
     flux_min = 1e-4
     flux_max = None
 
-    sigma_pol_frac = 0.1
+    faraday = True
+
+    sigma_pol_frac = 0.03
 
 
     def source_count(self, flux):
-        r"""The expected number of sources per unit flux (Jy) in one square degree.
+        r"""The expected number of sources per unit flux (Jy) per steradian.
 
         This is an abstract method that must be implemented in an actual model.
 
@@ -134,7 +174,7 @@ class PointSourceModel(Map3d):
 
         c = np.zeros(self._num_array())
 
-        fluxes = self.generate_population(self.x_width*self.y_width)
+        fluxes = self.generate_population(np.radians(self.x_width) * np.radians(self.y_width))
 
         freq = self.nu_pixels
         
@@ -171,7 +211,7 @@ class PointSourceModel(Map3d):
 
         pxarea = 4*np.pi / npix
         
-        fluxes = self.generate_population(4*np.pi / (np.pi / 180)**2)
+        fluxes = self.generate_population(4*np.pi)
 
         freq = self.nu_pixels
         
@@ -194,7 +234,7 @@ class PointSourceModel(Map3d):
 
         sky_I = self.getsky()
 
-        sky_IQU = np.zeros((sky_I.shape[0], 3, sky_I.shape[1]), dtype=sky_I.dtype)
+        sky_IQU = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
 
         q_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
         u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
@@ -242,7 +282,7 @@ class PowerLawModel(PointSourceModel):
 
     source_index = 2.5
     source_pivot = 1.0
-    source_amplitude = 0.73
+    source_amplitude = 2.396e3
 
     spectral_mean = -0.7
     spectral_width = 0.1
@@ -346,7 +386,7 @@ class CombinedPointSources(foregroundsck.PointSources, DiMatteo):
 
         sky = DiMatteo.getpolsky(self)
 
-        sky[:, 0] += foregroundsck.PointSources.getsky(self)
+        #     sky[:, 0] += foregroundsck.PointSources.getsky(self)
 
         return sky
 
