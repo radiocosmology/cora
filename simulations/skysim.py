@@ -19,7 +19,7 @@ from cosmoutils import hputil, nputil
 
 
 
-def clarray(aps, lmax, zarray, zromb=3):
+def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
     """Calculate an array of C_l(z, z').
 
     Parameters
@@ -32,6 +32,9 @@ def clarray(aps, lmax, zarray, zromb=3):
         Array of z's to calculate at.
     zromb : integer
         The Romberg order for integrating over frequency samples.
+    zwidth : scalar, optional
+        Width of frequency channel to integrate over. If None (default),
+        calculate from the separation of the first two bins.
 
     Returns
     -------
@@ -45,7 +48,7 @@ def clarray(aps, lmax, zarray, zromb=3):
 
     else:
         zsort = np.sort(zarray)
-        zhalf = np.abs(zsort[1] - zsort[0]) / 2.0
+        zhalf = np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
         zlen = zarray.size
         zint = 2**zromb + 1
         zspace = 2.0*zhalf / 2**zromb
