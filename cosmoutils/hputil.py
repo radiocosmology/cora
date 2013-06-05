@@ -471,9 +471,11 @@ def sphtrans_inv_sky(alm, nside):
 def coord_x2y(map, x, y):
     """Rotate a map from galactic co-ordinates into celestial co-ordinates.
 
+    This will operate on a series of maps (provided the Healpix index is last).
+
     Parameters
     ----------
-    map : np.ndarray
+    map : np.ndarray[..., npix]
         Healpix map.
     x, y : {'C', 'G', 'E'}
         Coordinate system to transform to/from. Celestial, 'C'; Galactic 'G'; or
@@ -487,10 +489,18 @@ def coord_x2y(map, x, y):
 
     if x not in ['C', 'G', 'E'] or y not in ['C', 'G', 'E']:
         raise Exception("Co-ordinate system invalid.")
+
+    npix = map.shape[-1]
     
-    angpos = ang_positions(healpy.npix2nside(map.size))
+    angpos = ang_positions(healpy.npix2nside(npix))
     theta, phi =  healpy.Rotator(coord=[y, x])(angpos[:,0], angpos[:,1])
-    return healpy.get_interp_val(map, theta, phi)
+
+    map_flat = map.reshape((-1, npix))
+
+    for i in range(map_flat.shape[0]):
+        map_flat[i] = healpy.get_interp_val(map_flat[i], theta, phi)
+
+    return map_flat.reshape(map.shape)
 
 
 # Quick functions for performing specified transforms.
