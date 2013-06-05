@@ -1,8 +1,13 @@
+"""Simulating extra-galactic point sources."""
+
+from os.path import join, dirname
 
 import numpy as np
 import numpy.random as rnd
 
 from scipy.optimize import newton
+
+import healpy
 
 from cosmoutils import units
 
@@ -11,6 +16,7 @@ import poisson as ps
 from maps import *
 
 import foregroundsck
+
 
 
 def faraday_rotate(polmap, rm_map, frequencies):
@@ -31,7 +37,7 @@ def faraday_rotate(polmap, rm_map, frequencies):
         The Faraday rotated map.
     """
     
-    qu_complex = polmap[:, 0] + 1.0J * polmap[:, 1]
+    qu_complex = polmap[:, 1] + 1.0J * polmap[:, 2]
 
     wv = 1e-6 * units.c / frequencies
 
@@ -74,6 +80,14 @@ class PointSourceModel(Map3d):
     faraday = True
 
     sigma_pol_frac = 0.03
+
+
+    def __init__(self):
+
+        _data_file = join(dirname(__file__), 'data', "skydata.npz")
+        
+        with np.load(_data_file) as f:
+            self._faraday = f['faraday']
 
 
     def source_count(self, flux):
@@ -234,16 +248,19 @@ class PointSourceModel(Map3d):
 
         sky_I = self.getsky()
 
-        sky_IQU = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
+        sky_pol = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
 
         q_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
-        u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
+        u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]     
 
-        sky_IQU[:, 0] = sky_I
-        sky_IQU[:, 1] = sky_I * q_frac
-        sky_IQU[:, 2] = sky_I * u_frac
+        sky_pol[:, 0] = sky_I
+        sky_pol[:, 1] = sky_I * q_frac
+        sky_pol[:, 2] = sky_I * u_frac
 
-        return sky_IQU
+        if self.faraday:
+            faraday_rotate(sky_pol, healpy.ud_grade(self._faraday, self.nside), self.nu_pixels)
+
+        return sky_pol
 
 
 
@@ -384,11 +401,9 @@ class CombinedPointSources(foregroundsck.PointSources, DiMatteo):
 
     def getpolsky(self):
 
-        sky = DiMatteo.getpolsky(self)
+        # Force calling the DiMatteo getpolsky
+        return DiMatteo.getpolsky(self)
 
-        #     sky[:, 0] += foregroundsck.PointSources.getsky(self)
-
-        return sky
 
 
 ## Test program run when executing module.

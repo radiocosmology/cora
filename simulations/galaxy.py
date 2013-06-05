@@ -1,7 +1,7 @@
 """Generate semi-realistic simulations of the full sky synchrotron emission
 from the Milky Way."""
 
-from os.path import join, dirname, exists
+from os.path import join, dirname
 
 import numpy as np
 import h5py
@@ -72,32 +72,15 @@ class ConstrainedGalaxy(maps.Sky3d):
     def _load_data(self):
         print "Loading data for galaxy simulation."
 
-        _haslam_file = join(_datadir, "haslam.fits")
-        _sp_ind_file = join(_datadir, "spectral.hdf5")
+        _data_file = join(_datadir, "skydata.npz")
         
-        if not exists(_haslam_file):
-            print "Needed data files missing! Try and fetch the Haslam map from LAMBDA [y/n]?"
-            
-            choice = raw_input().lower()
-            if choice == 'y':
-                import urllib
-                _haslam_url = 'http://lambda.gsfc.nasa.gov/data/foregrounds/haslam/lambda_haslam408_dsds.fits'
-                
-                print "Downloading %s ...." % _haslam_url
-                urllib.urlretrieve(_haslam_url, _haslam_file)
-                print "Done."
-
-            elif choice == 'n':
-                raise Exception("No Haslam map found. Can not continue.")
-            else:
-                print "Please respond with 'y' or 'n'."
-        
-        self._haslam = healpy.read_map(join(_datadir, "haslam.fits"))
-        self._sp_ind = h5py.File(_sp_ind_file, 'r')['spectral_index'][:]
+        with np.load(_data_file) as f:
+            self._haslam = f['haslam']
+            self._sp_ind = f['spectral']
+            self._faraday = f['faraday']
 
         # Upgrade the map resolution to the same as the Healpix map (nside=512).
-
-        self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
+        #self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
 
 
     def getsky(self, debug=False, celestial=True):
@@ -115,8 +98,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         skymap : np.ndarray[freq, pixel]
         """
         # Read in data files.
-        #haslam = healpy.smoothing(healpy.ud_grade(self._haslam, self.nside), fwhm=np.radians(0.0)) #hputil.coord_g2c()
-        haslam = healpy.ud_grade(self._haslam, self.nside) #hputil.coord_g2c()
+        haslam = healpy.ud_grade(self._haslam, self.nside)
 
         syn = FullSkySynchrotron()
 
@@ -170,17 +152,14 @@ class ConstrainedGalaxy(maps.Sky3d):
         """
 
         # Load and smooth the Faraday emission
-        f1 = healpy.read_map('data/faraday.fits', hdu=3)
-        f1 = healpy.smoothing(np.abs(f1), fwhm=np.radians(10.0))
-        #f1 *= 2**0.5
-        #f1 = f1 / f1.max() * 1500.0
+        sigma_phi = healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0))
 
         # Get the Haslam map as a base for the unpolarised emission
         haslam = healpy.smoothing(healpy.ud_grade(self._haslam, self.nside), fwhm=np.radians(3.0))
 
         # Create a map of the correlation length in phi
         xiphi = 3.0
-        xiphimap = np.minimum(f1 / 20.0, xiphi)
+        xiphimap = np.minimum(sigma_phi / 20.0, xiphi)
 
         lmax = 3*self.nside - 1
         la = np.arange(lmax+1)
@@ -238,7 +217,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         # Create weights for smoothing the emission (corresponding to the
         # Gaussian region of emission).
-        w = np.exp(-0.25 * (phifreq[:, np.newaxis] / f1[np.newaxis, :])**2)
+        w = np.exp(-0.25 * (phifreq[:, np.newaxis] / sigma_phi[np.newaxis, :])**2)
 
         # Calculate the normalisation explicitly (required when Faraday depth
         # is small, as grid is too large).
@@ -247,8 +226,8 @@ class ConstrainedGalaxy(maps.Sky3d):
         # When the spacing between phi samples is too large we don't get the
         # decorrelation from the independent regions correct.
         xiphimap = np.maximum(xiphimap, np.pi / (l2h - l2l))
-        xiphimap = np.minimum(xiphimap, f1)
-        w *= 0.2 * (f1 / xiphimap)**0.5 * (10.0 / haslam)**0.5
+        xiphimap = np.minimum(xiphimap, sigma_phi)
+        w *= 0.2 * (sigma_phi / xiphimap)**0.5 * (10.0 / haslam)**0.5
 
         # Additional weighting to account for finite frequency bin width
         # (assume channels are gaussian). Approximate by performing in
@@ -301,6 +280,6 @@ class ConstrainedGalaxy(maps.Sky3d):
             map4 = hputil.coord_g2c(map4)
 
         if debug:
-            return map4, map1, map2, map3, w, f1
+            return map4, map1, map2, map3, w, sigma_phi
         else:
             return map4
