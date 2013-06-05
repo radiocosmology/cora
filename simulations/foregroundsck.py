@@ -61,7 +61,7 @@ class ForegroundSCK(ForegroundMap):
 
     def frequency_correlation(self, nu1, nu2):
         r"""Correlation between two frequency slices."""
-        return np.exp( - np.log(nu1/nu2)**2 / (2*self.zeta**2))
+        return np.exp( -0.5 * (np.log(nu1/nu2) / self.zeta)**2)
 
 
     def frequency_correlation_dlog(self, dlognu):
