@@ -186,7 +186,7 @@ class Sky3d(Map3d):
 
         sky_I = self.getsky()
 
-        sky_IQU = np.zeros((sky_I.shape[0], 3, sky_I.shape[1]), dtype=sky_I.dtype)
+        sky_IQU = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
 
         sky_IQU[:, 0] = sky_I
         

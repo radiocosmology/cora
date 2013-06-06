@@ -152,7 +152,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         """
 
         # Load and smooth the Faraday emission
-        sigma_phi = healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0))
+        sigma_phi = healpy.ud_grade(healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0)), self.nside)
 
         # Get the Haslam map as a base for the unpolarised emission
         haslam = healpy.smoothing(healpy.ud_grade(self._haslam, self.nside), fwhm=np.radians(3.0))

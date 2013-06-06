@@ -27,7 +27,7 @@ cs = gal.getpolsky() if args.pol else gal.getsky()
 
 # Fetch point source maps
 ps = pointsource.CombinedPointSources.like_map(gal)
-ps.flux_max = 100.0 # Add a maximum flux cut (presume we've modeled out anything brighter)
+#ps.flux_max = 100.0 # Add a maximum flux cut (presume we've modeled out anything brighter)
 cs = cs + (ps.getpolsky() if args.pol else ps.getsky())
 
 # Save map
