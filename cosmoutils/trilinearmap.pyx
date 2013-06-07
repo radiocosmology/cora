@@ -24,9 +24,10 @@ def map_coordinates(np.ndarray[DTYPE_t, ndim=3] input, np.ndarray[DTYPE_t, ndim=
     Does not pretend to replace all functionality, just the bare
     minimum. Written by Greg Paciga.
 
-    Inupts:
-    -------------------------
-    input: ndarray, 3 dimensions, the input array we will sample
+    Parameters
+    ----------
+    input: ndarray[x, y, z]
+        The input array we will sample.
     coords: an array such that the first axis gives the three
       coordinates of the input array to sample, and the second two
       are the coordinates of the output array at which to put the
@@ -35,8 +36,8 @@ def map_coordinates(np.ndarray[DTYPE_t, ndim=3] input, np.ndarray[DTYPE_t, ndim=
       interpolation. Only accepts 0 or 1, and 1 only works if
       the arrays are 3D.
 
-    Returns:
-    -------------------------
+    Returns
+    -------
     output: ndarray, with the shape of coords after dropping the
       first axis.
     """
