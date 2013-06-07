@@ -35,7 +35,7 @@ class FullSkyPolarisedSynchrotron(foregroundsck.Synchrotron):
     beta = 2.8
     nu_0 = 408.0
     l_0 = 100.0
-    zeta = 0.64
+    zeta = 0.03
 
 
 def map_variance(input_map, nside):

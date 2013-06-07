@@ -361,10 +361,12 @@ def sphtrans_inv_real_pol(alm, nside):
 
     almp = [ pack_alm(alm[0]), pack_alm(alm[1]), pack_alm(alm[2]) ]
 
-    maps = healpy.alm2map(almp, nside)
+    maps = np.zeros((npol, 12*nside**2), dtype=np.float64)
+
+    maps[:3] = np.array(healpy.alm2map(almp, nside))
 
     if npol == 4:
-        maps += healpy.alm2map(alm[3])
+        maps[3] = healpy.alm2map(pack_alm(alm[3]), nside)
 
     return np.array(maps)
 
@@ -413,13 +415,14 @@ def sphtrans_sky(skymap, lmax=None):
     alms : np.ndarray[frequencies, l, m]
     """
     nfreq = skymap.shape[0]
-    pol = (len(skymap.shape) >= 3) # Pol if 3 or 4
+    pol = (len(skymap.shape) == 3) and (skymap.shape[1] >= 3) # Pol if 3 or 4
+    npol = skymap.shape[1]
 
     if lmax is None:
         lmax = 3*healpy.npix2nside(skymap.shape[1]) - 1
 
     if pol:
-        alm_freq = np.empty((nfreq, 3, lmax+1, lmax + 1), dtype=np.complex128)
+        alm_freq = np.empty((nfreq, npol, lmax+1, lmax + 1), dtype=np.complex128)
     else:
         alm_freq = np.empty((nfreq, lmax+1, lmax + 1), dtype=np.complex128)
 
@@ -450,7 +453,8 @@ def sphtrans_inv_sky(alm, nside):
     skymaps : np.ndarray[freq, npol, healpix_index]
     """
     nfreq = alm.shape[0]
-    pol = alm.shape[1] == 3
+    npol = alm.shape[1]
+    pol = (npol >= 3)
 
     sky_freq = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
     
