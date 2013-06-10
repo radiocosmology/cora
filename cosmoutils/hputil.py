@@ -419,7 +419,7 @@ def sphtrans_sky(skymap, lmax=None):
     npol = skymap.shape[1]
 
     if lmax is None:
-        lmax = 3*healpy.npix2nside(skymap.shape[1]) - 1
+        lmax = 3*healpy.npix2nside(skymap.shape[-1]) - 1
 
     if pol:
         alm_freq = np.empty((nfreq, npol, lmax+1, lmax + 1), dtype=np.complex128)
