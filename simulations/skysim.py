@@ -68,13 +68,13 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
             clt = si.romb(clt, dx=zspace, axis=4)
             clt = si.romb(clt, dx=zspace, axis=2)
 
-            cla[lsec] = clt
+            cla[lsec] = clt / (2*zhalf)**2 # Normalise
 
         return cla
 
 
 
-def mkfullsky(corr, nside, alms = False):
+def mkfullsky(corr, nside, alms=False):
     """Construct a set of correlated Healpix maps.
     
     Make a set of full sky gaussian random fields, given the correlation
@@ -120,9 +120,9 @@ def mkfullsky(corr, nside, alms = False):
         gaussvars[i] = np.dot(trans[l], gaussvars[i])
 
     if alms:
-        alm_freq = np.zeros((numz, maxl+1, 2*maxl+1), dtype=np.complex128)
+        alm_freq = np.zeros((numz, maxl+1, maxl+1), dtype=np.complex128)
         for i in range(numz):
-            alm_freq[i] = hputil.unpack_alm(gaussvars[:, i], maxl, fullm=True)
+            alm_freq[i] = hputil.unpack_alm(gaussvars[:, i], maxl)
         
         return alm_freq
 
