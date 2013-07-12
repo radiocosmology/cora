@@ -1,0 +1,172 @@
+#!/usr/bin/env python
+
+import argparse
+
+import h5py
+
+
+
+
+def mk_foreground(args):
+
+	from cora.foreground import galaxy, pointsource
+
+	# Read in arguments.
+	gal = galaxy.ConstrainedGalaxy()
+	gal.nside = args.nside
+	gal.nu_lower = args.freq_lower
+	gal.nu_upper = args.freq_upper
+	gal.nu_num = args.nfreq
+
+	# Fetch galactic sky
+	cs = gal.getpolsky() if args.pol else gal.getsky()
+
+	# Fetch point source maps
+	ps = pointsource.CombinedPointSources.like_map(gal)
+	#ps.flux_max = 100.0 # Add a maximum flux cut (presume we've modeled out anything brighter)
+	cs = cs + (ps.getpolsky() if not args.nopol else ps.getsky())
+
+	# Save map
+	f = h5py.File(args.mapname, 'w')
+	f.create_dataset("map", data=cs)
+	f.close()
+
+
+def mk_galaxy(args):
+
+	from cora.foreground import galaxy
+
+	# Read in arguments.
+	gal = galaxy.ConstrainedGalaxy()
+	gal.nside = args.nside
+	gal.nu_lower = args.freq_lower
+	gal.nu_upper = args.freq_upper
+	gal.nu_num = args.nfreq
+
+	# Fetch galactic sky
+	cs = gal.getpolsky() if not args.nopol else gal.getsky()
+
+	# Save map
+	f = h5py.File(args.mapname, 'w')
+	f.create_dataset("map", data=cs)
+	f.close()
+
+def mk_pointsouce(args):
+
+	from cora.foreground import pointsource
+
+	# Fetch point source maps
+	ps = pointsource.CombinedPointSources()
+
+	ps.nside = args.nside
+	ps.nu_lower = args.freq_lower
+	ps.nu_upper = args.freq_upper
+	ps.nu_num = args.nfreq
+
+	cs = ps.getpolsky() if not args.nopol else ps.getsky()
+
+	# Save map
+	f = h5py.File(args.mapname, 'w')
+	f.create_dataset("map", data=cs)
+	f.close()
+
+
+def mk_21cm(args):
+
+	from cora.signal import corr21cm
+
+	# Read in arguments.
+	if args.eor:
+	    cr = corr21cm.EoR21cm()
+	else:
+	    cr = corr21cm.Corr21cm()
+
+	cr.nside = args.nside
+	cr.nu_lower = args.freq_lower
+	cr.nu_upper = args.freq_upper
+	cr.nu_num = args.nfreq
+
+	# Generate signal realisation and save.
+	sg_map = cr.getpolsky() if not args.nopol else cr.getsky()
+	f = h5py.File(args.mapname, 'w')
+	f.create_dataset("map", data=sg_map)
+	f.close()
+
+
+def gaussianfg(args):
+
+	import numpy as np
+
+	from cora.core import skysim
+	from cora.util import hputil
+	from cora.foreground import galaxy
+
+	fsyn = galaxy.FullSkySynchrotron()
+	fpol = galaxy.FullSkyPolarisedSynchrotron()
+
+	if args.nopol:
+		raise Exception("Unpolarised sim not supported for gaussianfg.")
+
+	nfreq = args.nfreq
+	df = (args.freq_upper - args.freq_lower) / nfreq
+	frequencies = np.linspace(args.freq_lower, args.freq_upper, nfreq) + 0.5*df
+
+	lmax = 3 * args.nside
+	npol = 4
+
+	cv_fg = np.zeros((lmax+1, npol, nfreq, npol, nfreq))
+
+	cv_fg[:, 0, :, 0, :] = skysim.clarray(fsyn.angular_powerspectrum, lmax, frequencies)
+	cv_fg[:, 1, :, 1, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
+	cv_fg[:, 2, :, 2, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
+
+	cv_fg = cv_fg.reshape(lmax+1, npol*nfreq, npol*nfreq)
+
+	alms = skysim.mkfullsky(cv_fg, args.nside, alms=True).reshape(npol, nfreq, lmax+1, lmax+1)
+	alms = alms.transpose((1, 0, 2, 3))
+
+	maps = hputil.sphtrans_inv_sky(alms, args.nside)
+
+	# Save map
+	f = h5py.File(args.mapname, 'w')
+	f.create_dataset("map", data=maps)
+	f.close()
+
+
+
+parser = argparse.ArgumentParser(description='Create a simulated radio sky.')
+
+subparsers = parser.add_subparsers(help='Command to run.', title="Commands", metavar="<command>")
+
+parser.add_argument('nside', help='Resolution of the map (given as a Healpix NSIDE)', type=int)
+parser.add_argument('freq_lower', help='Lowest frequency channel.', type=float)
+parser.add_argument('freq_upper', help='Highest frequency channel.', type=float)
+parser.add_argument('nfreq', help='Number of frequency channels.', type=int)
+parser.add_argument('mapname', help='Name of the file to save into.')
+parser.add_argument('--nopol', help='Polarised or not.', action='store_true')
+
+
+
+
+parser_foreground = subparsers.add_parser('foreground', help='The combined radio foregrounds.')
+parser_foreground.set_defaults(func=mk_foreground)
+
+
+
+parser_galaxy = subparsers.add_parser('galaxy', help='Synchrotron radio emission from our galaxy.')
+parser_galaxy.set_defaults(func=mk_galaxy)
+
+
+parser_pointsource = subparsers.add_parser('pointsource', help='Emission from extragalactic radio pointsources.')
+parser_pointsource.set_defaults(func=mk_pointsouce)
+
+
+
+parser_21cm = subparsers.add_parser('21cm', help='21cm emission from HI in large-scale structure.')
+parser_21cm.add_argument('--eor', help='Use EoR powerspectrum.', action='store_true')
+parser_21cm.set_defaults(func=mk_21cm)
+
+
+args = parser.parse_args()
+args.func(args)
+
