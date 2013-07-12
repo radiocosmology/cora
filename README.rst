@@ -1,6 +1,6 @@
-=========
-Cosmo21cm
-=========
+==================================
+cora - Cosmology in the Radio Band
+==================================
 
 A package for simulating skies for 21cm Intensity Mapping, with a lot of bonus
 utility code for dealing with Healpix maps, spherical co-ordinates etc.
@@ -19,15 +19,20 @@ It is **strongly** recommended that you use optimized versions of `Numpy` and
 
 For full functionality there are many other packages which are required:
 
-* `GSL <http://www.gnu.org/software/gsl/>`_, the Gnu Scientific Library (GSL),
-  for compiling spherical bessel routines. Ensure   it's in your `LIBRARY_PATH`,
-  `LD_LIBRARY_PATH` and `CPATH`.
 * `Healpy <https://github.com/healpy/healpy>`_
+* `h5py <http://www.h5py.org/>`_
 
-There are several Cython modules which need to be built, to do that just::
+As there are several Cython modules which need to be built the `setup.py` must
+be run in some form. Either the standard ::
 
-    > cd cosmoutils
-    > python setup.py build_ext --inplace
+    > python setup.py install [--user]
+
+or to develop the package ::
+
+    > python setup.py develop [--user]
 
 
+Supplementary Data
+------------------
 
+Opperman Faraday map.
