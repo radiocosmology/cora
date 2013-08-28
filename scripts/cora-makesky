@@ -19,7 +19,7 @@ def mk_foreground(args):
 	gal.nu_num = args.nfreq
 
 	# Fetch galactic sky
-	cs = gal.getpolsky() if args.pol else gal.getsky()
+	cs = gal.getpolsky() if not args.nopol else gal.getsky()
 
 	# Fetch point source maps
 	ps = pointsource.CombinedPointSources.like_map(gal)

@@ -12,7 +12,7 @@ import healpy
 from cora.core import maps
 from cora.util import units
 from cora.foreground import poisson as ps
-from cora.foreground import gaussian as gaussianfg
+from cora.foreground import gaussianfg
 
 
 
