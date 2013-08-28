@@ -17,6 +17,8 @@ class Cosmology(object):
     Defines a cosmology and allows calculation of a few simple
     quantities (notably distance measures and lookback time).
 
+    Default params from Planck+WP+highL+BAO (http://arxiv.org/pdf/1303.5076v1.pdf).
+
     Attributes
     ----------
     units : {'astro', 'cosmo', 'si'}
@@ -50,15 +52,15 @@ class Cosmology(object):
 
     units = 'cosmo'
 
-    omega_b = 0.0458
-    omega_c = 0.229
-    omega_l = 0.7252
+    omega_b = 0.0483
+    omega_c = 0.2589
+    omega_l = 0.6914
 
     omega_g = 0.0
     omega_n = 0.0
 
     # H_0 given in km/s / Mpc
-    H0 = 70.2
+    H0 = 67.77
 
     # Dark energy parameters
     w_0 = -1.0
@@ -79,7 +81,7 @@ class Cosmology(object):
     
 
     @staticmethod
-    def init_physical(ombh2 = 0.02255, omch2 = 0.1126, H0 = 70.2, omkh2 = 0.0, t0 = 2.726, nnu = 3.046):
+    def init_physical(ombh2 = 0.022161, omch2 = 0.11889, H0 = 67.77, omkh2 = 0.0, t0 = 2.726, nnu = 3.046):
         r"""Initialise a new cosmology from the physical parameters.
 
         This uses the CMB relevant parameterisation that is commonly

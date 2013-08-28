@@ -65,8 +65,26 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         else:
             return np.zeros_like(z)
 
+
     def omega_HI(self, z):
-        return 1e-3
+        """Neutral hydrogen fraction.
+
+        Parameters
+        ----------
+        z : array_like
+            Redshift to calculate at.
+
+        Returns
+        -------
+        omega_HI : array_like
+
+
+        Notes
+        -----
+        Best fit value from http://arxiv.org/pdf/1304.3712.pdf
+        """
+        return 6.2e-4
+
 
     def x_h(self, z):
         r"""Neutral hydrogen fraction at a given redshift.
@@ -84,6 +102,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         x_e : array_like
         """
         return 1e-3
+
 
     def prefactor(self, z):
         return self.T_b(z)
