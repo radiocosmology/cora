@@ -308,3 +308,133 @@ def _intfz(f, a, b):
         return _int(f, a, cut) + _int(lambda lz: np.exp(lz) * f(np.exp(lz)), np.log(cut), np.log(b))
     else:
         return _int(f, a, b)
+
+
+def growth_factor(z, c=None):
+    r"""Approximation for the matter growth factor.
+
+    Uses a Pade approximation.
+
+    Parameters
+    ----------
+    z : array_like
+        Redshift to calculate at.
+
+    Returns
+    -------
+    growth_factor : array_like
+
+    Notes
+    -----
+    See _[1].
+
+    .. [1] http://arxiv.org/abs/1012.2671
+    """
+
+    if c is None:
+        c = Cosmology()
+
+    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z)**3
+
+    num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
+    den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
+
+    d = (1.0 + x)**0.5 / (1.0 + z) * num / den
+
+    return d
+
+def growth_rate(z, c):
+    r"""Approximation for the matter growth rate.
+
+    From explicit differentiation of the Pade approximation for
+    the growth factor.
+
+    Parameters
+    ----------
+    z : array_like
+        Redshift to calculate at.
+
+    Returns
+    -------
+    growth_factor : array_like
+
+    Notes
+    -----
+    See _[1].
+
+    .. [1] http://arxiv.org/abs/1012.2671
+    """
+
+    if c is None:
+        c = Cosmology()
+
+    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z)**3
+
+    dnum = 3.0*x*(1.175 + 0.6127*x + 0.01607*x**2)
+    dden = 3.0*x*(1.857 + 2.042 *x + 0.4590 *x**2)
+
+    num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
+    den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
+
+    f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
+
+    return f
+
+
+
+def sound_horizon(c=None):
+    if c is None:
+        c = Cosmology()
+
+    h = c.H0 / 100.0
+
+    # Calculate the sound horizon in Mpc
+    s = 44.5 * np.log(9.83 / (c.omega_m * h**2)) / (1.0 + 10.0 * (c.omega_b * h**2)**0.75)**0.5
+
+    return s
+
+
+def ps_nowiggle(kh, z=0.0, c=None):
+
+    if c is None:
+        c = Cosmology()
+
+    h = c.H0 / 100.0
+
+    # Change units in Mpc^{-1} not h Mpc^{-1}
+    k = kh * h
+
+    omh2 = c.omega_m * h**2
+    rb  = c.omega_b / c.omega_m
+    alpha = 1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb**2
+
+    s = sound_horizon(c)
+
+    gamma = c.omega_m * h * (alpha + (1 - alpha) / (1 + (0.43*k*s)**4))
+
+    tcmb_27 = 2.726 / 2.7
+
+    q = k * tcmb_27**2 / (gamma * h)
+
+    l0 = np.log(2 * np.exp(1.0) + 1.8 * q)
+    c0 = 14.2 + 731.0 / (1.0 + 62.5 * q)
+
+    t = l0 / (l0 + c0 * q**2)
+
+    ns = 0.9611
+    nbar = ns - 1.0
+
+    A_s = 2.214e-9
+    k0 = 0.05
+    pkp = A_s * (k / k0)**nbar
+
+    #deltah = 1.94e-5 * c.omega_m**(-0.785 - 0.05 * np.log(c.omega_m)) * np.exp(-0.95 * nbar - 0.169 * nbar**2)
+
+    d2k = 4.0 / 25 * (c_sl * k / (1000.0 * c.H0))**4 * t**2 * pkp / c.omega_m**2 * growth_factor(z, c)**2
+
+    #d2k = deltah**2 * (c_sl * k / (1000.0 * c.H0))**(3 + ns) * t**2
+
+    pk = d2k * 2 * np.pi**2 / kh**3 # Change to normal PS
+
+    return pk
+
