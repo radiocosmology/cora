@@ -353,7 +353,7 @@ class DiMatteo(PointSourceModel):
     gamma1 = 1.75
     gamma2 = 2.51
     S_0 = 0.88
-    k1 = 1.52
+    k1 = 1.52e3
 
     spectral_mean = -0.7
     spectral_width = 0.1
@@ -376,28 +376,164 @@ class DiMatteo(PointSourceModel):
 
 
 
-class CombinedPointSources(gaussianfg.PointSources, DiMatteo):
+
+
+class RealPointSources(maps.Map3d):
+    r"""Creates maps of a population of real point sources, found in NVSS and VLSS.
+
+    See IPython notebook in `cora/foreground/data` directory for details on
+    catalogue making.
+
+    Attributes
+    ----------
+    flux_min : float
+        The lower flux limit of sources to include. Defaults to 1 mJy.
+    flux_max : {float, None}
+        The upper flux limit of sources to include. If `None` then
+        include all sources (with a high probability).
+    faraday : boolean
+        Whether to Faraday rotate polarisation maps (default is True).
+    sigma_pol_frac : scalar
+        The standard deviation of the polarisation fraction of sources.
+        Default is 0.03. See http://adsabs.harvard.edu/abs/2004A&A...415..549R
+    """
+
+    flux_min = 10.0
+    flux_max = None
+
+    spectral_pivot = 151.0
+
+    faraday = True
+
+
+    def __init__(self):
+
+        _data_file = join(dirname(__file__), 'data', "skydata.npz")
+        _catalogue_file = join(dirname(__file__), 'data', "combinedps.dat")
+        
+        with np.load(_data_file) as f:
+            self._faraday = f['faraday']
+
+        with open(_catalogue_file, 'r') as f:
+            self._catalogue = np.genfromtxt(f, names=True)
+
+
+    def _generate_catalogue(self):
+
+        flux = self._catalogue['S151']
+        spectral_ind = self._catalogue['BETA']
+
+        mask_max = (flux < self.flux_max) if self.flux_max is not None else np.ones_like(flux, dtype=np.bool)
+        mask_min = (flux > self.flux_min) if self.flux_min is not None else np.ones_like(flux, dtype=np.bool)
+
+        flux_mask = np.where(np.logical_and(mask_max, mask_min))
+
+        self._masked_catalogue = self._catalogue[flux_mask]
+
+
+    def getsky(self):
+        """Simulate a map of point sources.
+
+        Returns
+        -------
+        sky : ndarray [nfreq, npix]
+            Map of the brightness temperature on the sky (in K).
+        """
+
+        # Just pull out Stokes I part of polarised map
+        return self.getpolsky()[:, 0]
+
+
+    def getpolsky(self):
+        """Simulate polarised point sources by taking real sources and giving
+        them a random polarisation."""
+
+        self._generate_catalogue()
+
+        if self.flux_min < 10.0:
+            print "Flux limit probably too low for reliable catalogue."
+
+        freq = self.nu_pixels
+
+        sky = np.zeros((self.nu_num, 4, 12 * self.nside**2), dtype=np.float64)
+
+        for source in self._masked_catalogue:
+            theta = np.pi / 2.0 - np.radians(source['DEC'])
+            phi = np.radians(source['RA'])
+
+            flux = source['S151']
+            beta = source['BETA']
+
+            polflux = source['P151']
+            polang  = np.radians(source['POLANG']) # NVSS gives polarisation angles from North to East (so do not need to transform relative to HEALPIX)
+
+            ix = healpy.ang2pix(self.nside, theta, phi)
+
+            flux_I = flux * (freq / 150.0)**(-beta)
+            sky[:, 0, ix] += flux_I
+
+            if not (np.isnan(polflux) or np.isnan(polang)):
+                flux_Q = flux_I * (flux / polflux) * np.cos(2.0 * polang)
+                flux_U = flux_I * (flux / polflux) * np.cos(2.0 * polang)
+                sky[:, 1, ix] += flux_Q
+                sky[:, 2, ix] += flux_U
+
+        # Convert flux map in Jy to brightness temperature map in K.
+        sky = sky * 1e-26 * units.c**2 / (2 * units.k_B * self.nu_pixels[:, np.newaxis, np.newaxis]**2 * 1e12 * healpy.nside2pixarea(self.nside))
+
+        if self.faraday:
+            faraday_rotate(sky, healpy.ud_grade(self._faraday, self.nside), self.nu_pixels)
+
+        return sky
+
+
+
+
+class CombinedPointSources(maps.Map3d):
     """Combined class for efficiently generating full sky point source maps.
 
     For S < S_{cut} = 0.1 Jy use a Gaussian approximation to generate a map,
     and for S > S_{cut} generate a synthetic population. Amplitude of
     gaussianfg.PointSources class rescaled for a maximum flux of 0.1.
     """ 
-    A = 3.55e-5
-    nu_0 = 408.0
-    l_0 = 100.0
 
-    flux_min = 0.1
-    #flux_max = 100.0
+    flux_max = None
+
+    ## Internal classes for creating PS simulation
+    class _UnresolvedBackground(gaussianfg.PointSources):
+        A = 3.55e-5
+        nu_0 = 408.0
+        l_0 = 100.0
+
+    class _RandomResolved(DiMatteo):
+        flux_min = 0.1
+        flux_max = 10.0
+
+    class _RealResolved(RealPointSources):
+        flux_min = 10.0
+
 
     def getsky(self):
 
-        sky = gaussianfg.PointSources.getsky(self) + DiMatteo.getsky(self)
-
-        return sky
+        # Return Stokes I part only
+        return self.getpolsky()[:, 0]
 
     def getpolsky(self):
 
-        # Force calling the DiMatteo getpolsky
-        return DiMatteo.getpolsky(self)
+        # Create all intermediate objects
+        obj_unresolved = self._UnresolvedBackground.like_map(self)
+        obj_random = self._RandomResolved.like_map(self)
+        obj_real = self._RealResolved.like_map(self)
 
+        # Set maximum flux for each object correctly.
+        if self.flux_max is not None:
+            obj_real.flux_max = self.flux_max
+
+            if self.flux_max < obj_random.flux_max:
+                obj_random.flux_max = self.flux_max
+
+        ps_all = obj_unresolved.getpolsky()
+        ps_all += obj_random.getpolsky()
+        ps_all += obj_real.getpolsky()
+
+        return ps_all

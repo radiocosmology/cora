@@ -2,13 +2,10 @@
 
 import argparse
 
-import h5py
-
-
-
 
 def mk_foreground(args):
 
+	import h5py
 	from cora.foreground import galaxy, pointsource
 
 	# Read in arguments.
@@ -34,6 +31,7 @@ def mk_foreground(args):
 
 def mk_galaxy(args):
 
+	import h5py
 	from cora.foreground import galaxy
 
 	# Read in arguments.
@@ -51,8 +49,10 @@ def mk_galaxy(args):
 	f.create_dataset("map", data=cs)
 	f.close()
 
+
 def mk_pointsouce(args):
 
+	import h5py
 	from cora.foreground import pointsource
 
 	# Fetch point source maps
@@ -73,6 +73,7 @@ def mk_pointsouce(args):
 
 def mk_21cm(args):
 
+	import h5py
 	from cora.signal import corr21cm
 
 	# Read in arguments.
@@ -95,6 +96,7 @@ def mk_21cm(args):
 
 def gaussianfg(args):
 
+	import h5py
 	import numpy as np
 
 	from cora.core import skysim
@@ -157,7 +159,7 @@ parser_galaxy = subparsers.add_parser('galaxy', help='Synchrotron radio emission
 parser_galaxy.set_defaults(func=mk_galaxy)
 
 
-parser_pointsource = subparsers.add_parser('pointsource', help='Emission from extragalactic radio pointsources.')
+parser_pointsource = subparsers.add_parser('pointsource', help='Emission from radio pointsources.')
 parser_pointsource.set_defaults(func=mk_pointsouce)
 
 
