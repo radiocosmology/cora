@@ -473,8 +473,8 @@ class RealPointSources(maps.Map3d):
             sky[:, 0, ix] += flux_I
 
             if not (np.isnan(polflux) or np.isnan(polang)):
-                flux_Q = flux_I * (flux / polflux) * np.cos(2.0 * polang)
-                flux_U = flux_I * (flux / polflux) * np.cos(2.0 * polang)
+                flux_Q = flux_I * (polflux / flux) * np.cos(2.0 * polang)
+                flux_U = flux_I * (polflux / flux) * np.sin(2.0 * polang)
                 sky[:, 1, ix] += flux_Q
                 sky[:, 2, ix] += flux_U
 
