@@ -4,15 +4,14 @@ Uses the healpy module.
 """
 
 import healpy
-
 import numpy as np
-import os
 
 _weight = True
 _iter = 2
 
 ### Healpy SH routines seem to crash occasionally if using OMP, do disable.
 #os.environ['OMP_NUM_THREADS'] = '1'
+
 
 def ang_positions(nside):
     """Fetch the angular position of each pixel in a map.
@@ -29,8 +28,8 @@ def ang_positions(nside):
         Healpix map. Packed at [ [theta1, phi1], [theta2, phi2], ...]
     """
     npix = healpy.nside2npix(int(nside))
-    
-    angpos = np.empty([npix, 2], dtype = np.float64)
+
+    angpos = np.empty([npix, 2], dtype=np.float64)
 
     angpos[:, 0], angpos[:, 1] = healpy.pix2ang(nside, np.arange(npix))
 
@@ -54,11 +53,11 @@ def nside_for_lmax(lmax, accuracy_boost=1):
     return nside
 
 
-def unpack_alm(alm, lmax, fullm = False):
+def unpack_alm(alm, lmax, fullm=False):
     """Unpack :math:`a_{lm}` from Healpix format into 2D [l,m] array.
 
     This only unpacks into the
-    
+
     Parameters
     ----------
     alm : np.ndarray
@@ -85,11 +84,11 @@ def unpack_alm(alm, lmax, fullm = False):
     return almarray
 
 
-def pack_alm(almarray, lmax = None):
+def pack_alm(almarray, lmax=None):
     """Pack :math:`a_{lm}` into Healpix format from 2D [l,m] array.
 
     This only unpacks into the
-    
+
     Parameters
     ----------
     almarray : np.ndarray
@@ -116,8 +115,7 @@ def pack_alm(almarray, lmax = None):
     return alm
 
 
-
-def _make_full_alm(alm_half, centered = False):
+def _make_full_alm(alm_half, centered=False):
     ## Construct an array of a_{lm} including both positive and
     ## negative m, from one including only positive m.
     lmax, mmax = alm_half.shape[-2:]
@@ -126,7 +124,7 @@ def _make_full_alm(alm_half, centered = False):
 
     alm_neg = alm_half[..., :, :0:-1].conj()
     mfactor = (-1)**np.arange(mmax)[:0:-1]
-    alm_neg = mfactor *alm_neg
+    alm_neg = mfactor * alm_neg
 
     if not centered:
         alm[..., :lmax, :mmax] = alm_half
@@ -149,13 +147,11 @@ def _make_half_alm(alm_full):
     alm[..., 0] = alm_full[..., :, 0]
 
     # Project such that only alms corresponding to a real field are included.
-    for mi in range(1,lside):
+    for mi in range(1, lside):
         alm[..., mi] = 0.5*(alm_full[..., mi] + (-1)**mi * alm_full[..., -mi].conj())
 
     return alm
 
-
-    
 
 def sphtrans_real(hpmap, lmax=None, lside=None):
     """Spherical Harmonic transform of a real map.
@@ -179,10 +175,10 @@ def sphtrans_real(hpmap, lmax=None, lside=None):
 
     .. math:: a_{l -m} = (-1)^m a_{lm}^*
     """
-    if lmax == None:
+    if lmax is None:
         lmax = 3*healpy.npix2nside(hpmap.size) - 1
 
-    if lside == None or lside < lmax:
+    if lside is None or lside < lmax:
         lside = lmax
 
     alm = np.zeros([lside+1, lside+1], dtype=np.complex128)
@@ -194,8 +190,7 @@ def sphtrans_real(hpmap, lmax=None, lside=None):
     return alm.T
 
 
-    
-def sphtrans_complex(hpmap, lmax = None, centered = False, lside = None):
+def sphtrans_complex(hpmap, lmax=None, centered=False, lside=None):
     """Spherical harmonic transform of a complex function.
 
     Parameters
@@ -210,26 +205,26 @@ def sphtrans_complex(hpmap, lmax = None, centered = False, lside = None):
         and the latter half alm[l,lmax+1:], contains m < 0. If True the first
         half of alm[l,:] contains m < 0, and the second half m > 0. m = 0 is
         the central column.
-        
+
     Returns
     -------
     alm : np.ndarray
         A 2d array of alms, packed as alm[l,m].
     """
-    if lmax == None:
+    if lmax is None:
         lmax = 3*healpy.npix2nside(hpmap.size) - 1
 
-    rlm = _make_full_alm(sphtrans_real(hpmap.real, lmax = lmax, lside=lside),
-                         centered = centered)
-    ilm = _make_full_alm(sphtrans_real(hpmap.imag, lmax = lmax, lside=lside),
-                         centered = centered)
+    rlm = _make_full_alm(sphtrans_real(hpmap.real, lmax=lmax, lside=lside),
+                         centered=centered)
+    ilm = _make_full_alm(sphtrans_real(hpmap.imag, lmax=lmax, lside=lside),
+                         centered=centered)
 
     alm = rlm + 1.0J * ilm
 
     return alm
 
 
-def sphtrans_real_pol(hpmaps, lmax = None, lside=None):
+def sphtrans_real_pol(hpmaps, lmax=None, lside=None):
     """Spherical Harmonic transform of polarisation functions on the sky.
 
     Accepts real T, Q, U and optionally V like maps, and returns :math:`a^T_{lm}`,
@@ -254,10 +249,10 @@ def sphtrans_real_pol(hpmaps, lmax = None, lside=None):
 
     .. math:: a_{l -m} = (-1)^m a_{lm}^*
     """
-    if lmax == None:
+    if lmax is None:
         lmax = 3*healpy.npix2nside(hpmaps[0].size) - 1
 
-    if lside == None or lside < lmax:
+    if lside is None or lside < lmax:
         lside = lmax
 
     npol = len(hpmaps)
@@ -265,27 +260,27 @@ def sphtrans_real_pol(hpmaps, lmax = None, lside=None):
     alms = np.zeros([npol, lside+1, lside+1], dtype=np.complex128)
     hpmaps = np.ascontiguousarray(hpmaps)
 
-    tlms = healpy.map2alm([hpmap for hpmap in hpmaps[:3]], lmax=lmax)
+    tlms = healpy.map2alm([hpmap for hpmap in hpmaps[:3]],
+                          lmax=lmax, use_weights=_weight, iter=_iter)
 
     for i in range(3):
         alms[i][np.triu_indices(lmax+1)] = tlms[i]
 
     # Transform Stokes-V
     if npol == 4:
-        alms[3][np.triu_indices(lmax+1)] = healpy.map2alm(np.ascontiguousarray(hpmaps[3]), lmax=lmax)
+        alms[3][np.triu_indices(lmax+1)] = healpy.map2alm(np.ascontiguousarray(hpmaps[3]),
+                                                          lmax=lmax, use_weights=_weight, iter=_iter)
 
     return alms.transpose((0, 2, 1))
 
 
-
-
-def sphtrans_complex_pol(hpmaps, lmax = None, centered = False, lside=None):
+def sphtrans_complex_pol(hpmaps, lmax=None, centered=False, lside=None):
     """Spherical harmonic transform of the polarisation on the sky (can be
     complex).
 
     Accepts complex T, Q, U and optionally V like maps, and returns :math:`a^T_{lm}`,
     :math:`a^E_{lm}`, :math:`a^B_{lm}` and :math:`a^V_{lm}`.
-    
+
     Parameters
     ----------
     hpmaps : np.ndarray
@@ -298,13 +293,13 @@ def sphtrans_complex_pol(hpmaps, lmax = None, centered = False, lside=None):
         and the latter half alm[l,lmax+1:], contains m < 0. If True the first
         half opf alm[l,:] contains m < 0, and the second half m > 0. m = 0 is
         the central column.
-        
+
     Returns
     -------
     alm_T, alm_E, alm_B : np.ndarray
         A 2d array of alms, packed as alm[l,m].
     """
-    if lmax == None:
+    if lmax is None:
         lmax = 3*healpy.npix2nside(hpmaps[0].size) - 1
 
     rlms = _make_full_alm(sphtrans_real_pol([hpmap.real for hpmap in hpmaps], lmax=lmax, lside=lside), centered=centered)
@@ -313,7 +308,6 @@ def sphtrans_complex_pol(hpmaps, lmax = None, centered = False, lside=None):
     alms = [rlm + 1.0J * ilm for rlm, ilm in zip(rlms, ilms)]
 
     return alms
-
 
 
 def sphtrans_inv_real(alm, nside):
@@ -359,7 +353,7 @@ def sphtrans_inv_real_pol(alm, nside):
     if alm.shape[1] != alm.shape[2] or not (npol == 3 or npol == 4):
         raise Exception("a_lm array wrong shape.")
 
-    almp = [ pack_alm(alm[0]), pack_alm(alm[1]), pack_alm(alm[2]) ]
+    almp = [pack_alm(alm[0]), pack_alm(alm[1]), pack_alm(alm[2])]
 
     maps = np.zeros((npol, 12*nside**2), dtype=np.float64)
 
@@ -369,7 +363,6 @@ def sphtrans_inv_real_pol(alm, nside):
         maps[3] = healpy.alm2map(pack_alm(alm[3]), nside)
 
     return np.array(maps)
-
 
 
 def sphtrans_inv_complex(alm, nside):
@@ -392,12 +385,9 @@ def sphtrans_inv_complex(alm, nside):
 
     almr = _make_half_alm(alm)
 
-    almi = 1.0J*(alm[:,:almr.shape[1]] - almr)
+    almi = 1.0J*(alm[:, :almr.shape[1]] - almr)
 
     return sphtrans_inv_real(almr, nside) + 1.0J * sphtrans_inv_real(almi, nside)
-
-
-
 
 
 def sphtrans_sky(skymap, lmax=None):
@@ -415,7 +405,7 @@ def sphtrans_sky(skymap, lmax=None):
     alms : np.ndarray[frequencies, l, m]
     """
     nfreq = skymap.shape[0]
-    pol = (len(skymap.shape) == 3) and (skymap.shape[1] >= 3) # Pol if 3 or 4
+    pol = (len(skymap.shape) == 3) and (skymap.shape[1] >= 3)  # Pol if 3 or 4
     npol = skymap.shape[1]
 
     if lmax is None:
@@ -431,7 +421,7 @@ def sphtrans_sky(skymap, lmax=None):
             alm_freq[i] = np.array(sphtrans_real_pol(skymap[i].astype(np.float64), lmax))
         else:
             alm_freq[i] = sphtrans_real(skymap[i].astype(np.float64), lmax)
-        
+
     return alm_freq
 
 
@@ -457,7 +447,7 @@ def sphtrans_inv_sky(alm, nside):
     pol = (npol >= 3)
 
     sky_freq = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
-    
+
     for i in range(nfreq):
         if pol:
             sky_freq[i] = sphtrans_inv_real_pol(alm[i], nside)
@@ -466,11 +456,6 @@ def sphtrans_inv_sky(alm, nside):
 
     return sky_freq
 
-    
-
-    
-
-    
 
 def coord_x2y(map, x, y):
     """Rotate a map from galactic co-ordinates into celestial co-ordinates.
@@ -495,9 +480,9 @@ def coord_x2y(map, x, y):
         raise Exception("Co-ordinate system invalid.")
 
     npix = map.shape[-1]
-    
+
     angpos = ang_positions(healpy.npix2nside(npix))
-    theta, phi =  healpy.Rotator(coord=[y, x])(angpos[:,0], angpos[:,1])
+    theta, phi = healpy.Rotator(coord=[y, x])(angpos[:, 0], angpos[:, 1])
 
     map_flat = map.reshape((-1, npix))
 
@@ -512,7 +497,6 @@ coord_g2c = lambda map: coord_x2y(map, 'G', 'C')
 coord_c2g = lambda map: coord_x2y(map, 'C', 'G')
 
 
-
 def sph_ps(map1, map2=None, lmax=None):
 
     lmax = lmax if lmax is not None else (3*healpy.get_nside(map1) - 1)
@@ -525,7 +509,5 @@ def sph_ps(map1, map2=None, lmax=None):
     s = prod[:, 0] + 2 * prod[:, 1:].sum(axis=1).real
 
     cl = s / (2.0*np.arange(lmax+1)+1.0)
-    
+
     return cl
-
-
