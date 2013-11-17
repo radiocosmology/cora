@@ -83,8 +83,8 @@ class PointSourceModel(maps.Map3d):
 
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
         
-        with np.load(_data_file) as f:
-            self._faraday = f['faraday']
+        f = np.load(_data_file)
+        self._faraday = f['faraday']
 
 
     def source_count(self, flux):
@@ -411,8 +411,8 @@ class RealPointSources(maps.Map3d):
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
         _catalogue_file = join(dirname(__file__), 'data', "combinedps.dat")
         
-        with np.load(_data_file) as f:
-            self._faraday = f['faraday']
+        f = np.load(_data_file):
+        self._faraday = f['faraday']
 
         with open(_catalogue_file, 'r') as f:
             self._catalogue = np.genfromtxt(f, names=True)
