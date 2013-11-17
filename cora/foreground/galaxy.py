@@ -72,10 +72,10 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         _data_file = join(_datadir, "skydata.npz")
         
-        with np.load(_data_file) as f:
-            self._haslam = f['haslam']
-            self._sp_ind = f['spectral']
-            self._faraday = f['faraday']
+        f = np.load(_data_file)
+        self._haslam = f['haslam']
+        self._sp_ind = f['spectral']
+        self._faraday = f['faraday']
 
         # Upgrade the map resolution to the same as the Healpix map (nside=512).
         #self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
