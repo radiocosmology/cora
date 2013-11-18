@@ -411,7 +411,7 @@ class RealPointSources(maps.Map3d):
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
         _catalogue_file = join(dirname(__file__), 'data', "combinedps.dat")
         
-        f = np.load(_data_file):
+        f = np.load(_data_file)
         self._faraday = f['faraday']
 
         with open(_catalogue_file, 'r') as f:
