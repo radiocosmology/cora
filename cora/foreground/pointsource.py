@@ -15,9 +15,8 @@ from cora.foreground import poisson as ps
 from cora.foreground import gaussianfg
 
 
-
 def faraday_rotate(polmap, rm_map, frequencies):
-    """Faraday rotate a set of sky maps.
+    """Faraday rotate a set of sky maps (done inplace).
 
     Parameters
     ----------
@@ -33,7 +32,7 @@ def faraday_rotate(polmap, rm_map, frequencies):
     rot_map : np.ndarray[freq, pol, pixel]
         The Faraday rotated map.
     """
-    
+
     qu_complex = polmap[:, 1] + 1.0J * polmap[:, 2]
 
     wv = 1e-6 * units.c / frequencies
@@ -511,10 +510,10 @@ class CombinedPointSources(maps.Map3d):
 
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
-        flux_max = 10.0
+        flux_max = 4.0 * (151.0 / 600.0)**DiMatteo.spectral_mean # Convert to a flux cut at 151 MHz
 
     class _RealResolved(RealPointSources):
-        flux_min = 10.0 * (600.0 / 151.0)**DiMatteo.spectral_mean  # Convert to a flux cut at 600 MHz
+        flux_min = 4.0
 
     def getsky(self):
 
