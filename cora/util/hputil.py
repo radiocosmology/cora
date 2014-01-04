@@ -1,6 +1,66 @@
-"""Convenience functions for dealing with Healpix maps.
+"""
+============================================
+Healpix Utilities (:mod:`~cora.util.hputil`)
+============================================
 
-Uses the healpy module.
+Convenience functions for dealing with Healpix maps.
+
+Makes heavy use of the `healpy`_ module.
+
+.. _`healpy`: http://github.com/healpy
+
+Forward Transform Routines
+==========================
+
+.. autosummary::
+    :toctree: generated/
+
+    sphtrans_real
+    sphtrans_complex
+    sphtrans_real_pol
+    sphtrans_complex_pol
+
+Backward Transforms
+===================
+
+.. autosummary::
+    :toctree: generated/
+
+    sphtrans_inv_real
+    sphtrans_inv_complex
+    sphtrans_inv_real_pol
+
+Sky Transforms
+==============
+
+Transform sets of polarised maps at multiple frequencies.
+
+.. autosummary::
+    :toctree: generated/
+
+    sphtrans_sky
+    sphtrans_inv_sky
+
+Miscellaneous
+=============
+
+.. autosummary::
+    :toctree: generated/
+
+    ang_positions
+    nside_for_lmax
+    pack_alm
+    unpack_alm
+
+Co-ordinate Transform
+=====================
+.. autosummary::
+    :toctree: generated/
+
+    coord_x2y
+    coord_g2c
+    coord_c2g
+
 """
 
 import healpy
@@ -25,7 +85,7 @@ def ang_positions(nside):
     -------
     angpos : np.ndarray
         The angular position (in spherical polars), of each pixel in a
-        Healpix map. Packed at [ [theta1, phi1], [theta2, phi2], ...]
+        Healpix map. Packed at `[ [theta1, phi1], [theta2, phi2], ...]`
     """
     npix = healpy.nside2npix(int(nside))
 
@@ -158,16 +218,18 @@ def sphtrans_real(hpmap, lmax=None, lside=None):
 
     Parameters
     ----------
-    hpmap : np.ndarray
+    hpmap : np.ndarray[npix]
         A Healpix map.
     lmax : scalar, optional
         The maximum l to calculate. If `None` (default), calculate up
-        to 3*nside - 1.
+        to ``3*NSIDE - 1``.
+    lmax : scalar, optional
+        Size of array to return.
 
     Returns
     -------
-    alm : np.ndarray
-        A 2d array of alms, packed as alm[l,m].
+    alm : np.ndarray[lside+1, lside+1]
+        A 2d array of alms, packed as ``alm[l,m]``.
 
     Notes
     -----
@@ -393,16 +455,19 @@ def sphtrans_inv_complex(alm, nside):
 def sphtrans_sky(skymap, lmax=None):
     """Transform a 3d skymap, slice by slice.
 
+    This will perform the polarised transformation if there are three
+    dimensions, and one is the appropriate length (3 or 4).
+
     Parameters
     ----------
-    skymap : np.ndarray[freq, healpix_index]
+    skymap : np.ndarray[freq, healpix_index] or np.ndarray[freq, pol, healpix_index]
 
     lmax : integer, optional
         Maximum l to transform.
 
     Returns
     -------
-    alms : np.ndarray[frequencies, l, m]
+    alms : np.ndarray[frequencies, pol, l, m]
     """
     nfreq = skymap.shape[0]
     pol = (len(skymap.shape) == 3) and (skymap.shape[1] >= 3)  # Pol if 3 or 4
@@ -428,8 +493,8 @@ def sphtrans_sky(skymap, lmax=None):
 def sphtrans_inv_sky(alm, nside):
     """Invert a set of alms back into a 3d sky.
 
-    If the polarisation dimension is length=3, this will automatically do the
-    polarised transform.
+    If the polarisation dimension is length is 3 or 4, this will automatically
+    do the polarised transform.
 
     Parameters
     ----------
@@ -492,9 +557,42 @@ def coord_x2y(map, x, y):
     return map_flat.reshape(map.shape)
 
 
-# Quick functions for performing specified transforms.
-coord_g2c = lambda map: coord_x2y(map, 'G', 'C')
-coord_c2g = lambda map: coord_x2y(map, 'C', 'G')
+def coord_g2c(map_):
+    """Rotate a map from galactic co-ordinates into celestial co-ordinates.
+
+    This will operate on a series of maps (provided the Healpix index is last).
+
+    Parameters
+    ----------
+    map : np.ndarray[..., npix]
+        Healpix map.
+
+    Returns
+    -------
+    rotmap : np.ndarray
+        The rotated map.
+    """
+
+    return coord_x2y(map_, 'G', 'C')
+
+
+def coord_c2g(map_):
+    """Rotate a map from celestial co-ordinates into galactic co-ordinates.
+
+    This will operate on a series of maps (provided the Healpix index is last).
+
+    Parameters
+    ----------
+    map : np.ndarray[..., npix]
+        Healpix map.
+
+    Returns
+    -------
+    rotmap : np.ndarray
+        The rotated map.
+    """
+
+    return coord_x2y(map_, 'C', 'G')
 
 
 def sph_ps(map1, map2=None, lmax=None):

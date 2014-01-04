@@ -6,16 +6,25 @@
 cora - Cosmology in the Radio Band
 ==================================
 
-A package for modelling and simulating radio skies for 21cm Intensity Mapping,
+A package for modelling and simulating radio skies for 21cm intensity mapping,
 with a lot of bonus utility code for dealing with Healpix maps, spherical co-
 ordinates etc.
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    simulation
+
+Programming References:
+
+.. toctree::
+	:maxdepth: 1
+
+	cosmology
+	hputil
+	coord
 
 
 
