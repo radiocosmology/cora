@@ -57,7 +57,19 @@ def map_variance(input_map, nside):
 
 class ConstrainedGalaxy(maps.Sky3d):
     """Create realistic simulations of the polarised sky.
+
+    Attributes
+    ----------
+    spectral_map : one of ['gsm', 'md', 'gd']    
+        Specify which spectral index map to use. `gsm' uses a GSM derived map,
+        this was the old behaviour. `md' uses the synchrotron index map
+        derived by Miville-Deschenes et al. 2008, and is  now the default.
+        `gd' uses the map from Giardino et al. 2002.
     """
+
+    # Spectral index map to use. Values are:
+    # gsm (the old method)
+    spectral_map = 'md'
 
     def __init__(self):
 
@@ -71,10 +83,14 @@ class ConstrainedGalaxy(maps.Sky3d):
         print "Loading data for galaxy simulation."
 
         _data_file = join(_datadir, "skydata.npz")
-        
+
         f = np.load(_data_file)
         self._haslam = f['haslam']
-        self._sp_ind = f['spectral']
+
+        self._sp_ind = { 'gsm' : f['spectral_gsm'],
+                         'md' : f['spectral_md'],
+                         'gd' : f['spectral_gd'] }
+
         self._faraday = f['faraday']
 
         # Upgrade the map resolution to the same as the Healpix map (nside=512).
@@ -101,33 +117,45 @@ class ConstrainedGalaxy(maps.Sky3d):
         syn = FullSkySynchrotron()
 
         lmax = 3*self.nside - 1
-
         efreq = np.concatenate((np.array([408.0, 1420.0]), self.nu_pixels))
 
+        ## Construct map of random fluctuations
         #cla = skysim.clarray(syn.angular_powerspectrum, lmax, efreq, zwidth=(self.nu_pixels[1] - self.nu_pixels[0]))
         cla = skysim.clarray(syn.angular_powerspectrum, lmax, efreq, zromb=0)
-
         fg = skysim.mkfullsky(cla, self.nside)
 
+        ## Find the smoothed fluctuations on each scale
         sub408 = healpy.smoothing(fg[0], fwhm=np.radians(1.0))
         sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8))
     
-        fgs = skysim.mkconstrained(cla, [(0, sub408), (1, sub1420)], self.nside)
+        ## Make a multifrequency map constrained to look like the smoothed maps
+        ## depending on the spectral_map apply constraints at upper and lower frequency (GSM), 
+        ## or just at Haslam map frequency
+        if self.spectral_map == 'gsm':
+            fgs = skysim.mkconstrained(cla, [(0, sub408), (1, sub1420)], self.nside)
+        else:
+            fgs = skysim.mkconstrained(cla, [(0, sub408)], self.nside)
 
-        sc = healpy.ud_grade(self._sp_ind, self.nside)
+        # Construct maps of appropriate resolution
+        sc = healpy.ud_grade(self._sp_ind[self.spectral_map], self.nside)
         am = healpy.ud_grade(self._amp_map, self.nside)
 
+        ## Bump up the variance of the fluctuations according to the variance
+        #  map
         mv = healpy.smoothing(map_variance(healpy.smoothing(fg[0], sigma=np.radians(0.5)), 16)**0.5, sigma=np.radians(2.0)).mean()
 
+        ## Construct the fluctuations map
         fgt = (am / mv) * (fg - fgs)
 
+        ## Get the smooth, large scale emission from Haslam+spectralmap
         fgsmooth = haslam[np.newaxis, :] * ((efreq / 408.0)[:, np.newaxis]**sc)
 
         fg2 = (fgsmooth + fgt)[2:]
 
+        ## Co-ordinate transform if required
         if celestial:
             fg2 = hputil.coord_g2c(fg2)
-    
+
         if debug:
             return fg2, fg, fgs, fgt, fgsmooth
 

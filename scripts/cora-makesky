@@ -5,134 +5,136 @@ import argparse
 
 def mk_foreground(args):
 
-	import h5py
-	from cora.foreground import galaxy, pointsource
+    import h5py
+    from cora.foreground import galaxy, pointsource
 
-	# Read in arguments.
-	gal = galaxy.ConstrainedGalaxy()
-	gal.nside = args.nside
-	gal.nu_lower = args.freq_lower
-	gal.nu_upper = args.freq_upper
-	gal.nu_num = args.nfreq
+    # Read in arguments.
+    gal = galaxy.ConstrainedGalaxy()
+    gal.nside = args.nside
+    gal.nu_lower = args.freq_lower
+    gal.nu_upper = args.freq_upper
+    gal.nu_num = args.nfreq
 
-	# Fetch galactic sky
-	cs = gal.getpolsky() if not args.nopol else gal.getsky()
+    # Fetch galactic sky
+    cs = gal.getpolsky() if not args.nopol else gal.getsky()
 
-	# Fetch point source maps
-	ps = pointsource.CombinedPointSources.like_map(gal)
-	#ps.flux_max = 100.0 # Add a maximum flux cut (presume we've modeled out anything brighter)
-	cs = cs + (ps.getpolsky() if not args.nopol else ps.getsky())
+    # Fetch point source maps
+    ps = pointsource.CombinedPointSources.like_map(gal)
+    ps.flux_max = args.flux_max
+    #ps.flux_max = 100.0 # Add a maximum flux cut (presume we've modeled out anything brighter)
+    cs = cs + (ps.getpolsky() if not args.nopol else ps.getsky())
 
-	# Save map
-	f = h5py.File(args.mapname, 'w')
-	f.create_dataset("map", data=cs)
-	f.close()
+    # Save map
+    f = h5py.File(args.mapname, 'w')
+    f.create_dataset("map", data=cs)
+    f.close()
 
 
 def mk_galaxy(args):
 
-	import h5py
-	from cora.foreground import galaxy
+    import h5py
+    from cora.foreground import galaxy
 
-	# Read in arguments.
-	gal = galaxy.ConstrainedGalaxy()
-	gal.nside = args.nside
-	gal.nu_lower = args.freq_lower
-	gal.nu_upper = args.freq_upper
-	gal.nu_num = args.nfreq
+    # Read in arguments.
+    gal = galaxy.ConstrainedGalaxy()
+    gal.nside = args.nside
+    gal.nu_lower = args.freq_lower
+    gal.nu_upper = args.freq_upper
+    gal.nu_num = args.nfreq
 
-	# Fetch galactic sky
-	cs = gal.getpolsky() if not args.nopol else gal.getsky()
+    # Fetch galactic sky
+    cs = gal.getpolsky() if not args.nopol else gal.getsky()
 
-	# Save map
-	f = h5py.File(args.mapname, 'w')
-	f.create_dataset("map", data=cs)
-	f.close()
+    # Save map
+    f = h5py.File(args.mapname, 'w')
+    f.create_dataset("map", data=cs)
+    f.close()
 
 
 def mk_pointsouce(args):
 
-	import h5py
-	from cora.foreground import pointsource
+    import h5py
+    from cora.foreground import pointsource
 
-	# Fetch point source maps
-	ps = pointsource.CombinedPointSources()
+    # Fetch point source maps
+    ps = pointsource.CombinedPointSources()
+    ps.flux_max = args.flux_max
+    
+    ps.nside = args.nside
+    ps.nu_lower = args.freq_lower
+    ps.nu_upper = args.freq_upper
+    ps.nu_num = args.nfreq
 
-	ps.nside = args.nside
-	ps.nu_lower = args.freq_lower
-	ps.nu_upper = args.freq_upper
-	ps.nu_num = args.nfreq
+    cs = ps.getpolsky() if not args.nopol else ps.getsky()
 
-	cs = ps.getpolsky() if not args.nopol else ps.getsky()
-
-	# Save map
-	f = h5py.File(args.mapname, 'w')
-	f.create_dataset("map", data=cs)
-	f.close()
+    # Save map
+    f = h5py.File(args.mapname, 'w')
+    f.create_dataset("map", data=cs)
+    f.close()
 
 
 def mk_21cm(args):
 
-	import h5py
-	from cora.signal import corr21cm
+    import h5py
+    from cora.signal import corr21cm
 
-	# Read in arguments.
-	if args.eor:
-	    cr = corr21cm.EoR21cm()
-	else:
-	    cr = corr21cm.Corr21cm()
+    # Read in arguments.
+    if args.eor:
+        cr = corr21cm.EoR21cm()
+    else:
+        cr = corr21cm.Corr21cm()
 
-	cr.nside = args.nside
-	cr.nu_lower = args.freq_lower
-	cr.nu_upper = args.freq_upper
-	cr.nu_num = args.nfreq
+    cr.nside = args.nside
+    cr.nu_lower = args.freq_lower
+    cr.nu_upper = args.freq_upper
+    cr.nu_num = args.nfreq
 
-	# Generate signal realisation and save.
-	sg_map = cr.getpolsky() if not args.nopol else cr.getsky()
-	f = h5py.File(args.mapname, 'w')
-	f.create_dataset("map", data=sg_map)
-	f.close()
+    # Generate signal realisation and save.
+    sg_map = cr.getpolsky() if not args.nopol else cr.getsky()
+    f = h5py.File(args.mapname, 'w')
+    f.create_dataset("map", data=sg_map)
+    f.close()
 
 
 def gaussianfg(args):
 
-	import h5py
-	import numpy as np
+    import h5py
+    import numpy as np
 
-	from cora.core import skysim
-	from cora.util import hputil
-	from cora.foreground import galaxy
+    from cora.core import skysim
+    from cora.util import hputil
+    from cora.foreground import galaxy
 
-	fsyn = galaxy.FullSkySynchrotron()
-	fpol = galaxy.FullSkyPolarisedSynchrotron()
+    fsyn = galaxy.FullSkySynchrotron()
+    fpol = galaxy.FullSkyPolarisedSynchrotron()
 
-	if args.nopol:
-		raise Exception("Unpolarised sim not supported for gaussianfg.")
+    if args.nopol:
+        raise Exception("Unpolarised sim not supported for gaussianfg.")
 
-	nfreq = args.nfreq
-	df = (args.freq_upper - args.freq_lower) / nfreq
-	frequencies = np.linspace(args.freq_lower, args.freq_upper, nfreq) + 0.5*df
+    nfreq = args.nfreq
+    df = (args.freq_upper - args.freq_lower) / nfreq
+    frequencies = np.linspace(args.freq_lower, args.freq_upper, nfreq) + 0.5*df
 
-	lmax = 3 * args.nside
-	npol = 4
+    lmax = 3 * args.nside
+    npol = 4
 
-	cv_fg = np.zeros((lmax+1, npol, nfreq, npol, nfreq))
+    cv_fg = np.zeros((lmax+1, npol, nfreq, npol, nfreq))
 
-	cv_fg[:, 0, :, 0, :] = skysim.clarray(fsyn.angular_powerspectrum, lmax, frequencies)
-	cv_fg[:, 1, :, 1, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
-	cv_fg[:, 2, :, 2, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
+    cv_fg[:, 0, :, 0, :] = skysim.clarray(fsyn.angular_powerspectrum, lmax, frequencies)
+    cv_fg[:, 1, :, 1, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
+    cv_fg[:, 2, :, 2, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
 
-	cv_fg = cv_fg.reshape(lmax+1, npol*nfreq, npol*nfreq)
+    cv_fg = cv_fg.reshape(lmax+1, npol*nfreq, npol*nfreq)
 
-	alms = skysim.mkfullsky(cv_fg, args.nside, alms=True).reshape(npol, nfreq, lmax+1, lmax+1)
-	alms = alms.transpose((1, 0, 2, 3))
+    alms = skysim.mkfullsky(cv_fg, args.nside, alms=True).reshape(npol, nfreq, lmax+1, lmax+1)
+    alms = alms.transpose((1, 0, 2, 3))
 
-	maps = hputil.sphtrans_inv_sky(alms, args.nside)
+    maps = hputil.sphtrans_inv_sky(alms, args.nside)
 
-	# Save map
-	f = h5py.File(args.mapname, 'w')
-	f.create_dataset("map", data=maps)
-	f.close()
+    # Save map
+    f = h5py.File(args.mapname, 'w')
+    f.create_dataset("map", data=maps)
+    f.close()
 
 
 
@@ -151,6 +153,7 @@ parser.add_argument('--nopol', help='Polarised or not.', action='store_true')
 
 
 parser_foreground = subparsers.add_parser('foreground', help='The combined radio foregrounds.')
+parser_foreground.add_argument('--flux_max', help='Maximum point source flux.', type=float, default=None)
 parser_foreground.set_defaults(func=mk_foreground)
 
 
@@ -160,6 +163,7 @@ parser_galaxy.set_defaults(func=mk_galaxy)
 
 
 parser_pointsource = subparsers.add_parser('pointsource', help='Emission from radio pointsources.')
+parser_pointsource.add_argument('--flux_max', help='Maximum point source flux.', type=float, default=None)
 parser_pointsource.set_defaults(func=mk_pointsouce)
 
 

@@ -401,7 +401,7 @@ class RealPointSources(maps.Map3d):
     flux_min = 10.0
     flux_max = None
 
-    spectral_pivot = 151.0
+    spectral_pivot = 600.0
 
     faraday = True
 
@@ -410,7 +410,7 @@ class RealPointSources(maps.Map3d):
 
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
         _catalogue_file = join(dirname(__file__), 'data', "combinedps.dat")
-        
+
         f = np.load(_data_file)
         self._faraday = f['faraday']
 
@@ -420,8 +420,7 @@ class RealPointSources(maps.Map3d):
 
     def _generate_catalogue(self):
 
-        flux = self._catalogue['S151']
-        spectral_ind = self._catalogue['BETA']
+        flux = self._catalogue['S600']
 
         mask_max = (flux < self.flux_max) if self.flux_max is not None else np.ones_like(flux, dtype=np.bool)
         mask_min = (flux > self.flux_min) if self.flux_min is not None else np.ones_like(flux, dtype=np.bool)
@@ -450,7 +449,7 @@ class RealPointSources(maps.Map3d):
 
         self._generate_catalogue()
 
-        if self.flux_min < 10.0:
+        if self.flux_min < 2.0:
             print "Flux limit probably too low for reliable catalogue."
 
         freq = self.nu_pixels
@@ -461,15 +460,18 @@ class RealPointSources(maps.Map3d):
             theta = np.pi / 2.0 - np.radians(source['DEC'])
             phi = np.radians(source['RA'])
 
-            flux = source['S151']
+            flux = source['S600']
             beta = source['BETA']
+            gamma = source['GAMMA']
 
-            polflux = source['P151']
-            polang  = np.radians(source['POLANG']) # NVSS gives polarisation angles from North to East (so do not need to transform relative to HEALPIX)
+            polflux = source['P600']
+            polang = np.radians(source['POLANG'])   # NVSS gives polarisation angles from North to East (so do not need to transform relative to HEALPIX)
 
             ix = healpy.ang2pix(self.nside, theta, phi)
 
-            flux_I = flux * (freq / 150.0)**(-beta)
+            x = np.log(freq / self.spectral_pivot)
+
+            flux_I = flux * np.exp(beta * x + gamma * x**2)
             sky[:, 0, ix] += flux_I
 
             if not (np.isnan(polflux) or np.isnan(polang)):
@@ -487,15 +489,17 @@ class RealPointSources(maps.Map3d):
         return sky
 
 
-
-
 class CombinedPointSources(maps.Map3d):
     """Combined class for efficiently generating full sky point source maps.
 
-    For S < S_{cut} = 0.1 Jy use a Gaussian approximation to generate a map,
-    and for S > S_{cut} generate a synthetic population. Amplitude of
-    gaussianfg.PointSources class rescaled for a maximum flux of 0.1.
-    """ 
+    For S < S_{cut} use a Gaussian approximation to generate a map, and for
+    S_{cut} < S < S_{cut2} generate a synthetic population. For S > S_{cut2},
+    use real point sources.
+
+    The flux cuts are hardcoded as S_{cut} = 0.1 Jy, and S_{cut2} = 10 Jy,
+    both at 151 MHz. This latter value is rescaled to 600 MHz before
+    application.
+    """
 
     flux_max = None
 
@@ -510,8 +514,7 @@ class CombinedPointSources(maps.Map3d):
         flux_max = 10.0
 
     class _RealResolved(RealPointSources):
-        flux_min = 10.0
-
+        flux_min = 10.0 * (600.0 / 151.0)**DiMatteo.spectral_mean  # Convert to a flux cut at 600 MHz
 
     def getsky(self):
 
