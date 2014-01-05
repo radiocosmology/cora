@@ -1,5 +1,45 @@
-"""A module of useful functions when dealing with Spherical Polar
+"""
+===============================================
+Co-ordinate Utilities (:mod:`~cora.util.coord`)
+===============================================
+
+A module of useful functions when dealing with Spherical Polar
 co-ordinates.
+
+Transforms
+==========
+
+.. autosummary::
+    :toctree: generated/
+
+    sph_to_cart
+    cart_to_sph
+
+Vector operations
+=================
+
+.. autosummary::
+    :toctree: generated/
+
+    sph_dot
+
+Tangent Plane
+=============
+
+.. autosummary::
+    :toctree: generated/
+
+    thetaphi_plane
+    thetaphi_plane_cart
+
+Miscellaneous
+=============
+
+.. autosummary::
+    :toctree: generated/
+
+    great_circle_points
+
 """
 
 import numpy as np
@@ -66,9 +106,6 @@ def cart_to_sph(cart_arr):
     sph_arr[..., 1] = np.arccos(cart_arr[..., 2] / sph_arr[..., 0])
 
     return sph_arr
-    
-
-    
 
 
 def sph_dot(arr1, arr2):
@@ -76,7 +113,7 @@ def sph_dot(arr1, arr2):
     
     Parameters
     ----------
-    arr, arr2 : np.ndarray
+    arr1, arr2 : np.ndarray
         Two arrays of vectors in spherical polars [theta, phi], (or
         alternatively as [theta, phi]). Should be broadcastable against each
         other.

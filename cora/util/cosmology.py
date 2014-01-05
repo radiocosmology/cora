@@ -1,4 +1,21 @@
-""" Class for storing a cosmology, and calculating various distance measures. """
+""" 
+================================================
+Cosmology routines (:mod:`~cora.util.cosmology`)
+================================================
+
+A module for various cosmological calculations.
+
+Classes
+=======
+
+The bulk of the work is within a class which stores a cosmology and can
+calculate quantities like distance measures.
+
+.. autosummary::
+    :toctree: generated/
+
+    Cosmology
+"""
 
 # Global imports
 import math
@@ -12,7 +29,7 @@ from cora.util.units import *
 
 
 class Cosmology(object):
-    r""" Class to store a cosmology, and compute measures.
+    """Class to store a cosmology, and compute measures.
     
     Defines a cosmology and allows calculation of a few simple
     quantities (notably distance measures and lookback time).
