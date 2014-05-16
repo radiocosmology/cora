@@ -69,6 +69,34 @@ def map_variance(input_map, nside):
 
 
 
+def chunk_var(a):
+    """A variance routine that breaks the calculation up into chunks to save
+    memory.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Array to take the variance of.
+
+    Returns
+    -------
+    var : float
+    """
+    nchunks = min(30, a.size)
+
+    # Does not eat memory.
+    mean = a.mean()
+    splits = np.array_split(a.ravel(), nchunks)
+
+    t = 0.0
+    for sec in splits:
+        x = sec - mean
+        x2 = np.sum(np.abs(x)**2)
+        t += x2
+
+    return t / a.size
+
+
 
 
 class ConstrainedGalaxy(maps.Sky3d):
@@ -178,7 +206,6 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         #fg2 = (fgsmooth * (1.0 + tanh_lin(fgt / fgsmooth)))[2:]
         fg2 = (fgsmooth + fgt)[2:]
-        print "Meh."
 
         ## Co-ordinate transform if required
         if celestial:
@@ -261,7 +288,9 @@ class ConstrainedGalaxy(maps.Sky3d):
 
             map2[si:ei] = np.fft.ifft(map2[si:ei], axis=1)
 
-        map2 /= (2.0 * map2.std())
+        # numpy's var routine is extremely memory inefficient. Use a crappy
+        # chunking one.
+        map2 /= (2.0 * chunk_var(map2)**0.5)
 
         w = np.exp(-0.25 * (phifreq[np.newaxis, :] / sigma_phi[:, np.newaxis])**2)
 
