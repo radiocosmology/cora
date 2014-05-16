@@ -213,7 +213,6 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         # Load and smooth the Faraday rotation map to get an estimate for the
         # width of the distribution
-        print "Top"
         sigma_phi = healpy.ud_grade(healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0), verbose=False), self.nside)
 
         # Set the correlation length in phi
