@@ -113,7 +113,7 @@ class Map3d(Map2d):
         return c
 
     def _width_array(self):
-        return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.widthy*units.degree], dtype=np.float64)
+        return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.y_width*units.degree], dtype=np.float64)
 
     def _num_array(self):
         return np.array([self.nu_num, self.x_num, self.y_num], dtype=np.int)
