@@ -20,14 +20,14 @@ dbltype = np.int
 ctypedef np.float64_t dbltype_t
 
 
-def _int_fromfile(cls, file, colspec = None):
-        """Perform Interpolation from given file. 
+def _int_fromfile(cls, file, colspec=None):
+        """Perform Interpolation from given file.
 
         Load up the file and generate an Interpolater.
-        
+
         colspec - 2 element list of columns to interpolate
         """
-        if colspec == None:
+        if colspec is None:
             colspec = [0,1]
 
         if len(colspec) != 2:
@@ -59,16 +59,16 @@ cdef class Interpolater(object):
 
 
     fromfile = classmethod(_int_fromfile)
-    
-    
-    def __init__(self, data1, data2 = None):
-        """Constructor to initialise from data. 
+
+
+    def __init__(self, data1, data2=None):
+        """Constructor to initialise from data.
 
         Need to supply a 2d data array of X-Y pairs to
         interpolate. i.e. [[x0,y0], [x1,y1], ...]
         """
-        
-        if data2 == None:
+
+        if data2 is None:
             data = data1
         else:
             data = np.dstack((data1, data2))[0]
@@ -98,13 +98,13 @@ cdef class Interpolater(object):
         """Returns the value of the function at x. """
         if isinstance(x, np.ndarray):
             return self.value_array(x)
-        
-        return self.value_cdef(x)            
-        
+
+        return self.value_cdef(x)
+
 
 
     def __call__(self, x):
-        """Returns the value of the function at x. """
+        """Returns the value of the function at x."""
         return self.value(x)
 
     @cython.boundscheck(False)
@@ -129,7 +129,7 @@ cdef class Interpolater(object):
     @cython.cdivision(True)
     @cython.boundscheck(False)
     cdef dbltype_t value_cdef(self, dbltype_t x) nogil:
-        """Returns the value of the function at x. 
+        """Returns the value of the function at x.
 
         Cdef'd function to do the work.
         """
@@ -174,16 +174,16 @@ cdef class Interpolater(object):
         b = (x - data[2*kl]) / h
         c = (a**3 - a) * h**2 / 6
         d = (b**3 - b) * h**2 / 6
-        
+
         # Return the spline interpolated value.
-        return (a * data[2*kl+1] + b * data[2*kh+1] 
+        return (a * data[2*kl+1] + b * data[2*kh+1]
                 + c * y2[kl] + d * y2[kh])
 
 
     def __gen_spline_(self):
         # Solve for the second derivative matrix to generate the
         # splines.
-        
+
         n = self.__data_.shape[0]
 
         al = np.zeros(n-2)
@@ -226,17 +226,17 @@ cdef class Interpolater(object):
         # Solve U.x = z
         for i in xrange(n-4,-1,-1):
             z[i] = z[i] - m[i] * z[i+1]
-            
+
         # Set second derivatives.
         for i in xrange(1,n-1):
             self.__y2_[i] = z[i-1]
 
     def data(self):
-        """Return the data array. """
+        """Return the data array."""
         return (self.__data_, self.__y2_)
 
     def test(self, min, max, samp):
-        """Take regular samples from the Interpolater. 
+        """Take regular samples from the Interpolater.
 
         Take the interpolater, and take samp samples between min and
         max. Returning an array.
@@ -244,7 +244,7 @@ cdef class Interpolater(object):
 
         a = np.zeros((samp, 2))
         h = 1.0 * (max - min) /  samp
-        
+
         for i in xrange(samp):
             a[i,0] = min + i*h
             a[i,1] = self.value(min + i*h)
@@ -254,11 +254,11 @@ cdef class Interpolater(object):
 
 
 cdef class LogInterpolater(Interpolater):
-    """Perform a cubic spline interpolation in log-space. """
+    """Perform a cubic spline interpolation in log-space."""
 
     def __init__(self, data):
         """Initialise the interpolater. Data must not be negative or zero,
-        otherwise logarithmic interpolation blows up. """
+        otherwise logarithmic interpolation blows up."""
 
         if(np.any(data <= 0)):
             raise InterpolationException("Data must be non-negative.")
@@ -269,7 +269,7 @@ cdef class LogInterpolater(Interpolater):
         """ Return the value of the log-interpolated function."""
         if isinstance(x, np.ndarray):
             return self.value_log_array(x)
-        
+
         return libc.math.exp(self.value_cdef(libc.math.log(x)))
 
 
@@ -290,7 +290,3 @@ cdef class LogInterpolater(Interpolater):
             rr[i] = libc.math.exp(self.value_cdef(libc.math.log(xr[i])))
 
         return rr.reshape(x.shape)
-
-
-
-

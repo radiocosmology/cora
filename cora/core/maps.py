@@ -7,7 +7,7 @@ from cora.core import skysim
 
 class Map2d(object):
     r"""A 2-d sky map.
-    
+
     Attributes
     ----------
     x_width, y_width : float
@@ -24,12 +24,12 @@ class Map2d(object):
     y_num = 128
 
     _nside = 128
-    
+
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
         r"""Create a Map2d (or subclassed) object the same shape as a given object.
         """
-        
+
         c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
         c.y_width = mapobj.y_width
@@ -86,7 +86,7 @@ class Map3d(Map2d):
         Number of frequency bins.
     nside : int
         Resolution of Healpix map (must be power of 2).
-        
+
     """
     nu_num = 128
 
@@ -121,8 +121,8 @@ class Map3d(Map2d):
 
     @property
     def nu_pixels(self):
-        return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
-
+        #return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
+        return np.linspace(self.nu_lower, self.nu_upper, self.nu_num, endpoint=False)
 
     @classmethod
     def like_kiyo_map(cls, mapobj, *args, **kwargs):
@@ -177,7 +177,7 @@ class Sky3d(Map3d):
 
         lmax = 3 * self.nside - 1
         cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
-        
+
         return (self.mean_nu(self.nu_pixels)[:, np.newaxis]
                 + skysim.mkfullsky(cla, self.nside))
 
@@ -189,16 +189,12 @@ class Sky3d(Map3d):
         sky_IQU = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
 
         sky_IQU[:, 0] = sky_I
-        
+
         return sky_IQU
 
 
     def getalms(self, lmax):
 
         cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
-        
+
         return skysim.mkfullsky(cla, self.nside, alms=True)
-
-
-
-

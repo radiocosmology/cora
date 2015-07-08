@@ -1,104 +1,160 @@
 #!/usr/bin/env python
 
-import argparse
+from argh import arg, named, dispatch_commands
 
 
-def mk_foreground(args):
+def write_map(filename, data, freq):
+    # Write out the map into an HDF5 file.
 
     import h5py
+    import numpy as np
+
+    # Make into 3D array
+    if data.ndim == 3:
+        polmap = np.array(['I', 'Q', 'U', 'V'])
+    else:
+        data = data[:, np.newaxis, :]
+        polmap = np.array(['I'])
+
+    # Construct frequency index map
+    freqmap = np.zeros(len(freq), dtype=[('centre', np.float64), ('width', np.float64)])
+    freqmap['centre'][:] = freq
+    freqmap['width'][:] = np.diff(freq)[0]
+
+    # Open up file for writing
+    with h5py.File(filename) as f:
+        f.attrs['__memh5_distributed_file'] = True
+
+        dset = f.create_dataset('map', data=data)
+        dset.attrs['axis'] = np.array(['freq', 'pol', 'pixel'])
+        dset.attrs['__memh5_distributed_dset'] = True
+
+        dset = f.create_dataset('index_map/freq', data=freqmap)
+        dset.attrs['__memh5_distributed_dset'] = False
+        dset = f.create_dataset('index_map/pol', data=polmap)
+        dset.attrs['__memh5_distributed_dset'] = False
+
+
+@arg('nside', type=int, help='Healpix NSIDE of map.')
+@arg('freq_lower', type=float, help='Lowest frequency in map.')
+@arg('freq_upper', type=float, help='Highest frequency in map.')
+@arg('nfreq', type=int, help='Number of frequency channels.')
+@arg('filename', type=str, help='Name of file to write.')
+@arg('--nopol', help='Construct unpolarised map only.')
+@arg('--maxflux', type=float, help='Maximum flux of point included point source.')
+def foreground(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, maxflux=1e6):
+    """Generate a full foreground sky map."""
+
     from cora.foreground import galaxy, pointsource
 
     # Read in arguments.
     gal = galaxy.ConstrainedGalaxy()
-    gal.nside = args.nside
-    gal.nu_lower = args.freq_lower
-    gal.nu_upper = args.freq_upper
-    gal.nu_num = args.nfreq
+    gal.nside = nside
+    gal.nu_lower = freq_lower
+    gal.nu_upper = freq_upper
+    gal.nu_num = nfreq
 
     # Fetch galactic sky
-    cs = gal.getpolsky() if not args.nopol else gal.getsky()
+    cs = gal.getpolsky() if not nopol else gal.getsky()
 
     # Fetch point source maps
     ps = pointsource.CombinedPointSources.like_map(gal)
-    ps.flux_max = args.flux_max
-    #ps.flux_max = 100.0 # Add a maximum flux cut (presume we've modeled out anything brighter)
-    cs = cs + (ps.getpolsky() if not args.nopol else ps.getsky())
+    ps.flux_max = maxflux
+
+    cs = cs + (ps.getpolsky() if not nopol else ps.getsky())
 
     # Save map
-    f = h5py.File(args.mapname, 'w')
-    f.create_dataset("map", data=cs)
-    f.close()
+    write_map(filename, cs, gal.nu_pixels)
 
 
-def mk_galaxy(args):
+@arg('nside', type=int, help='Healpix NSIDE of map.')
+@arg('freq_lower', type=float, help='Lowest frequency in map.')
+@arg('freq_upper', type=float, help='Highest frequency in map.')
+@arg('nfreq', type=int, help='Number of frequency channels.')
+@arg('filename', type=str, help='Name of file to write.')
+@arg('--nopol', help='Construct unpolarised map only.')
+def galaxy(nside, freq_lower, freq_upper, nfreq, filename, nopol=False):
+    """Generate a galaxy only foreground map."""
 
-    import h5py
     from cora.foreground import galaxy
 
     # Read in arguments.
     gal = galaxy.ConstrainedGalaxy()
-    gal.nside = args.nside
-    gal.nu_lower = args.freq_lower
-    gal.nu_upper = args.freq_upper
-    gal.nu_num = args.nfreq
+    gal.nside = nside
+    gal.nu_lower = freq_lower
+    gal.nu_upper = freq_upper
+    gal.nu_num = nfreq
 
     # Fetch galactic sky
-    cs = gal.getpolsky() if not args.nopol else gal.getsky()
+    cs = gal.getpolsky() if not nopol else gal.getsky()
 
     # Save map
-    f = h5py.File(args.mapname, 'w')
-    f.create_dataset("map", data=cs)
-    f.close()
+    write_map(filename, cs, gal.nu_pixels)
 
 
-def mk_pointsouce(args):
+@arg('nside', type=int, help='Healpix NSIDE of map.')
+@arg('freq_lower', type=float, help='Lowest frequency in map.')
+@arg('freq_upper', type=float, help='Highest frequency in map.')
+@arg('nfreq', type=int, help='Number of frequency channels.')
+@arg('filename', type=str, help='Name of file to write.')
+@arg('--nopol', help='Construct unpolarised map only.')
+@arg('--maxflux', type=float, help='Maximum flux of point included point source.')
+def pointsource(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, maxflux=1e6):
+    """Generate a point source only foreground map."""
 
-    import h5py
     from cora.foreground import pointsource
 
     # Fetch point source maps
     ps = pointsource.CombinedPointSources()
-    ps.flux_max = args.flux_max
-    
-    ps.nside = args.nside
-    ps.nu_lower = args.freq_lower
-    ps.nu_upper = args.freq_upper
-    ps.nu_num = args.nfreq
+    ps.flux_max = maxflux
+    ps.nside = nside
+    ps.nu_lower = freq_lower
+    ps.nu_upper = freq_upper
+    ps.nu_num = nfreq
 
-    cs = ps.getpolsky() if not args.nopol else ps.getsky()
+    cs = ps.getpolsky() if not nopol else ps.getsky()
 
     # Save map
-    f = h5py.File(args.mapname, 'w')
-    f.create_dataset("map", data=cs)
-    f.close()
+    write_map(filename, cs, ps.nu_pixels)
 
 
-def mk_21cm(args):
+@arg('nside', type=int, help='Healpix NSIDE of map.')
+@arg('freq_lower', type=float, help='Lowest frequency in map.')
+@arg('freq_upper', type=float, help='Highest frequency in map.')
+@arg('nfreq', type=int, help='Number of frequency channels.')
+@arg('filename', type=str, help='Name of file to write.')
+@arg('--nopol', help='Construct unpolarised map only.')
+@arg('--eor', help='Use parameters more suitable for reionisation epoch.')
+@named('21cm')
+def _21cm(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, eor=False):
 
-    import h5py
     from cora.signal import corr21cm
 
     # Read in arguments.
-    if args.eor:
+    if eor:
         cr = corr21cm.EoR21cm()
     else:
         cr = corr21cm.Corr21cm()
 
-    cr.nside = args.nside
-    cr.nu_lower = args.freq_lower
-    cr.nu_upper = args.freq_upper
-    cr.nu_num = args.nfreq
+    cr.nside = nside
+    cr.nu_lower = freq_lower
+    cr.nu_upper = freq_upper
+    cr.nu_num = nfreq
 
     # Generate signal realisation and save.
-    sg_map = cr.getpolsky() if not args.nopol else cr.getsky()
-    f = h5py.File(args.mapname, 'w')
-    f.create_dataset("map", data=sg_map)
-    f.close()
+    sg_map = cr.getpolsky() if not nopol else cr.getsky()
+
+    # Save map
+    write_map(filename, sg_map, cr.nu_pixels)
 
 
-def gaussianfg(args):
+@arg('nside', type=int, help='Healpix NSIDE of map.')
+@arg('freq_lower', type=float, help='Lowest frequency in map.')
+@arg('freq_upper', type=float, help='Highest frequency in map.')
+@arg('nfreq', type=int, help='Number of frequency channels.')
+@arg('filename', type=str, help='Name of file to write.')
+def gaussianfg(nside, freq_lower, freq_upper, nfreq, filename):
 
-    import h5py
     import numpy as np
 
     from cora.core import skysim
@@ -108,14 +164,9 @@ def gaussianfg(args):
     fsyn = galaxy.FullSkySynchrotron()
     fpol = galaxy.FullSkyPolarisedSynchrotron()
 
-    if args.nopol:
-        raise Exception("Unpolarised sim not supported for gaussianfg.")
+    frequencies = np.linspace(freq_lower, freq_upper, nfreq, endpoint=False)
 
-    nfreq = args.nfreq
-    df = (args.freq_upper - args.freq_lower) / nfreq
-    frequencies = np.linspace(args.freq_lower, args.freq_upper, nfreq) + 0.5*df
-
-    lmax = 3 * args.nside
+    lmax = 3 * nside
     npol = 4
 
     cv_fg = np.zeros((lmax+1, npol, nfreq, npol, nfreq))
@@ -126,53 +177,14 @@ def gaussianfg(args):
 
     cv_fg = cv_fg.reshape(lmax+1, npol*nfreq, npol*nfreq)
 
-    alms = skysim.mkfullsky(cv_fg, args.nside, alms=True).reshape(npol, nfreq, lmax+1, lmax+1)
+    alms = skysim.mkfullsky(cv_fg, nside, alms=True).reshape(npol, nfreq, lmax+1, lmax+1)
     alms = alms.transpose((1, 0, 2, 3))
 
-    maps = hputil.sphtrans_inv_sky(alms, args.nside)
+    maps = hputil.sphtrans_inv_sky(alms, nside)
 
     # Save map
-    f = h5py.File(args.mapname, 'w')
-    f.create_dataset("map", data=maps)
-    f.close()
+    write_map(filename, maps, frequencies)
 
 
-
-parser = argparse.ArgumentParser(description='Create a simulated radio sky.')
-
-subparsers = parser.add_subparsers(help='Command to run.', title="Commands", metavar="<command>")
-
-parser.add_argument('nside', help='Resolution of the map (given as a Healpix NSIDE)', type=int)
-parser.add_argument('freq_lower', help='Lowest frequency channel.', type=float)
-parser.add_argument('freq_upper', help='Highest frequency channel.', type=float)
-parser.add_argument('nfreq', help='Number of frequency channels.', type=int)
-parser.add_argument('mapname', help='Name of the file to save into.')
-parser.add_argument('--nopol', help='Polarised or not.', action='store_true')
-
-
-
-
-parser_foreground = subparsers.add_parser('foreground', help='The combined radio foregrounds.')
-parser_foreground.add_argument('--flux_max', help='Maximum point source flux.', type=float, default=None)
-parser_foreground.set_defaults(func=mk_foreground)
-
-
-
-parser_galaxy = subparsers.add_parser('galaxy', help='Synchrotron radio emission from our galaxy.')
-parser_galaxy.set_defaults(func=mk_galaxy)
-
-
-parser_pointsource = subparsers.add_parser('pointsource', help='Emission from radio pointsources.')
-parser_pointsource.add_argument('--flux_max', help='Maximum point source flux.', type=float, default=None)
-parser_pointsource.set_defaults(func=mk_pointsouce)
-
-
-
-parser_21cm = subparsers.add_parser('21cm', help='21cm emission from HI in large-scale structure.')
-parser_21cm.add_argument('--eor', help='Use EoR powerspectrum.', action='store_true')
-parser_21cm.set_defaults(func=mk_21cm)
-
-
-args = parser.parse_args()
-args.func(args)
-
+if __name__ == '__main__':
+    dispatch_commands([foreground, galaxy, pointsource, _21cm, gaussianfg])
