@@ -13,7 +13,7 @@ Classes
 
 .. autosummary::
     :toctree: generated/
-   
+
     ConstrainedGalaxy
 """
 
@@ -104,7 +104,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
     Attributes
     ----------
-    spectral_map : one of ['gsm', 'md', 'gd']    
+    spectral_map : one of ['gsm', 'md', 'gd']
         Specify which spectral index map to use. `gsm' uses a GSM derived map,
         this was the old behaviour. `md' uses the synchrotron index map
         derived by Miville-Deschenes et al. 2008, and is  now the default.
@@ -120,6 +120,9 @@ class ConstrainedGalaxy(maps.Sky3d):
     # Spectral index map to use. Values are:
     # gsm (the old method)
     spectral_map = 'md'
+
+    _dphi = 1.0
+    _maxphi = 500.0
 
     def __init__(self):
 
@@ -177,9 +180,9 @@ class ConstrainedGalaxy(maps.Sky3d):
         ## Find the smoothed fluctuations on each scale
         sub408 = healpy.smoothing(fg[0], fwhm=np.radians(1.0), verbose=False)
         sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8), verbose=False)
-    
+
         ## Make a multifrequency map constrained to look like the smoothed maps
-        ## depending on the spectral_map apply constraints at upper and lower frequency (GSM), 
+        ## depending on the spectral_map apply constraints at upper and lower frequency (GSM),
         ## or just at Haslam map frequency
         if self.spectral_map == 'gsm':
             fgs = skysim.mkconstrained(cla, [(0, sub408), (1, sub1420)], self.nside)
@@ -255,8 +258,8 @@ class ConstrainedGalaxy(maps.Sky3d):
             return (l / 100.0)**-2.8
 
         # Define a grid in phi that we will use to model the Faraday emission.
-        dphi = 1.0
-        maxphi = 500.0
+        dphi = self._dphi
+        maxphi = self._maxphi
         nphi = 2 * int(maxphi / dphi)
         phifreq = np.fft.fftfreq(nphi, d=(1.0 / (dphi * nphi)))
 
@@ -311,6 +314,7 @@ class ConstrainedGalaxy(maps.Sky3d):
             alpha = 2.0 * phi * 3e2**2 / freq**2
 
             return (np.exp(1.0J * alpha) * np.sinc(alpha * dx / np.pi))
+            #return np.exp(1.0J * alpha)
 
         fa = self.nu_pixels
         df = np.median(np.diff(fa))
@@ -348,6 +352,6 @@ class ConstrainedGalaxy(maps.Sky3d):
             map5 = hputil.coord_g2c(map5)
 
         if debug:
-            return map2, map4, w, sigma_phi
+            return map2, map4, w, sigma_phi, pta, map5
         else:
             return map5
