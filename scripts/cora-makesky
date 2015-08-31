@@ -41,8 +41,9 @@ def write_map(filename, data, freq):
 @arg('nfreq', type=int, help='Number of frequency channels.')
 @arg('filename', type=str, help='Name of file to write.')
 @arg('--nopol', help='Construct unpolarised map only.')
+@arg('--chimefreq', help='Define frequency bands like CHIME.')
 @arg('--maxflux', type=float, help='Maximum flux of point included point source.')
-def foreground(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, maxflux=1e6):
+def foreground(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, chimefreq=False, maxflux=1e6):
     """Generate a full foreground sky map."""
 
     from cora.foreground import galaxy, pointsource
@@ -53,6 +54,7 @@ def foreground(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, maxf
     gal.nu_lower = freq_lower
     gal.nu_upper = freq_upper
     gal.nu_num = nfreq
+    gal.freq_mode_chime = chimefreq
 
     # Fetch galactic sky
     cs = gal.getpolsky() if not nopol else gal.getsky()
@@ -72,8 +74,9 @@ def foreground(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, maxf
 @arg('freq_upper', type=float, help='Highest frequency in map.')
 @arg('nfreq', type=int, help='Number of frequency channels.')
 @arg('filename', type=str, help='Name of file to write.')
+@arg('--chimefreq', help='Define frequency bands like CHIME.')
 @arg('--nopol', help='Construct unpolarised map only.')
-def galaxy(nside, freq_lower, freq_upper, nfreq, filename, nopol=False):
+def galaxy(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, chimefreq=False):
     """Generate a galaxy only foreground map."""
 
     from cora.foreground import galaxy
@@ -84,6 +87,7 @@ def galaxy(nside, freq_lower, freq_upper, nfreq, filename, nopol=False):
     gal.nu_lower = freq_lower
     gal.nu_upper = freq_upper
     gal.nu_num = nfreq
+    gal.freq_mode_chime = chimefreq
 
     # Fetch galactic sky
     cs = gal.getpolsky() if not nopol else gal.getsky()
@@ -98,8 +102,9 @@ def galaxy(nside, freq_lower, freq_upper, nfreq, filename, nopol=False):
 @arg('nfreq', type=int, help='Number of frequency channels.')
 @arg('filename', type=str, help='Name of file to write.')
 @arg('--nopol', help='Construct unpolarised map only.')
+@arg('--chimefreq', help='Define frequency bands like CHIME.')
 @arg('--maxflux', type=float, help='Maximum flux of point included point source.')
-def pointsource(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, maxflux=1e6):
+def pointsource(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, chimefreq=False, maxflux=1e6):
     """Generate a point source only foreground map."""
 
     from cora.foreground import pointsource
@@ -111,6 +116,7 @@ def pointsource(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, max
     ps.nu_lower = freq_lower
     ps.nu_upper = freq_upper
     ps.nu_num = nfreq
+    ps.freq_mode_chime = chimefreq
 
     cs = ps.getpolsky() if not nopol else ps.getsky()
 
@@ -124,9 +130,10 @@ def pointsource(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, max
 @arg('nfreq', type=int, help='Number of frequency channels.')
 @arg('filename', type=str, help='Name of file to write.')
 @arg('--nopol', help='Construct unpolarised map only.')
+@arg('--chimefreq', help='Define frequency bands like CHIME.')
 @arg('--eor', help='Use parameters more suitable for reionisation epoch.')
 @named('21cm')
-def _21cm(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, eor=False):
+def _21cm(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, chimefreq=False, eor=False):
 
     from cora.signal import corr21cm
 
@@ -140,6 +147,7 @@ def _21cm(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, eor=False
     cr.nu_lower = freq_lower
     cr.nu_upper = freq_upper
     cr.nu_num = nfreq
+    cr.freq_mode_chime = chimefreq
 
     # Generate signal realisation and save.
     sg_map = cr.getpolsky() if not nopol else cr.getsky()
@@ -153,7 +161,8 @@ def _21cm(nside, freq_lower, freq_upper, nfreq, filename, nopol=False, eor=False
 @arg('freq_upper', type=float, help='Highest frequency in map.')
 @arg('nfreq', type=int, help='Number of frequency channels.')
 @arg('filename', type=str, help='Name of file to write.')
-def gaussianfg(nside, freq_lower, freq_upper, nfreq, filename):
+@arg('--chimefreq', help='Define frequency bands like CHIME.')
+def gaussianfg(nside, freq_lower, freq_upper, nfreq, filename, chimefreq=False):
 
     import numpy as np
 
@@ -164,16 +173,20 @@ def gaussianfg(nside, freq_lower, freq_upper, nfreq, filename):
     fsyn = galaxy.FullSkySynchrotron()
     fpol = galaxy.FullSkyPolarisedSynchrotron()
 
-    frequencies = np.linspace(freq_lower, freq_upper, nfreq, endpoint=False)
+    # Set frequency parameters
+    fsyn.nu_lower = freq_lower
+    fsyn.nu_upper = freq_upper
+    fsyn.nu_num = nfreq
+    fsyn.freq_mode_chime = chimefreq
 
     lmax = 3 * nside
     npol = 4
 
     cv_fg = np.zeros((lmax+1, npol, nfreq, npol, nfreq))
 
-    cv_fg[:, 0, :, 0, :] = skysim.clarray(fsyn.angular_powerspectrum, lmax, frequencies)
-    cv_fg[:, 1, :, 1, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
-    cv_fg[:, 2, :, 2, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, frequencies)
+    cv_fg[:, 0, :, 0, :] = skysim.clarray(fsyn.angular_powerspectrum, lmax, fsyn.nu_pixels)
+    cv_fg[:, 1, :, 1, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, fsyn.nu_pixels)
+    cv_fg[:, 2, :, 2, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, fsyn.nu_pixels)
 
     cv_fg = cv_fg.reshape(lmax+1, npol*nfreq, npol*nfreq)
 
@@ -183,7 +196,7 @@ def gaussianfg(nside, freq_lower, freq_upper, nfreq, filename):
     maps = hputil.sphtrans_inv_sky(alms, nside)
 
     # Save map
-    write_map(filename, maps, frequencies)
+    write_map(filename, maps, fsyn.nu_pixels)
 
 
 if __name__ == '__main__':

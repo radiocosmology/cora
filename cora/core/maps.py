@@ -86,12 +86,27 @@ class Map3d(Map2d):
         Number of frequency bins.
     nside : int
         Resolution of Healpix map (must be power of 2).
+    freq_mode_chime : bool, optional
+        If `True` then define frequency band like CHIME.
 
+    Notes
+    -----
+    The normal frequency mode uses `nu_lower` and `nu_upper` to define the far
+    edges of the band, with exactly `nu_num` channels between them. For example
+    `nu_lower = 400`, `nu_upper = 404` and `nu_num = 2`, creates two channels
+    centred at 401 and 403 MHz. The CHIME frequency mode (which comes from the
+    way the PFB is performed) defines relative to the channel centres, with the
+    first channel centred on `nu_lower`, and the next channel after the final
+    included channel centred at `nu_upper`. For example, with the same settings
+    as above, this frequency mode would have channels at 400 and 402 MHz (with
+    the not included "next" channel at 404 MHz).
     """
     nu_num = 128
 
     nu_lower = 500.0
     nu_upper = 900.0
+
+    freq_mode_chime = False
 
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
@@ -121,8 +136,12 @@ class Map3d(Map2d):
 
     @property
     def nu_pixels(self):
-        #return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
-        return np.linspace(self.nu_lower, self.nu_upper, self.nu_num, endpoint=False)
+
+        if self.freq_mode_chime:
+            return np.linspace(self.nu_lower, self.nu_upper, self.nu_num, endpoint=False)
+        else:
+            return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
+
 
     @classmethod
     def like_kiyo_map(cls, mapobj, *args, **kwargs):
@@ -135,7 +154,7 @@ class Map3d(Map2d):
         ra_axis = mapobj.get_axis('ra')
         dec_axis = mapobj.get_axis('dec')
 
-        ra_fact = sp.cos(sp.pi * mapobj.info['dec_centre'] / 180.0)
+        ra_fact = np.cos(np.pi * mapobj.info['dec_centre'] / 180.0)
         c.x_width = (max(ra_axis) - min(ra_axis)) * ra_fact
         c.y_width = max(dec_axis) - min(dec_axis)
         (c.x_num, c.y_num) = (len(ra_axis), len(dec_axis))
