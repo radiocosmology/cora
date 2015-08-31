@@ -50,7 +50,7 @@ setup(
     version = 0.1,
 
     packages = find_packages(),
-    ext_modules = [ cs_ext, tm_ext],
+    ext_modules = [ cs_ext, tm_ext ],
     requires = ['numpy', 'scipy', 'healpy', 'h5py'],
     package_data = {'cora.signal' : ['data/ps_z1.5.dat', 'data/corr_z1.5.dat'], 'cora.foreground' : ['data/skydata.npz', 'data/combinedps.dat']},
     scripts = ['scripts/cora-makesky'],
