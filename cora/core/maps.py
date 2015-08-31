@@ -7,7 +7,7 @@ from cora.core import skysim
 
 class Map2d(object):
     r"""A 2-d sky map.
-    
+
     Attributes
     ----------
     x_width, y_width : float
@@ -24,12 +24,12 @@ class Map2d(object):
     y_num = 128
 
     _nside = 128
-    
+
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
         r"""Create a Map2d (or subclassed) object the same shape as a given object.
         """
-        
+
         c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
         c.y_width = mapobj.y_width
@@ -86,12 +86,27 @@ class Map3d(Map2d):
         Number of frequency bins.
     nside : int
         Resolution of Healpix map (must be power of 2).
-        
+    freq_mode_chime : bool, optional
+        If `True` then define frequency band like CHIME.
+
+    Notes
+    -----
+    The normal frequency mode uses `nu_lower` and `nu_upper` to define the far
+    edges of the band, with exactly `nu_num` channels between them. For example
+    `nu_lower = 400`, `nu_upper = 404` and `nu_num = 2`, creates two channels
+    centred at 401 and 403 MHz. The CHIME frequency mode (which comes from the
+    way the PFB is performed) defines relative to the channel centres, with the
+    first channel centred on `nu_lower`, and the next channel after the final
+    included channel centred at `nu_upper`. For example, with the same settings
+    as above, this frequency mode would have channels at 400 and 402 MHz (with
+    the not included "next" channel at 404 MHz).
     """
     nu_num = 128
 
     nu_lower = 500.0
     nu_upper = 900.0
+
+    freq_mode_chime = False
 
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
@@ -113,7 +128,7 @@ class Map3d(Map2d):
         return c
 
     def _width_array(self):
-        return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.widthy*units.degree], dtype=np.float64)
+        return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.y_width*units.degree], dtype=np.float64)
 
     def _num_array(self):
         return np.array([self.nu_num, self.x_num, self.y_num], dtype=np.int)
@@ -121,7 +136,11 @@ class Map3d(Map2d):
 
     @property
     def nu_pixels(self):
-        return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
+
+        if self.freq_mode_chime:
+            return np.linspace(self.nu_lower, self.nu_upper, self.nu_num, endpoint=False)
+        else:
+            return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
 
 
     @classmethod
@@ -135,7 +154,7 @@ class Map3d(Map2d):
         ra_axis = mapobj.get_axis('ra')
         dec_axis = mapobj.get_axis('dec')
 
-        ra_fact = sp.cos(sp.pi * mapobj.info['dec_centre'] / 180.0)
+        ra_fact = np.cos(np.pi * mapobj.info['dec_centre'] / 180.0)
         c.x_width = (max(ra_axis) - min(ra_axis)) * ra_fact
         c.y_width = max(dec_axis) - min(dec_axis)
         (c.x_num, c.y_num) = (len(ra_axis), len(dec_axis))
@@ -177,7 +196,7 @@ class Sky3d(Map3d):
 
         lmax = 3 * self.nside - 1
         cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
-        
+
         return (self.mean_nu(self.nu_pixels)[:, np.newaxis]
                 + skysim.mkfullsky(cla, self.nside))
 
@@ -189,16 +208,12 @@ class Sky3d(Map3d):
         sky_IQU = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
 
         sky_IQU[:, 0] = sky_I
-        
+
         return sky_IQU
 
 
     def getalms(self, lmax):
 
         cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
-        
+
         return skysim.mkfullsky(cla, self.nside, alms=True)
-
-
-
-
