@@ -20,11 +20,10 @@ Classes
 from os.path import join, dirname
 
 import numpy as np
-import h5py
 import healpy
 
 from cora.core import maps, skysim
-from cora.util import hputil, nputil
+from cora.util import hputil
 from cora.foreground import gaussianfg
 
 _datadir = join(dirname(__file__), "data")
@@ -205,10 +204,9 @@ class ConstrainedGalaxy(maps.Sky3d):
         ## Get the smooth, large scale emission from Haslam+spectralmap
         fgsmooth = haslam[np.newaxis, :] * ((efreq / 408.0)[:, np.newaxis]**sc)
 
+        # Rescale to ensure output is always positive
         tanh_lin = lambda x: np.where(x < 0, np.tanh(x), x)
-
-        #fg2 = (fgsmooth * (1.0 + tanh_lin(fgt / fgsmooth)))[2:]
-        fg2 = (fgsmooth + fgt)[2:]
+        fg2 = (fgsmooth * (1.0 + tanh_lin(fgt / fgsmooth)))[2:]
 
         ## Co-ordinate transform if required
         if celestial:
@@ -334,7 +332,6 @@ class ConstrainedGalaxy(maps.Sky3d):
         del map4a
 
         map5 = np.zeros((self.nu_num, 4, 12 * self.nside**2), dtype=np.float64)
-
 
         print "Scaling by T"
         # Unflatten the intensity by multiplying by the unpolarised realisation
