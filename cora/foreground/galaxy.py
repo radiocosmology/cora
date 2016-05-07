@@ -13,18 +13,17 @@ Classes
 
 .. autosummary::
     :toctree: generated/
-   
+
     ConstrainedGalaxy
 """
 
 from os.path import join, dirname
 
 import numpy as np
-import h5py
 import healpy
 
 from cora.core import maps, skysim
-from cora.util import hputil, nputil
+from cora.util import hputil
 from cora.foreground import gaussianfg
 
 _datadir = join(dirname(__file__), "data")
@@ -69,6 +68,34 @@ def map_variance(input_map, nside):
 
 
 
+def chunk_var(a):
+    """A variance routine that breaks the calculation up into chunks to save
+    memory.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        Array to take the variance of.
+
+    Returns
+    -------
+    var : float
+    """
+    nchunks = min(30, a.size)
+
+    # Does not eat memory.
+    mean = a.mean()
+    splits = np.array_split(a.ravel(), nchunks)
+
+    t = 0.0
+    for sec in splits:
+        x = sec - mean
+        x2 = np.sum(np.abs(x)**2)
+        t += x2
+
+    return t / a.size
+
+
 
 
 class ConstrainedGalaxy(maps.Sky3d):
@@ -76,7 +103,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
     Attributes
     ----------
-    spectral_map : one of ['gsm', 'md', 'gd']    
+    spectral_map : one of ['gsm', 'md', 'gd']
         Specify which spectral index map to use. `gsm' uses a GSM derived map,
         this was the old behaviour. `md' uses the synchrotron index map
         derived by Miville-Deschenes et al. 2008, and is  now the default.
@@ -93,12 +120,15 @@ class ConstrainedGalaxy(maps.Sky3d):
     # gsm (the old method)
     spectral_map = 'md'
 
+    _dphi = 1.0
+    _maxphi = 500.0
+
     def __init__(self):
 
         self._load_data()
 
-        vm = map_variance(healpy.smoothing(self._haslam, sigma=np.radians(0.5)), 16)
-        self._amp_map = healpy.smoothing(healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0))
+        vm = map_variance(healpy.smoothing(self._haslam, sigma=np.radians(0.5), verbose=False), 16)
+        self._amp_map = healpy.smoothing(healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0), verbose=False)
 
 
     def _load_data(self):
@@ -147,11 +177,11 @@ class ConstrainedGalaxy(maps.Sky3d):
         fg = skysim.mkfullsky(cla, self.nside)
 
         ## Find the smoothed fluctuations on each scale
-        sub408 = healpy.smoothing(fg[0], fwhm=np.radians(1.0))
-        sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8))
-    
+        sub408 = healpy.smoothing(fg[0], fwhm=np.radians(1.0), verbose=False)
+        sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8), verbose=False)
+
         ## Make a multifrequency map constrained to look like the smoothed maps
-        ## depending on the spectral_map apply constraints at upper and lower frequency (GSM), 
+        ## depending on the spectral_map apply constraints at upper and lower frequency (GSM),
         ## or just at Haslam map frequency
         if self.spectral_map == 'gsm':
             fgs = skysim.mkconstrained(cla, [(0, sub408), (1, sub1420)], self.nside)
@@ -164,7 +194,9 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         ## Bump up the variance of the fluctuations according to the variance
         #  map
-        mv = healpy.smoothing(map_variance(healpy.smoothing(fg[0], sigma=np.radians(0.5)), 16)**0.5, sigma=np.radians(2.0)).mean()
+        vm = healpy.smoothing(fg[0], sigma=np.radians(0.5), verbose=False)
+        vm = healpy.smoothing(map_variance(vm, 16)**0.5, sigma=np.radians(2.0), verbose=False)
+        mv = vm.mean()
 
         ## Construct the fluctuations map
         fgt = (am / mv) * (fg - fgs)
@@ -172,14 +204,16 @@ class ConstrainedGalaxy(maps.Sky3d):
         ## Get the smooth, large scale emission from Haslam+spectralmap
         fgsmooth = haslam[np.newaxis, :] * ((efreq / 408.0)[:, np.newaxis]**sc)
 
-        fg2 = (fgsmooth + fgt)[2:]
+        # Rescale to ensure output is always positive
+        tanh_lin = lambda x: np.where(x < 0, np.tanh(x), x)
+        fg2 = (fgsmooth * (1.0 + tanh_lin(fgt / fgsmooth)))[2:]
 
         ## Co-ordinate transform if required
         if celestial:
             fg2 = hputil.coord_g2c(fg2)
 
         if debug:
-            return fg2, fg, fgs, fgt, fgsmooth
+            return fg2, fg, fgs, fgt, fgsmooth, am, mv
 
         return fg2
 
@@ -198,137 +232,123 @@ class ConstrainedGalaxy(maps.Sky3d):
         Returns
         -------
         skymap : np.ndarray[freq, pol, pixel]
+
+        Notes
+        -----
+        This routine tries to make a decent simulation of the galactic
+        polarised emission.
         """
 
-        # Load and smooth the Faraday emission
-        sigma_phi = healpy.ud_grade(healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0)), self.nside)
+        # Load and smooth the Faraday rotation map to get an estimate for the
+        # width of the distribution
+        sigma_phi = healpy.ud_grade(healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0), verbose=False), self.nside)
 
-        # Get the Haslam map as a base for the unpolarised emission
-        haslam = healpy.smoothing(healpy.ud_grade(self._haslam, self.nside), fwhm=np.radians(3.0))
-
-        # Create a map of the correlation length in phi
-        xiphi = 3.0
-        xiphimap = np.minimum(sigma_phi / 20.0, xiphi)
+        # Set the correlation length in phi
+        xiphi = 1.0
 
         lmax = 3*self.nside - 1
         la = np.arange(lmax+1)
 
-        # The angular powerspectrum of polarisation fluctuations
+        # The angular powerspectrum of polarisation fluctuations, we will use
+        # this to generate the base fluctuations
         def angular(l):
             l[np.where(l == 0)] = 1.0e16
             return (l / 100.0)**-2.8
 
-        c6 = 3e2 # Speed of light in million m/s
-        xf = 1.5 # Factor to exand the region in lambda^2 by.
+        # Define a grid in phi that we will use to model the Faraday emission.
+        dphi = self._dphi
+        maxphi = self._maxphi
+        nphi = 2 * int(maxphi / dphi)
+        phifreq = np.fft.fftfreq(nphi, d=(1.0 / (dphi * nphi)))
 
-        ## Calculate the range in lambda^2 to generate
-        l2l = (c6 / self.nu_upper)**2
-        l2h = (c6 / self.nu_lower)**2
+        # Create the weights required to turn random variables into alms
+        ps_weight = (angular(la[:, np.newaxis]) / 2.0)**0.5
 
-        l2a = 0.5 * (l2h + l2l)
-        l2d = 0.5 * (l2h - l2l)
+        # Generate random maps in the Fourier conjugate of phi. This is
+        # equivalent to generating random uncorrelated phi maps and FFting
+        # into the conjugate.
+        map2 = np.zeros((12*self.nside**2, nphi), dtype=np.complex128)
+        print "SHTing to give random maps"
+        for i in range(nphi):
+            w = np.random.standard_normal((lmax+1, 2*lmax+1, 2)).view(np.complex128)[..., 0]
+            w *= ps_weight
+            map2[:, i] = hputil.sphtrans_inv_complex(w, self.nside)
 
-        # Bounds and number of points in lambda^2
-        l2l = l2a - xf * l2d
-        l2h = l2a + xf * l2d
-        nl2 = int(xf * self.nu_num)
+        # Weight the conj-phi direction to give the phi correlation structure.
+        pcfreq = np.fft.fftfreq(nphi, d=dphi)
+        map2 *= np.exp(-2 * (np.pi * xiphi * pcfreq[np.newaxis, :])**2)
 
-        l2 = np.linspace(l2l, l2h, nl2) # Grid in lambda^2 to use
+        # We need to FFT back into phi, but as scipy does not have an inplace
+        # transform, we can do this in blocks, replacing as we go.
+        chunksize = self.nside**2
+        nchunk = 12
 
-        ## Make a realisation of c(n, l2)
+        for ci in range(nchunk):
+            si = ci * chunksize
+            ei = (ci + 1) * chunksize
 
-        # Generate random numbers and weight by powerspectrum
-        w = (np.random.standard_normal((nl2, lmax+1, 2*lmax+1)) + 1.0J * np.random.standard_normal((nl2, lmax+1, 2*lmax+1))) / 2**0.5
-        w *= angular(la[np.newaxis, :, np.newaxis])**0.5
+            map2[si:ei] = np.fft.ifft(map2[si:ei], axis=1)
 
-        # Transform from spherical harmonics to maps
-        map1 = np.zeros((nl2, 12*self.nside**2), dtype=np.complex128)
-        print "Making maps"
-        for i in range(nl2):
-            map1[i] = hputil.sphtrans_inv_complex(w[i], self.nside)
+        # numpy's var routine is extremely memory inefficient. Use a crappy
+        # chunking one.
+        map2 /= (2.0 * chunk_var(map2)**0.5)
 
-        # Weight frequencies for the internal Faraday depolarisation
-        map1 *= np.exp(-2 * (xiphimap[np.newaxis, :] * l2[:, np.newaxis])**2) / 100.0
-
-
-        if not debug:
-            del w
- 
-        # Transform into phispace
-        map2 = np.fft.fft(map1, axis=0)
-
-
-        # Calculate the phi samples
-        phifreq = np.pi * np.fft.fftfreq(nl2, d=(l2[1] - l2[0]))
-
-        if not debug:
-            del map1
-
-        # Create weights for smoothing the emission (corresponding to the
-        # Gaussian region of emission).
-        w = np.exp(-0.25 * (phifreq[:, np.newaxis] / sigma_phi[np.newaxis, :])**2)
+        w = np.exp(-0.25 * (phifreq[np.newaxis, :] / sigma_phi[:, np.newaxis])**2)
 
         # Calculate the normalisation explicitly (required when Faraday depth
         # is small, as grid is too large).
-        w /= w.sum(axis=0)[np.newaxis, :]
+        w /= w.sum(axis=1)[:, np.newaxis]
 
-        # When the spacing between phi samples is too large we don't get the
-        # decorrelation from the independent regions correct.
-        xiphimap = np.maximum(xiphimap, np.pi / (l2h - l2l))
-        xiphimap = np.minimum(xiphimap, sigma_phi)
-        w *= 0.2 * (sigma_phi / xiphimap)**0.5 * (10.0 / haslam)**0.5
-
-        # Additional weighting to account for finite frequency bin width
-        # (assume channels are gaussian). Approximate by performing in
-        # lambda^2 not nu.
-        dnu_nu = np.diff(self.nu_pixels).mean() / self.nu_pixels.mean()
-
-        # Calculate the spacing lambda^2
-        dl2 = 2*l2.mean() * dnu_nu / (8*np.log(2.0))**0.5
-        w *= np.exp(-2.0 * dl2**2 * phifreq**2)[:, np.newaxis]
-
-        # Weight map, and transform back into lambda^2
-        map3 = np.fft.ifft(map2 * w, axis=0)
+        print "Applying phi weighting"
+        map2 *= w
 
         if not debug:
-            del map2, w
+            del w
 
-        # Array to hold frequency maps in.
-        map4 = np.zeros((self.nu_num, 4, 12*self.nside**2), dtype=np.float64)
+        def ptrans(phi, freq, dfreq):
 
-        ## Interpolate lambda^2 sampling into regular frequency grid.
-        ## Use a piecewise linear method
-        for i in range(self.nu_num):
+            dx = dfreq / freq
 
-            # Find the lambda^2 for the current frequency
-            l2i = (c6 / self.nu_pixels[i])**2
+            alpha = 2.0 * phi * 3e2**2 / freq**2
 
-            # Find the bounding array indices in the lambda^2 array
-            ih = np.searchsorted(l2, l2i)
-            il = ih - 1
+            return (np.exp(1.0J * alpha) * np.sinc(alpha * dx / np.pi))
+            #return np.exp(1.0J * alpha)
 
-            # Calculate the interpolating coefficient
-            alpha = (l2i - l2[il]) / (l2[ih] - l2[il])
+        fa = self.nu_pixels
+        df = np.median(np.diff(fa))
 
-            # Interpolate each map at the same time.
-            mapint = map3[ih] * alpha + (1.0 - alpha) * map3[il]
+        pta = ptrans(phifreq[:, np.newaxis], fa[np.newaxis, :], df) / dphi
 
-            # Separate real and imaginary parts into polarised matrix
-            map4[i, 1] = mapint.real
-            map4[i, 2] = mapint.imag
+        print "Transforming to freq"
+        map4 = np.dot(map2, pta)
 
         if not debug:
-            del map3
+            del map2
 
+        print "Rescaling freq"
+        map4a = np.abs(map4)
+        map4 = map4 * np.tanh(map4a) / map4a
+
+        del map4a
+
+        map5 = np.zeros((self.nu_num, 4, 12 * self.nside**2), dtype=np.float64)
+
+        print "Scaling by T"
         # Unflatten the intensity by multiplying by the unpolarised realisation
-        map4[:, 0] = self.getsky(celestial=False)
-        map4[:, 1:3] *= map4[:, 0, np.newaxis, :]
+        map5[:, 0] = self.getsky(celestial=False)
+        map5[:, 1] = map4.real.T
+        map5[:, 2] = map4.imag.T
+        map5[:, 1:3] *= map5[:, 0, np.newaxis, :]
 
+        if not debug:
+            del map4
+
+        print "Rotating"
         # Rotate to celestial co-ordinates if required.
         if celestial:
-            map4 = hputil.coord_g2c(map4)
+            map5 = hputil.coord_g2c(map5)
 
         if debug:
-            return map4, map1, map2, map3, w, sigma_phi
+            return map2, map4, w, sigma_phi, pta, map5
         else:
-            return map4
+            return map5

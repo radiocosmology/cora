@@ -120,7 +120,7 @@ def mkfullsky(corr, nside, alms=False):
 
     # Perform the spherical harmonic transform for each z
     for i in range(numz):
-        hpmaps[i] = healpy.alm2map(gaussvars[:,i].copy(), nside)
+        hpmaps[i] = healpy.alm2map(gaussvars[:,i].copy(), nside, verbose=False)
         
     return hpmaps
 
@@ -186,7 +186,7 @@ def mkconstrained(corr, constraints, nside):
     hpmaps = np.empty((numz, healpy.nside2npix(nside)))
     
     for i in range(numz):
-        hpmaps[i] = healpy.alm2map(cv[i], nside)
+        hpmaps[i] = healpy.alm2map(cv[i], nside, verbose=False)
 
     return hpmaps
 

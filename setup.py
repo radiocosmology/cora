@@ -51,10 +51,12 @@ setup(
 
     packages = find_packages(),
     ext_modules = [ cs_ext, tm_ext ],
-    requires = ['numpy', 'scipy', 'healpy', 'h5py'],
+    requires = ['numpy', 'scipy', 'healpy', 'h5py', 'click'],
     package_data = {'cora.signal' : ['data/ps_z1.5.dat', 'data/corr_z1.5.dat'], 'cora.foreground' : ['data/skydata.npz', 'data/combinedps.dat']},
-    scripts = ['scripts/cora-makesky'],
-
+    entry_points="""
+        [console_scripts]
+        cora-makesky=cora.scripts.makesky:cli
+    """,
     # metadata for upload to PyPI
     author = "J. Richard Shaw",
     author_email = "jrs65@cita.utoronto.ca",

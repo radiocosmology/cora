@@ -11,7 +11,6 @@ try:
     _use_anfft = True
 except ImportError:
     _use_anfft = False
-    warnings.warn("Cannot load anfft for parallel FFT routines.")
 
 
 def rfftfreqn(n, d = None):
@@ -58,16 +57,16 @@ def rfftfreqn(n, d = None):
     # If we are given the sample spacing, scale each vector component
     # such that it is a proper frequency.
     rollarr[...,:] /= d
-            
+
     return rollarr
 
 
-    
+
 def rfftn(arr):
 
     if arr.shape[-1] % 2 != 0:
-        warnings.warn("Last axis length not multiple of 2. fftwrap.irfftn will not reproduce this exactly.")
-    
+        warnings.warn("Last axis length not multiple of 2. fftutil.irfftn will not reproduce this exactly.")
+
     if _use_anfft:
         print "Parallel FFT."
         return anfft.rfftn(arr)
@@ -80,4 +79,3 @@ def irfftn(arr):
         return anfft.irfftn(arr)
     else:
         return np.fft.irfftn(arr)
-
