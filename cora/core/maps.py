@@ -106,8 +106,6 @@ class Map3d(Map2d):
     nu_lower = 500.0
     nu_upper = 900.0
 
-    freq_mode_chime = False
-
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
         r"""Create a Map3d (or subclassed) object the same shape as a given object.
@@ -125,6 +123,8 @@ class Map3d(Map2d):
         c.nu_lower = mapobj.nu_lower
         c.nu_num = mapobj.nu_num
 
+        c._frequencies = mapobj._frequencies
+
         return c
 
     def _width_array(self):
@@ -134,14 +134,26 @@ class Map3d(Map2d):
         return np.array([self.nu_num, self.x_num, self.y_num], dtype=np.int)
 
 
-    @property
-    def nu_pixels(self):
+    _frequencies = None
 
-        if self.freq_mode_chime:
-            return np.linspace(self.nu_lower, self.nu_upper, self.nu_num, endpoint=False)
+    @property
+    def frequencies(self):
+        """List of frequencies in the map.
+        """
+
+        if self._frequencies is not None:
+            return self._frequencies
         else:
             return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
 
+    @frequencies.setter
+    def frequencies(self, freq):
+        """Set the frequencies in the map.
+        """
+        self._frequencies = freq
+
+    # Alias for frequencies for supporting old code.
+    nu_pixels = frequencies
 
     @classmethod
     def like_kiyo_map(cls, mapobj, *args, **kwargs):
