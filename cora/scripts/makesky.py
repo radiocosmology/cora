@@ -24,8 +24,8 @@ def cli(ctx, nside, freq, channels, channel_bin, freq_mode, pol, filename):
 
     To produce frequency bins compatible with the output of a CASPER based
     channelisation, for example in CHIME, set --freq-mode=centre and set the
-    --freq parameter to the start and (missing) end frequencies, and one to the
-    number of channels.
+    --freq parameter to the start and (missing) end frequencies, and then add
+    one to the number of channels (for the missing Nyquist frequency).
     """
 
     # Generate the set of frequency channels given the parameters
