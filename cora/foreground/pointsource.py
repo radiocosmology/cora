@@ -81,7 +81,7 @@ class PointSourceModel(maps.Map3d):
     def __init__(self):
 
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
-        
+
         f = np.load(_data_file)
         self._faraday = f['faraday']
 
@@ -100,7 +100,7 @@ class PointSourceModel(maps.Map3d):
         -------
         value : float
             The differential source count at `flux`.
-        
+
         Notes
         -----
         """
@@ -108,7 +108,7 @@ class PointSourceModel(maps.Map3d):
 
     def spectral_realisation(self, flux, frequencies):
         r"""Generate a frequency distribution for a source of given `flux`.
-        
+
         This is an abstract method that must be implemented in an
         actual model. Must be able to broadcast if `flux`, and
         `frequencies` are numpy arrays.
@@ -126,7 +126,7 @@ class PointSourceModel(maps.Map3d):
             The flux at each of the `frequencies` given.
         """
         pass
-        
+
     def generate_population(self, area):
         r"""Create a set of point sources.
 
@@ -134,7 +134,7 @@ class PointSourceModel(maps.Map3d):
         ----------
         area : float
             The area the population is contained within (in sq degrees).
-            
+
         Returns
         -------
         sources : ndarray
@@ -187,9 +187,9 @@ class PointSourceModel(maps.Map3d):
         fluxes = self.generate_population(np.radians(self.x_width) * np.radians(self.y_width))
 
         freq = self.nu_pixels
-        
+
         sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
-        
+
         for i in xrange(sr.shape[0]):
             # Pick random pixel
             x = int(rnd.rand() * self.x_num)
@@ -217,14 +217,15 @@ class PointSourceModel(maps.Map3d):
 
         npix = 12*self.nside**2
 
-        sky = np.zeros((self.nu_num, npix), dtype=np.float64)
+        freq = self.nu_pixels
+        nfreq = len(freq)
+
+        sky = np.zeros((nfreq, npix), dtype=np.float64)
 
         pxarea = 4*np.pi / npix
-        
+
         fluxes = self.generate_population(4*np.pi)
 
-        freq = self.nu_pixels
-        
         sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
 
         for i in xrange(sr.shape[0]):
@@ -247,7 +248,7 @@ class PointSourceModel(maps.Map3d):
         sky_pol = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
 
         q_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
-        u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]     
+        u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
 
         sky_pol[:, 0] = sky_I
         sky_pol[:, 1] = sky_I * q_frac
@@ -262,7 +263,7 @@ class PointSourceModel(maps.Map3d):
 
 class PowerLawModel(PointSourceModel):
     r"""A simple point source model.
-    
+
     Use a power-law luminosity function, and power-law spectral
     distribution with a single spectral index drawn from a Gaussian.
 
@@ -284,7 +285,7 @@ class PowerLawModel(PointSourceModel):
         that the flux is defined at.
 
     Notes
-    ----- 
+    -----
     Default source count parameters based loosely on the results of
     the 6C survey [1]_
 
@@ -317,9 +318,9 @@ class PowerLawModel(PointSourceModel):
 
 class DiMatteo(PointSourceModel):
     r"""Double power-law point source model
-    
+
     Uses the results of Di Mattero et al. [1]_
-    
+
     Attributes
     ----------
     gamma1, gamma2 : scalar
@@ -361,9 +362,9 @@ class DiMatteo(PointSourceModel):
 
     def source_count(self, flux):
         r"""Power law luminosity function."""
-        
+
         s = flux / self.S_0
-        
+
         return self.k1 / (s**self.gamma1 + s**self.gamma2)
 
     def spectral_realisation(self, flux, freq):
@@ -452,8 +453,9 @@ class RealPointSources(maps.Map3d):
             print "Flux limit probably too low for reliable catalogue."
 
         freq = self.nu_pixels
+        nfreq = len(freq)
 
-        sky = np.zeros((self.nu_num, 4, 12 * self.nside**2), dtype=np.float64)
+        sky = np.zeros((nfreq, 4, 12 * self.nside**2), dtype=np.float64)
 
         for source in self._masked_catalogue:
             theta = np.pi / 2.0 - np.radians(source['DEC'])

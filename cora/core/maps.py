@@ -101,7 +101,6 @@ class Map3d(Map2d):
     as above, this frequency mode would have channels at 400 and 402 MHz (with
     the not included "next" channel at 404 MHz).
     """
-    nu_num = 128
 
     nu_lower = 500.0
     nu_upper = 900.0
@@ -137,6 +136,16 @@ class Map3d(Map2d):
     _frequencies = None
 
     @property
+    def nu_num(self):
+        return len(self.frequencies)
+
+    _nu_num = 128
+
+    @nu_num.setter
+    def nu_num(self, num):
+        self._nu_num = num
+
+    @property
     def frequencies(self):
         """List of frequencies in the map.
         """
@@ -144,7 +153,7 @@ class Map3d(Map2d):
         if self._frequencies is not None:
             return self._frequencies
         else:
-            return (self.nu_lower + (np.arange(self.nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self.nu_num))
+            return (self.nu_lower + (np.arange(self._nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self._nu_num))
 
     @frequencies.setter
     def frequencies(self, freq):
