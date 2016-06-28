@@ -78,7 +78,7 @@ def foreground(ctx, maxflux):
     ps = pointsource.CombinedPointSources.like_map(gal)
     ps.flux_max = maxflux
 
-    cs = cs + (ps.getpolsky() if not ctx.obj.full_pol else ps.getsky())
+    cs = cs + (ps.getpolsky() if ctx.obj.full_pol else ps.getsky())
 
     # Save map
     write_map(ctx.obj.filename, cs, gal.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
