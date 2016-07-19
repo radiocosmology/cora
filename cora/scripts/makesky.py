@@ -6,7 +6,7 @@ import click
 import numpy as np
 
 @click.group()
-@click.option('--nside', help='Set the map resolution', metavar='NSIDE', default=256)
+@click.option('--nside', help='Set the map resolution (default: 256)', metavar='NSIDE', default=256)
 @click.option('--freq', help='Define the frequency channels (in MHz). Default is for CHIME: FSTART=800.0, FSTOP=400.0, FNUM=1025',
               metavar='FSTART FSTOP FNUM', type=(float, float, int), default=(800.0, 400.0, 1025))
 @click.option('--channels', help='Select a range of frequency channels',
@@ -14,9 +14,9 @@ import numpy as np
 @click.option('--channel-bin', help='If set, average over BIN channels', metavar='BIN', type=int, default=1)
 @click.option('--freq-mode', type=click.Choice(['centre', 'edge']), default='centre',
               help=('Choose whether FSTART and FSTOP are the very edges of the band, '+
-                    'or whether they are the centre frequencies.'))
+                    'or whether they are the centre frequencies (default: centre).'))
 @click.option('--pol', type=click.Choice(['full', 'zero', 'none']), default='full',
-              help='Pick polarisation mode. Full output, zero polarisation, or only return Stokes I.')
+              help='Pick polarisation mode. Full output, zero polarisation, or only return Stokes I (default: full).')
 @click.option('--filename', help='Output file [default=map.h5]', metavar='FILENAME', default='map.h5')
 @click.pass_context
 def cli(ctx, nside, freq, channels, channel_bin, freq_mode, pol, filename):
@@ -43,6 +43,7 @@ def cli(ctx, nside, freq, channels, channel_bin, freq_mode, pol, filename):
     # Rebin frequencies if needed
     if channel_bin > 1:
         frequencies = frequencies.reshape(-1, channel_bin).mean(axis=1)
+        df = df * channel_bin
 
     class t(object):
         pass
@@ -50,7 +51,7 @@ def cli(ctx, nside, freq, channels, channel_bin, freq_mode, pol, filename):
     ctx.obj = t()
 
     ctx.obj.freq = frequencies
-    ctx.obj.freq_width = df
+    ctx.obj.freq_width = np.abs(df)
 
     ctx.obj.nside = nside
     ctx.obj.full_pol = (pol == 'full')
