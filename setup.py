@@ -55,7 +55,7 @@ setup(
 
     packages=find_packages(),
     ext_modules=[cs_ext, tm_ext],
-    requires=['numpy>=1.7', 'scipy>=0.10', 'healpy>=1.8', 'h5py', 'click'],
+    install_requires=['numpy>=1.7', 'scipy>=0.10', 'healpy>=1.8', 'h5py', 'click'],
     package_data={
         'cora.signal': ['data/ps_z1.5.dat', 'data/corr_z1.5.dat'],
         'cora.foreground': ['data/skydata.npz', 'data/combinedps.dat']
