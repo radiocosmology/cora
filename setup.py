@@ -7,6 +7,9 @@ import re
 
 import numpy as np
 
+import cora
+
+
 if re.search('gcc', sysconfig.get_config_var('CC')) is None:
     args = []
 else:
@@ -23,6 +26,7 @@ except ImportError as e:
     from distutils.command import build_ext
 
     HAVE_CYTHON = False
+
 
 def cython_file(filename):
     filename = filename + ('.pyx' if HAVE_CYTHON else '.c')
@@ -46,23 +50,27 @@ tm_ext = Extension('cora.util.trilinearmap', [cython_file('cora/util/trilinearma
 
 
 setup(
-    name = 'cora',
-    version = 0.1,
+    name='cora',
+    version=cora.__version__,
 
-    packages = find_packages(),
-    ext_modules = [ cs_ext, tm_ext ],
-    requires = ['numpy', 'scipy', 'healpy', 'h5py', 'click'],
-    package_data = {'cora.signal' : ['data/ps_z1.5.dat', 'data/corr_z1.5.dat'], 'cora.foreground' : ['data/skydata.npz', 'data/combinedps.dat']},
+    packages=find_packages(),
+    ext_modules=[cs_ext, tm_ext],
+    requires=['numpy>=1.7', 'scipy>=0.10', 'healpy>=1.8', 'h5py', 'click'],
+    package_data={
+        'cora.signal': ['data/ps_z1.5.dat', 'data/corr_z1.5.dat'],
+        'cora.foreground': ['data/skydata.npz', 'data/combinedps.dat']
+    },
     entry_points="""
         [console_scripts]
         cora-makesky=cora.scripts.makesky:cli
     """,
-    # metadata for upload to PyPI
-    author = "J. Richard Shaw",
-    author_email = "jrs65@cita.utoronto.ca",
-    description = "Simulation and modelling of low frequency radio skies.",
-    license = "GPL v3.0",
-    url = "http://github.com/jrs65/cora",
 
-    cmdclass = {'build_ext': build_ext}
+    # metadata for upload to PyPI
+    author="J. Richard Shaw",
+    author_email="richard@phas.ubc.ca",
+    description="Simulation and modelling of low frequency radio skies.",
+    license="MIT",
+    url="http://github.com/jrs65/cora",
+
+    cmdclass={'build_ext': build_ext}
 )
