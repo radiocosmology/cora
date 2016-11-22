@@ -39,11 +39,6 @@ cs_ext = Extension('cora.util.cubicspline', [ cython_file('cora/util/cubicspline
                    extra_compile_args=args,
                    extra_link_args=args)
 
-# Spherical bessel extension (not built by default)
-sb_ext = Extension('cora.util._sphbessel_c', [cython_file('cora/util/_sphbessel_c')],
-                   include_dirs=[np.get_include()],
-                   libraries=['gsl', 'gslcblas'])
-
 # Tri-linear map extension
 tm_ext = Extension('cora.util.trilinearmap', [cython_file('cora/util/trilinearmap')],
                    include_dirs=[np.get_include()])
@@ -56,6 +51,9 @@ setup(
     packages=find_packages(),
     ext_modules=[cs_ext, tm_ext],
     install_requires=['numpy>=1.7', 'scipy>=0.10', 'healpy>=1.8', 'h5py', 'click'],
+    extras_require={
+        'sphfunc': ["pygsl"]
+    },
     package_data={
         'cora.signal': ['data/ps_z1.5.dat', 'data/corr_z1.5.dat'],
         'cora.foreground': ['data/skydata.npz', 'data/combinedps.dat']
