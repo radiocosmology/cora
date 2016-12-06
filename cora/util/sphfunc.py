@@ -132,6 +132,74 @@ def Ylm_array(lmax, theta, phi):
     return Ylm(l, m, np.array(theta)[..., np.newaxis], np.array(phi)[..., np.newaxis])
 
 
+def Ylm_spin2(l, m, theta, phi):
+    """Evaluate the spin-2 spherical harmonics.
+
+    Uses Eq. 14 from Wiaux et al. 2007 (arXiv:astro-ph/0508514).
+
+
+    Parameters
+    ----------
+    l, m : int or array_like
+        Multipoles to calculate.
+    theta, phi : float or array_like
+        Angular position.
+
+    Returns
+    -------
+    ylm_spin_plus2, ylm_spin_minus2 : float or array_like
+        Two arrays of the +2 and -2 spin harmonics.
+    """
+
+    def alpha(sign, l, m, theta):
+
+        t = (2 * m**2 - l * (l + 1.0) -
+             sign * 2 * m * (l - 1.0) * np.cos(theta) +
+             l * (l - 1) * np.cos(theta)**2)
+
+        return t / np.sin(theta)**2
+
+    def beta(sign, l, m, theta):
+
+        t = (2 * ((2.0 * l + 1.0) / (2.0 * l - 1.0) * (l**2 - m**2))**0.5 *
+             (sign * m + np.cos(theta)))
+
+        return t / np.sin(theta)**2
+
+    y0 = Ylm(l, m, theta, phi)
+    y1 = np.where(l <= m, 0.0, Ylm(l - 1, m, theta, phi))
+
+    fac = (l - 1) * l * (l + 1) * (l + 2)
+    fac = np.where(l < 2, 0.0, fac**-0.5)
+
+    y2plus = fac * (alpha(1, l, m, theta) * y0 + beta(1, l, m, theta) * y1)
+    y2minus = fac * (alpha(-1, l, m, theta) * y0 + beta(-1, l, m, theta) * y1)
+
+    return y2plus, y2minus
+
+
+def Ylm_spin2_array(lmax, theta, phi):
+    """Calculate the spin-2 spherical harmonics up to lmax.
+
+    Parameters
+    ----------
+    lmax : integer
+        Maximum multipole.
+    theta, phi : float or array_like
+        Angular position.
+
+    Returns
+    -------
+    ylm_spin_plus2, ylm_spin_minus2 : np.ndarray[..., (lmax + 1) * (lmax + 2) / 2]
+        The spin spherical harmonics for each angular position. The output array is
+        the same shape at `theta`, `phi` but with a new last axis for the
+        multipoles.
+    """
+    m, l = np.triu_indices(lmax + 1)
+
+    return Ylm_spin2(l, m, np.array(theta)[..., np.newaxis], np.array(phi)[..., np.newaxis])
+
+
 def _jl_approx_lowz(l, z):
     """Approximation of j_l for low z.
 
