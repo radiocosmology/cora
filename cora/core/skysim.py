@@ -45,7 +45,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
 
         za = (zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]).flatten()
 
-        lsections = np.array_split(np.arange(lmax+1), lmax / 50)
+        lsections = np.array_split(np.arange(lmax+1), lmax / 5)
 
         cla = np.zeros((lmax+1, zlen, zlen), dtype=np.float64)
 
@@ -66,7 +66,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
 
 def mkfullsky(corr, nside, alms=False):
     """Construct a set of correlated Healpix maps.
-    
+
     Make a set of full sky gaussian random fields, given the correlation
     structure. Useful for constructing a set of different redshift slices.
 
@@ -96,7 +96,7 @@ def mkfullsky(corr, nside, alms=False):
     for i in range(maxl+1):
         trans[i] = nputil.matrix_root_manynull(corr[i], truncate=False)
 
-    
+
     la, ma = healpy.Alm.getlm(maxl)
 
     matshape = la.shape + (numz,)
@@ -113,7 +113,7 @@ def mkfullsky(corr, nside, alms=False):
         alm_freq = np.zeros((numz, maxl+1, maxl+1), dtype=np.complex128)
         for i in range(numz):
             alm_freq[i] = hputil.unpack_alm(gaussvars[:, i], maxl)
-        
+
         return alm_freq
 
     hpmaps = np.empty((numz, healpy.nside2npix(nside)))
@@ -121,7 +121,7 @@ def mkfullsky(corr, nside, alms=False):
     # Perform the spherical harmonic transform for each z
     for i in range(numz):
         hpmaps[i] = healpy.alm2map(gaussvars[:,i].copy(), nside, verbose=False)
-        
+
     return hpmaps
 
 
@@ -184,9 +184,8 @@ def mkconstrained(corr, constraints, nside):
             cv[:, i] = np.dot(trans[l].T, la.solve(tmat[l].T, cmap[i]))
 
     hpmaps = np.empty((numz, healpy.nside2npix(nside)))
-    
+
     for i in range(numz):
         hpmaps[i] = healpy.alm2map(cv[i], nside, verbose=False)
 
     return hpmaps
-
