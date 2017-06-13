@@ -1,3 +1,4 @@
+import os
 import warnings
 
 from setuptools import setup, Extension, find_packages
@@ -10,7 +11,9 @@ import numpy as np
 import cora
 
 
-if re.search('gcc', sysconfig.get_config_var('CC')) is None:
+if ((re.search('gcc', sysconfig.get_config_var('CC')) is None) or
+    ('CORA_NO_OPENMP' in os.environ)):
+    print "Not using OpenMP"
     args = []
 else:
     args = ['-fopenmp']
