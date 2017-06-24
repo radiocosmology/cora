@@ -7,7 +7,7 @@ import scipy.special
 import numpy as np
 import math
 
-from cora.util import sphbessel, units, fftutil
+from cora.util import sphfunc, units, fftutil
 from cora.util import cubicspline as cs
 from cora.util.cosmology import Cosmology
 from cora.core import gaussianfield
@@ -548,7 +548,7 @@ class RedshiftCorrelation(object):
         """
         return np.ones_like(z) * 0.0
 
- 
+
     _sigma_v = 0.0
     def sigma_v(self, z):
         """Return the pairwise velocity dispersion at a given redshift.
@@ -790,8 +790,8 @@ class RedshiftCorrelation(object):
             d1 = math.pi / (x1 + x2)
 
             def _int_lin(k):
-                return (k**2 * self.ps_vv(k) * (b1 * sphbessel.jl(l, k*x1) - f1 * sphbessel.jl_d2(l, k*x1)) *
-                       (b2 * sphbessel.jl(l, k*x2) - f2 * sphbessel.jl_d2(l, k*x2)))
+                return (k**2 * self.ps_vv(k) * (b1 * sphfunc.jl(l, k*x1) - f1 * sphfunc.jl_d2(l, k*x1)) *
+                       (b2 * sphfunc.jl(l, k*x2) - f2 * sphfunc.jl_d2(l, k*x2)))
 
             def _int_log(lk):
                 k = np.exp(lk)
@@ -949,14 +949,14 @@ def _pl(l, x):
 
 def _integrand_linear(k, r, l, psfunc):
 
-    return 1.0 / (2*math.pi**2) * k**2 * sphbessel.jl(l, k*r) * psfunc(k)
+    return 1.0 / (2*math.pi**2) * k**2 * sphfunc.jl(l, k*r) * psfunc(k)
 
 
 def _integrand_log(lk, r, l, psfunc):
 
     k = np.exp(lk)
     return k * _integrand_linear(k, r, l, psfunc)
-    #return 1.0 / (2*math.pi**2) * k**3 * sphbessel.jl(l, k*r) * psfunc(k)
+    #return 1.0 / (2*math.pi**2) * k**3 * sphfunc.jl(l, k*r) * psfunc(k)
 
 
 def _integrand_offset(k, *args):

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. This
 project adheres to [Semantic Versioning](http://semver.org/), with the exception
 that I'm using PEP440 to denote pre-releases.
 
+## [2.1.0] - 2016-11-24
+
+### Added
+
+- Routines for calculating spherical harmonics accurately.
+
+### Changed
+
+- The routines in `cora.util.sphbessel` have been moved into `cora.util.sphfunc`.
+- There is now an optional dependency on `pygsl`.
+- Some old files have been moved from the repository.
+
+
 ## [2.0.0] - 2016-08-13
 
 ### Added
