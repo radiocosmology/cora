@@ -7,7 +7,7 @@ import scipy.special
 import numpy as np
 import math
 
-from cora.util import sphfunc, units, fftutil
+from cora.util import units, fftutil
 from cora.util import cubicspline as cs
 from cora.util.cosmology import Cosmology
 from cora.core import gaussianfield
@@ -774,6 +774,8 @@ class RedshiftCorrelation(object):
             The values of C_l(z1, z2)
         """
 
+        from ..util import sphfunc
+
         def _ps_single(l, z1, z2):
             if not self._vv_only:
                 raise Exception("Only works for vv_only at the moment.")
@@ -928,8 +930,8 @@ class RedshiftCorrelation(object):
         # Bump anything that is zero upwards to avoid a log zero warning.
         kperp[np.where(kperp == 0.0)] = 1e-10
 
-        coords[0,...] = np.log10(kperp / kperpmin) / np.log10(kperpmax / kperpmin) * (nkperp-1)
-        coords[1,...] = rpar / (math.pi / kparmax)
+        coords[0, ...] = np.log10(kperp / kperpmin) / np.log10(kperpmax / kperpmin) * (nkperp-1)
+        coords[1 ,...] = rpar / (math.pi / kparmax)
 
         psdd = scipy.ndimage.map_coordinates(self._aps_dd, coords, order=2)
         psdv = scipy.ndimage.map_coordinates(self._aps_dv, coords, order=2)
@@ -947,41 +949,36 @@ def _pl(l, x):
     return scipy.special.lpn(l, x)[0][l]
 
 
-def _integrand_linear(k, r, l, psfunc):
-
-    return 1.0 / (2*math.pi**2) * k**2 * sphfunc.jl(l, k*r) * psfunc(k)
-
-
-def _integrand_log(lk, r, l, psfunc):
-
-    k = np.exp(lk)
-    return k * _integrand_linear(k, r, l, psfunc)
-    #return 1.0 / (2*math.pi**2) * k**3 * sphfunc.jl(l, k*r) * psfunc(k)
-
-
-def _integrand_offset(k, *args):
-
-    d1 = math.fabs(math.pi / args[0])
-    return (_integrand_linear(k, *args) + 4*_integrand_linear(k + d1, *args) +
-            6*_integrand_linear(k + 2*d1, *args) + 4*_integrand_linear(k + 3*d1, *args) +
-            _integrand_linear(k + 4*d1, *args)) / 16.0
-
-
-def _integrand_taper(k, *args):
-
-    d1 = math.fabs(math.pi / args[0])
-    return (15.0*_integrand_linear(k, *args) + 11.0*_integrand_linear(k + d1, *args) +
-            5.0*_integrand_linear(k + 2*d1, *args) + _integrand_linear(k + 3*d1, *args)) / 16.0
-
-
 @np.vectorize
 def _integrate(r, l, psfunc):
 
+    from ..util import sphfunc
+
+    def _integrand_linear(k, r, l, psfunc):
+        return 1.0 / (2 * math.pi**2) * k**2 * sphfunc.jl(l, k * r) * psfunc(k)
+
+
+    def _integrand_log(lk, r, l, psfunc):
+        k = np.exp(lk)
+        return k * _integrand_linear(k, r, l, psfunc)
+
+
+    def _integrand_offset(k, *args):
+        d1 = math.fabs(math.pi / args[0])
+        return (_integrand_linear(k, *args) + 4 * _integrand_linear(k + d1, *args) +
+                6 * _integrand_linear(k + 2 * d1, *args) + 4 * _integrand_linear(k + 3 * d1, *args) +
+                _integrand_linear(k + 4 * d1, *args)) / 16.0
+
+
+    def _integrand_taper(k, *args):
+        d1 = math.fabs(math.pi / args[0])
+        return (15.0 * _integrand_linear(k, *args) + 11.0 * _integrand_linear(k + d1, *args) +
+                5.0 * _integrand_linear(k + 2 * d1, *args) + _integrand_linear(k + 3 * d1, *args)) / 16.0
+
     def _int(f, a, b, args=()):
-        return quad(f, a, b, args=args, limit=1000, epsrel = 1e-7,
+        return quad(f, a, b, args=args, limit=1000, epsrel=1e-7,
                     full_output=(0 if _feedback else 1))[0]
-        #return Integrate_Patterson(f, a, b, eps = 1e-7, abs=1e-10, args=args)[0]
-        #return integrate.chebyshev(f, a, b, epsrel = 1e-7, epsabs=1e-9, args=args)
+
     mink = 1e-4
     maxk = 1e3
     cutk = 5e1
@@ -989,14 +986,14 @@ def _integrate(r, l, psfunc):
 
     argv = (r, l, psfunc)
 
-    r1 = _int(_integrand_log, math.log(mink*d), math.log(cutk*d), args = argv)
-    r2 = _int(_integrand_taper, cutk*d, (cutk+1.0)*d, args = argv)
-    r3 = _int(_integrand_offset, cutk*d, maxk*d, args = argv)
+    r1 = _int(_integrand_log, math.log(mink * d), math.log(cutk * d), args=argv)
+    r2 = _int(_integrand_taper, cutk * d, (cutk + 1.0) * d, args=argv)
+    r3 = _int(_integrand_offset, cutk * d, maxk * d, args=argv)
 
     if _feedback:
         print r1, r2, r3
 
-    return r1+r2+r3
+    return r1 + r2 + r3
 
 
 def inverse_approx(f, x1, x2):

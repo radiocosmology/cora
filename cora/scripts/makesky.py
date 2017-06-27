@@ -233,3 +233,5 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
         dset.attrs['__memh5_distributed_dset'] = False
         dset = f.create_dataset('index_map/pol', data=polmap)
         dset.attrs['__memh5_distributed_dset'] = False
+        dset = f.create_dataset('index_map/pixel', data=np.arange(data.shape[2]))
+        dset.attrs['__memh5_distributed_dset'] = False
