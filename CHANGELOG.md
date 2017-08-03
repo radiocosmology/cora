@@ -6,6 +6,12 @@ that I'm using PEP440 to denote pre-releases.
 
 ## [2.1.1] - 2017-08-02
 
+### Added
+
+- Added the ability to control the oversampling done when generating
+  realisations of multi-frequency angular power spectra.
+- A new module for fast, parallel, bi-linear interpolation.
+
 ### Changed
 
 - Significant optimisations to the calculation of cosmological angular power spectra
