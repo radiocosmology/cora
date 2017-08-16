@@ -33,16 +33,17 @@ def faraday_rotate(polmap, rm_map, frequencies):
         The Faraday rotated map.
     """
 
-    qu_complex = polmap[:, 1] + 1.0J * polmap[:, 2]
+    # Apply frequency by frequency to reduce memory consumption
+    for ii, freq in enumerate(frequencies):
+        qu_complex = polmap[ii, 1] + 1.0J * polmap[ii, 2]
 
-    wv = 1e-6 * units.c / frequencies
+        wv = 1e-6 * units.c / freq
 
-    faraday = np.exp(-2.0J * wv[:, np.newaxis] * rm_map[np.newaxis, :])
+        faraday = np.exp(-2.0J * wv * rm_map)
+        qu_complex = qu_complex * faraday
 
-    qu_complex = qu_complex * faraday
-
-    polmap[:, 1] = qu_complex.real
-    polmap[:, 2] = qu_complex.imag
+        polmap[ii, 1] = qu_complex.real
+        polmap[ii, 2] = qu_complex.imag
 
     return polmap
 
