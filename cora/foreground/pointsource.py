@@ -510,6 +510,8 @@ class CombinedPointSources(maps.Map3d):
         nu_0 = 408.0
         l_0 = 100.0
 
+        oversample = 0
+
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
         flux_max = 4.0 * (151.0 / 600.0)**DiMatteo.spectral_mean # Convert to a flux cut at 151 MHz
