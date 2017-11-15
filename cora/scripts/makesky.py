@@ -86,8 +86,9 @@ def foreground(ctx, maxflux):
 
 
 @cli.command()
+@click.option('--spectral-index', default='md', type=click.Choice(['md', 'gsm', 'gd']))
 @click.pass_context
-def galaxy(ctx):
+def galaxy(ctx, spectral_index):
     """Generate a Milky way only foreground map.
 
     Use Haslam (extrapolated with a spatially varying spectral index) as a base,
@@ -101,6 +102,7 @@ def galaxy(ctx):
     gal = galaxy.ConstrainedGalaxy()
     gal.nside = ctx.obj.nside
     gal.frequencies = ctx.obj.freq
+    gal.spectral_map = spectral_index
 
     # Fetch galactic sky
     cs = gal.getpolsky() if ctx.obj.full_pol else gal.getsky()
