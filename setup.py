@@ -42,17 +42,18 @@ cs_ext = Extension('cora.util.cubicspline', [ cython_file('cora/util/cubicspline
                    extra_compile_args=args,
                    extra_link_args=args)
 
-# Tri-linear map extension
-tm_ext = Extension('cora.util.trilinearmap', [cython_file('cora/util/trilinearmap')],
-                   include_dirs=[np.get_include()])
-
+# Bi-linear map extension
+bm_ext = Extension('cora.util.bilinearmap', [cython_file('cora/util/bilinearmap')],
+                   include_dirs=[np.get_include()],
+                   extra_compile_args=args,
+                   extra_link_args=args)
 
 setup(
     name='cora',
     version=cora.__version__,
 
     packages=find_packages(),
-    ext_modules=[cs_ext, tm_ext],
+    ext_modules=[cs_ext, bm_ext],
     install_requires=['numpy>=1.7', 'scipy>=0.10', 'healpy>=1.8', 'h5py', 'click'],
     extras_require={
         'sphfunc': ["pygsl"]

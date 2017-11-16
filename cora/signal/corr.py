@@ -4,10 +4,11 @@ import scipy
 import scipy.ndimage
 import scipy.fftpack
 import scipy.special
+import scipy.interpolate
 import numpy as np
 import math
 
-from cora.util import units, fftutil
+from cora.util import units, fftutil, bilinearmap
 from cora.util import cubicspline as cs
 from cora.util.cosmology import Cosmology
 from cora.core import gaussianfield
@@ -859,8 +860,8 @@ class RedshiftCorrelation(object):
 
         self._aps_cache = True
 
-
     _freq_window = 0.0
+
     def angular_powerspectrum_fft(self, la, za1, za2):
         """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
 
@@ -887,26 +888,24 @@ class RedshiftCorrelation(object):
 
         if not self._aps_cache:
 
-            kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[:,np.newaxis]
-
-            #kpar = (np.fft.fftfreq(nkpar) * 2 * nkpar)[np.newaxis,:]
-            kpar = np.linspace(0, kparmax, nkpar)[np.newaxis,:]
+            kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[:, np.newaxis]
+            kpar = np.linspace(0, kparmax, nkpar)[np.newaxis, :]
 
             k = (kpar**2 + kperp**2)**0.5
             mu = kpar / k
             mu2 = kpar**2 / k**2
 
             if self.ps_2d:
-                self._dd = self.ps_vv(k, mu) * np.sinc(kpar * self._freq_window / (2*np.pi))**2
+                self._dd = self.ps_vv(k, mu) * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
             else:
-                self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2*np.pi))**2
+                self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
 
             self._dv = self._dd * mu2
             self._vv = self._dd * mu2**2
 
-            self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2*nkpar)
-            self._aps_dv = scipy.fftpack.dct(self._dv, type=1) * kparmax / (2*nkpar)
-            self._aps_vv = scipy.fftpack.dct(self._vv, type=1) * kparmax / (2*nkpar)
+            self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2 * nkpar)
+            self._aps_dv = scipy.fftpack.dct(self._dv, type=1) * kparmax / (2 * nkpar)
+            self._aps_vv = scipy.fftpack.dct(self._vv, type=1) * kparmax / (2 * nkpar)
 
             self._aps_cache = True
 
@@ -920,27 +919,32 @@ class RedshiftCorrelation(object):
         D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
 
         xc = 0.5 * (xa1 + xa2)
-
-        kperp = la / xc
-
         rpar = np.abs(xa2 - xa1)
 
-        coords = np.empty((2,) + kperp.shape)
-
         # Bump anything that is zero upwards to avoid a log zero warning.
-        kperp[np.where(kperp == 0.0)] = 1e-10
+        la = np.where(la == 0.0, 1e-10, la)
 
-        coords[0, ...] = np.log10(kperp / kperpmin) / np.log10(kperpmax / kperpmin) * (nkperp-1)
-        coords[1 ,...] = rpar / (math.pi / kparmax)
+        x = (np.log10(la) - np.log10(xc * kperpmin)) / np.log10(kperpmax / kperpmin) * (nkperp - 1)
+        y = rpar / (math.pi / kparmax)
 
-        psdd = scipy.ndimage.map_coordinates(self._aps_dd, coords, order=2)
-        psdv = scipy.ndimage.map_coordinates(self._aps_dv, coords, order=2)
-        psvv = scipy.ndimage.map_coordinates(self._aps_vv, coords, order=2)
+        def _interp2d(arr, x, y):
+            x, y = np.broadcast_arrays(x, y)
+            sh = x.shape
 
-        return D1*D2*pf1*pf2*(b1*b2*psdd + (f1*b2 + f2*b1)*psdv + f1*f2*psvv) / (xc**2 * np.pi)
+            x, y = x.flatten(), y.flatten()
+            v = np.zeros_like(x)
+            bilinearmap.interp(arr, x, y, v)
 
+            return v.reshape(sh)
+
+        psdd = _interp2d(self._aps_dd, x, y)
+        psdv = _interp2d(self._aps_dv, x, y)
+        psvv = _interp2d(self._aps_vv, x, y)
+
+        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * ((b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv)
 
     ## By default use the flat sky approximation.
+    #angular_powerspectrum = profile(angular_powerspectrum_fft)
     angular_powerspectrum = angular_powerspectrum_fft
 
 

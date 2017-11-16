@@ -33,7 +33,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
     """
 
     if zromb == 0:
-        return aps(np.arange(lmax+1)[:, np.newaxis, np.newaxis],
+        return aps(np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
                    zarray[np.newaxis, :, np.newaxis], zarray[np.newaxis, np.newaxis, :])
 
     else:
@@ -41,13 +41,13 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
         zhalf = np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
         zlen = zarray.size
         zint = 2**zromb + 1
-        zspace = 2.0*zhalf / 2**zromb
+        zspace = 2.0 * zhalf / 2**zromb
 
         za = (zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]).flatten()
 
-        lsections = np.array_split(np.arange(lmax+1), lmax / 5)
+        lsections = np.array_split(np.arange(lmax + 1), lmax / 5)
 
-        cla = np.zeros((lmax+1, zlen, zlen), dtype=np.float64)
+        cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
         for lsec in lsections:
             clt = aps(lsec[:, np.newaxis, np.newaxis],
@@ -58,10 +58,9 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
             clt = si.romb(clt, dx=zspace, axis=4)
             clt = si.romb(clt, dx=zspace, axis=2)
 
-            cla[lsec] = clt / (2*zhalf)**2 # Normalise
+            cla[lsec] = clt / (2 * zhalf)**2  # Normalise
 
         return cla
-
 
 
 def mkfullsky(corr, nside, alms=False):
@@ -86,43 +85,32 @@ def mkfullsky(corr, nside, alms=False):
     """
 
     numz = corr.shape[1]
-    maxl = corr.shape[0]-1
+    maxl = corr.shape[0] - 1
 
     if corr.shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-    trans = np.zeros_like(corr)
+    alm_array = np.zeros((numz, 1, maxl + 1, maxl + 1), dtype=np.complex128)
 
-    for i in range(maxl+1):
-        trans[i] = nputil.matrix_root_manynull(corr[i], truncate=False)
+    # Generate gaussian deviates and transform to have correct correlation
+    # structure
+    for l in range(maxl + 1):
+        # Add in a small diagonal to try and ensure positive definiteness
+        cmax = corr[l].diagonal().max() * 1e-14
+        corrm = corr[l] + np.identity(numz) * cmax
 
-
-    la, ma = healpy.Alm.getlm(maxl)
-
-    matshape = la.shape + (numz,)
-
-    # Construct complex gaussian random variables of unit variance
-    gaussvars = (np.random.standard_normal(matshape)
-                 + 1.0J * np.random.standard_normal(matshape)) / 2.0**0.5
-
-    # Transform variables to have correct correlation structure
-    for i, l in enumerate(la):
-        gaussvars[i] = np.dot(trans[l], gaussvars[i])
+        trans = nputil.matrix_root_manynull(corrm, truncate=False)
+        gaussvars = nputil.complex_std_normal((numz, l + 1))
+        alm_array[:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
 
     if alms:
-        alm_freq = np.zeros((numz, maxl+1, maxl+1), dtype=np.complex128)
-        for i in range(numz):
-            alm_freq[i] = hputil.unpack_alm(gaussvars[:, i], maxl)
-
-        return alm_freq
-
-    hpmaps = np.empty((numz, healpy.nside2npix(nside)))
+        return alm_array
 
     # Perform the spherical harmonic transform for each z
-    for i in range(numz):
-        hpmaps[i] = healpy.alm2map(gaussvars[:,i].copy(), nside, verbose=False)
+    sky = hputil.sphtrans_inv_sky(alm_array, nside)
+    sky = sky[:, 0]
 
-    return hpmaps
+    return sky
 
 
 def mkconstrained(corr, constraints, nside):

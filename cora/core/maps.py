@@ -191,39 +191,44 @@ class Map3d(Map2d):
         return c
 
 
-
-
 class Sky3d(Map3d):
+    """Base class for generating maps of the spherical sky at multiple frequencies.
 
+    Attributes
+    ----------
+    oversample : int
+        Over sample the angular power spectrum in frequency/redshift and
+        integrate over them to capture the effect of finite width frequency
+        channels.
+    """
 
+    oversample = 3
 
     def angular_powerspectrum(self, l, nu1, nu2):
         """C_l(nu1, nu2) for the given map."""
 
         raise Exception("Not implemented in base class.")
 
-
     def mean_nu(self, freq):
         return np.zeros_like(freq)
 
-
-
     def getfield(self):
-
         raise Exception("Not implemented in base class.")
 
-
     def getsky(self):
+        """Create a map of the unpolarised sky.
+        """
 
         lmax = 3 * self.nside - 1
-        cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
+        cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels,
+                             zromb=self.oversample)
 
-        return (self.mean_nu(self.nu_pixels)[:, np.newaxis]
-                + skysim.mkfullsky(cla, self.nside))
-
+        return (self.mean_nu(self.nu_pixels)[:, np.newaxis] +
+                skysim.mkfullsky(cla, self.nside))
 
     def getpolsky(self):
-
+        """Create a map of the fully polarised sky (Stokes, I, Q, U and V).
+        """
         sky_I = self.getsky()
 
         sky_IQU = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
@@ -231,7 +236,6 @@ class Sky3d(Map3d):
         sky_IQU[:, 0] = sky_I
 
         return sky_IQU
-
 
     def getalms(self, lmax):
 

@@ -67,7 +67,6 @@ def map_variance(input_map, nside):
     return healpy.reorder(var_map, n2r=True)
 
 
-
 def chunk_var(a):
     """A variance routine that breaks the calculation up into chunks to save
     memory.
@@ -94,8 +93,6 @@ def chunk_var(a):
         t += x2
 
     return t / a.size
-
-
 
 
 class ConstrainedGalaxy(maps.Sky3d):
@@ -130,7 +127,6 @@ class ConstrainedGalaxy(maps.Sky3d):
         vm = map_variance(healpy.smoothing(self._haslam, sigma=np.radians(0.5), verbose=False), 16)
         self._amp_map = healpy.smoothing(healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0), verbose=False)
 
-
     def _load_data(self):
         print "Loading data for galaxy simulation."
 
@@ -139,15 +135,14 @@ class ConstrainedGalaxy(maps.Sky3d):
         f = np.load(_data_file)
         self._haslam = f['haslam']
 
-        self._sp_ind = { 'gsm' : f['spectral_gsm'],
-                         'md' : f['spectral_md'],
-                         'gd' : f['spectral_gd'] }
+        self._sp_ind = {'gsm': f['spectral_gsm'],
+                        'md': f['spectral_md'],
+                        'gd': f['spectral_gd'] }
 
         self._faraday = f['faraday']
 
         # Upgrade the map resolution to the same as the Healpix map (nside=512).
         #self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
-
 
     def getsky(self, debug=False, celestial=True):
         """Create a realisation of the *unpolarised* sky.
@@ -168,21 +163,20 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         syn = FullSkySynchrotron()
 
-        lmax = 3*self.nside - 1
+        lmax = 3 * self.nside - 1
         efreq = np.concatenate((np.array([408.0, 1420.0]), self.nu_pixels))
 
-        ## Construct map of random fluctuations
-        #cla = skysim.clarray(syn.angular_powerspectrum, lmax, efreq, zwidth=(self.nu_pixels[1] - self.nu_pixels[0]))
+        # Construct map of random fluctuations
         cla = skysim.clarray(syn.angular_powerspectrum, lmax, efreq, zromb=0)
         fg = skysim.mkfullsky(cla, self.nside)
 
-        ## Find the smoothed fluctuations on each scale
+        # Find the smoothed fluctuations on each scale
         sub408 = healpy.smoothing(fg[0], fwhm=np.radians(1.0), verbose=False)
         sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8), verbose=False)
 
-        ## Make a multifrequency map constrained to look like the smoothed maps
-        ## depending on the spectral_map apply constraints at upper and lower frequency (GSM),
-        ## or just at Haslam map frequency
+        # Make a multifrequency map constrained to look like the smoothed maps
+        # depending on the spectral_map apply constraints at upper and lower
+        # frequency (GSM), or just at Haslam map frequency
         if self.spectral_map == 'gsm':
             fgs = skysim.mkconstrained(cla, [(0, sub408), (1, sub1420)], self.nside)
         else:
@@ -192,30 +186,39 @@ class ConstrainedGalaxy(maps.Sky3d):
         sc = healpy.ud_grade(self._sp_ind[self.spectral_map], self.nside)
         am = healpy.ud_grade(self._amp_map, self.nside)
 
-        ## Bump up the variance of the fluctuations according to the variance
-        #  map
+        # Bump up the variance of the fluctuations according to the variance map
         vm = healpy.smoothing(fg[0], sigma=np.radians(0.5), verbose=False)
         vm = healpy.smoothing(map_variance(vm, 16)**0.5, sigma=np.radians(2.0), verbose=False)
         mv = vm.mean()
 
-        ## Construct the fluctuations map
+        # Construct the fluctuations map
         fgt = (am / mv) * (fg - fgs)
 
-        ## Get the smooth, large scale emission from Haslam+spectralmap
+        if not debug:
+            del fg, fgs
+
+        # Get the smooth, large scale emission from Haslam+spectralmap
         fgsmooth = haslam[np.newaxis, :] * ((efreq / 408.0)[:, np.newaxis]**sc)
 
-        # Rescale to ensure output is always positive
-        tanh_lin = lambda x: np.where(x < 0, np.tanh(x), x)
-        fg2 = (fgsmooth * (1.0 + tanh_lin(fgt / fgsmooth)))[2:]
+        # Rescale to ensure output is always positive, do this inplace where
+        # possible to save memory
+        def tanh_lin(x):
+            return np.where(x < 0, np.tanh(x), x)
 
-        ## Co-ordinate transform if required
+        fgt /= fgsmooth
+        fgt = tanh_lin(fgt)
+        fgt += 1
+        fgt *= fgsmooth
+        fgt = fgt[2:]
+
+        # Co-ordinate transform if required
         if celestial:
-            fg2 = hputil.coord_g2c(fg2)
+            fgt = hputil.coord_g2c(fgt)
 
         if debug:
-            return fg2, fg, fgs, fgt, fgsmooth, am, mv
+            return fgt, fg, fgs, fgsmooth, am, mv
 
-        return fg2
+        return fgt
 
 
 
@@ -246,8 +249,8 @@ class ConstrainedGalaxy(maps.Sky3d):
         # Set the correlation length in phi
         xiphi = 1.0
 
-        lmax = 3*self.nside - 1
-        la = np.arange(lmax+1)
+        lmax = 3 * self.nside - 1
+        la = np.arange(lmax + 1)
 
         # The angular powerspectrum of polarisation fluctuations, we will use
         # this to generate the base fluctuations
@@ -267,10 +270,10 @@ class ConstrainedGalaxy(maps.Sky3d):
         # Generate random maps in the Fourier conjugate of phi. This is
         # equivalent to generating random uncorrelated phi maps and FFting
         # into the conjugate.
-        map2 = np.zeros((12*self.nside**2, nphi), dtype=np.complex128)
+        map2 = np.zeros((12 * self.nside**2, nphi), dtype=np.complex128)
         print "SHTing to give random maps"
         for i in range(nphi):
-            w = np.random.standard_normal((lmax+1, 2*lmax+1, 2)).view(np.complex128)[..., 0]
+            w = np.random.standard_normal((lmax + 1, 2 * lmax + 1, 2)).view(np.complex128)[..., 0]
             w *= ps_weight
             map2[:, i] = hputil.sphtrans_inv_complex(w, self.nside)
 
@@ -312,7 +315,6 @@ class ConstrainedGalaxy(maps.Sky3d):
             alpha = 2.0 * phi * 3e2**2 / freq**2
 
             return (np.exp(1.0J * alpha) * np.sinc(alpha * dx / np.pi))
-            #return np.exp(1.0J * alpha)
 
         fa = self.nu_pixels
         df = np.median(np.diff(fa))

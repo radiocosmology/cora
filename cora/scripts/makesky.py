@@ -86,8 +86,9 @@ def foreground(ctx, maxflux):
 
 
 @cli.command()
+@click.option('--spectral-index', default='md', type=click.Choice(['md', 'gsm', 'gd']))
 @click.pass_context
-def galaxy(ctx):
+def galaxy(ctx, spectral_index):
     """Generate a Milky way only foreground map.
 
     Use Haslam (extrapolated with a spatially varying spectral index) as a base,
@@ -101,6 +102,7 @@ def galaxy(ctx):
     gal = galaxy.ConstrainedGalaxy()
     gal.nside = ctx.obj.nside
     gal.frequencies = ctx.obj.freq
+    gal.spectral_map = spectral_index
 
     # Fetch galactic sky
     cs = gal.getpolsky() if ctx.obj.full_pol else gal.getsky()
@@ -136,8 +138,9 @@ def pointsource(ctx, maxflux):
 
 @cli.command('21cm')
 @click.option('--eor', is_flag=True, help='Use parameters more suitable for reionisation epoch (rather than intensity mapping).')
+@click.option('--oversample', type=int, help='Oversample in redshift by 2**oversample_z + 1 to capute finite width bins.')
 @click.pass_context
-def _21cm(ctx, eor):
+def _21cm(ctx, eor, oversample):
     """Generate a Gaussian simulation of the unresolved 21cm background.
     """
 
@@ -151,6 +154,7 @@ def _21cm(ctx, eor):
 
     cr.nside = ctx.obj.nside
     cr.frequencies = ctx.obj.freq
+    cr.oversample = oversample if oversample is not None else 3
 
     # Generate signal realisation and save.
     sg_map = cr.getpolsky() if ctx.obj.full_pol else cr.getsky()

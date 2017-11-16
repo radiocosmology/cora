@@ -1,4 +1,4 @@
-""" 
+"""
 ================================================
 Cosmology routines (:mod:`~cora.util.cosmology`)
 ================================================
@@ -30,7 +30,7 @@ from cora.util.units import *
 
 class Cosmology(object):
     """Class to store a cosmology, and compute measures.
-    
+
     Defines a cosmology and allows calculation of a few simple
     quantities (notably distance measures and lookback time).
 
@@ -81,7 +81,7 @@ class Cosmology(object):
 
     # Dark energy parameters
     w_0 = -1.0
-    w_a =  0.0
+    w_a = 0.0
 
     @property
     def omega_m(self):
@@ -95,10 +95,9 @@ class Cosmology(object):
     def omega_k(self):
         return 1.0 - (self.omega_l + self.omega_b + self.omega_c + self.omega_g + self.omega_n)
 
-    
-
     @staticmethod
-    def init_physical(ombh2 = 0.022161, omch2 = 0.11889, H0 = 67.77, omkh2 = 0.0, t0 = 2.726, nnu = 3.046):
+    def init_physical(ombh2=0.022161, omch2=0.11889,
+                      H0=67.77, omkh2=0.0, t0=2.726, nnu=3.046):
         r"""Initialise a new cosmology from the physical parameters.
 
         This uses the CMB relevant parameterisation that is commonly
@@ -132,7 +131,7 @@ class Cosmology(object):
         c.omega_c = omch2 / h**2
         c.H0 = H0
 
-        rhoc = 3.0 * c.H()**2 * c_sl**2/ (8.0 * math.pi * G_n)
+        rhoc = 3.0 * c.H()**2 * c_sl**2 / (8.0 * math.pi * G_n)
         rhorad = a_rad * t0**4
         c.omega_g = rhorad / rhoc
 
@@ -141,9 +140,7 @@ class Cosmology(object):
 
         c.omega_l = 1.0 - (omkh2 + ombh2 + omch2) / h**2 - (c.omega_g + c.omega_n)
 
-
         return c
-
 
     def H(self, z=0.0):
         """The Hubble parameter at redshift z.
@@ -162,14 +159,15 @@ class Cosmology(object):
         H : scalar
             The Hubble parameter.
         """
-        
-        H  = self.H0 * (self.omega_r * (1 + z)**4 +  self.omega_m * (1 + z)**3
-                        + self.omega_k * (1 + z)**2
-                        + self.omega_l * (1 + z)**(3*(1+self.w_0 + self.w_a)) * np.exp(-3*self.w_a * z / (1 + z)))**0.5
-                
+
+        H = self.H0 * (self.omega_r * (1 + z)**4 + self.omega_m * (1 + z)**3 +
+                       self.omega_k * (1 + z)**2 +
+                       self.omega_l * (1 + z)**(3 * (1 + self.w_0 + self.w_a)) *
+                       np.exp(-3 * self.w_a * z / (1 + z)))**0.5
+
         # Convert to SI
         return H * 1000.0 / mega_parsec
-        
+
     def comoving_distance(self, z):
         r"""The comoving distance to redshift z.
 
@@ -179,7 +177,7 @@ class Cosmology(object):
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
@@ -190,12 +188,11 @@ class Cosmology(object):
         def f(z1):
             return c_sl / self.H(z1)
 
-        return _intfz(f, 0.0, z) / self._unit_distance
-
+        return _intf_0_z(f, z) / self._unit_distance
 
     def proper_distance(self, z):
         r"""The proper distance to an event at redshift z.
-        
+
         The proper distance can be ill defined. In this case we mean
         the comoving transverse separation between two events at the
         same redshift divided by their angular separation. This
@@ -205,7 +202,7 @@ class Cosmology(object):
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
@@ -219,7 +216,7 @@ class Cosmology(object):
         dhi = math.sqrt(math.fabs(om_k)) * self.H() / c_sl * self._unit_distance
 
         if(om_k < 0.0):
-            x = np.sin(x * dhi)  / dhi
+            x = np.sin(x * dhi) / dhi
         elif(om_k > 0.0):
             x = np.sinh(x * dhi) / dhi
 
@@ -237,16 +234,14 @@ class Cosmology(object):
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
             The angular diameter distance to each redshift.
         """
 
-        
         return self.proper_distance(z) / (1 + z)
-
 
     def luminosity_distance(self, z):
         r""" The luminosity distance to redshift z. This
@@ -256,14 +251,13 @@ class Cosmology(object):
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         dist : array_like
             The luminosity distance to each redshift.
         """
         return self.proper_distance(z) * (1 + z)
-
 
     def lookback_time(self, z):
         r""" The lookback time out to redshift z.
@@ -272,7 +266,7 @@ class Cosmology(object):
         ----------
         z : array_like
             The redshift(s) to calculate at.
-        
+
         Returns
         -------
         time : array_like
@@ -283,7 +277,7 @@ class Cosmology(object):
         def f(z1):
             return 1.0 / (self.H(z1) * (1 + z1))
 
-        return _intfz(f, 0.0, z) / self._unit_time
+        return _intf_0_z(f, z) / self._unit_time
 
     @property
     def _unit_distance(self):
@@ -308,23 +302,35 @@ class Cosmology(object):
             return 1.0
 
         raise Exception("Units not known")
-        
 
-@np.vectorize
-def _intfz(f, a, b):
-    # A wrapper function to allow vectorizing integrals, cuts such
-    # that integrals to very high-z converge (by integrating in log z
-    # instead).
 
-    def _int(f, a, b):
-        return si.romberg(f, a, b, rtol=1e-5, tol=1e-10, vec_func=True)
-    
-    
-    cut = 1e2
-    if a < cut and b > cut:
-        return _int(f, a, cut) + _int(lambda lz: np.exp(lz) * f(np.exp(lz)), np.log(cut), np.log(b))
-    else:
-        return _int(f, a, b)
+def _intf_0_z(f, z):
+    # Use an ODE integrator to carry out integrals up to certain redshifts.
+    # The reason to use an ODE integrator is that this makes it quick to
+    # evaluate at a large vector of redshifts
+
+    # Wrap and unwrap in case we are operating on a scalar
+    if not isinstance(z, np.ndarray):
+        z = np.array([z])
+        return _intf_0_z(f, z)[0]
+
+    # Write the y' function for the ODE solver
+    def _yp(y, z):
+        return f(z)
+
+    # Create the output array
+    x = np.zeros_like(z)
+
+    # Figure out the indices required to sort the redshifts into order
+    sort_ind = np.argsort(z, axis=None)
+
+    # Produce the redshift array required
+    za = np.insert(z.ravel()[sort_ind], 0, 0)
+
+    # Use the ODE integrator and write into the output array
+    x.ravel()[sort_ind] = si.odeint(_yp, 0.0, za)[1:, 0]
+
+    return x
 
 
 def growth_factor(z, c=None):
@@ -353,12 +359,13 @@ def growth_factor(z, c=None):
 
     x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z)**3
 
-    num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
-    den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
+    num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
+    den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
 
     d = (1.0 + x)**0.5 / (1.0 + z) * num / den
 
     return d
+
 
 def growth_rate(z, c):
     r"""Approximation for the matter growth rate.
@@ -387,16 +394,15 @@ def growth_rate(z, c):
 
     x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z)**3
 
-    dnum = 3.0*x*(1.175 + 0.6127*x + 0.01607*x**2)
-    dden = 3.0*x*(1.857 + 2.042 *x + 0.4590 *x**2)
+    dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x**2)
+    dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x**2)
 
-    num = 1.0 + 1.175*x + 0.3064*x**2 + 0.005355*x**3
-    den = 1.0 + 1.857*x + 1.021 *x**2 + 0.1530  *x**3
+    num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
+    den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
 
     f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
 
     return f
-
 
 
 def sound_horizon(c=None):
@@ -422,12 +428,12 @@ def ps_nowiggle(kh, z=0.0, c=None):
     k = kh * h
 
     omh2 = c.omega_m * h**2
-    rb  = c.omega_b / c.omega_m
+    rb = c.omega_b / c.omega_m
     alpha = 1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb**2
 
     s = sound_horizon(c)
 
-    gamma = c.omega_m * h * (alpha + (1 - alpha) / (1 + (0.43*k*s)**4))
+    gamma = c.omega_m * h * (alpha + (1 - alpha) / (1 + (0.43 * k * s)**4))
 
     tcmb_27 = 2.726 / 2.7
 
@@ -454,4 +460,3 @@ def ps_nowiggle(kh, z=0.0, c=None):
     pk = d2k * 2 * np.pi**2 / kh**3 # Change to normal PS
 
     return pk
-
