@@ -11,6 +11,8 @@ that I'm using PEP440 to denote pre-releases.
 - Added the ability to control the oversampling done when generating
   realisations of multi-frequency angular power spectra.
 - A new module for fast, parallel, bi-linear interpolation.
+- The ability to choose the spectral index map when simulating the
+  galaxy.
 
 ### Changed
 
