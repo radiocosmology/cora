@@ -759,6 +759,144 @@ class RedshiftCorrelation(object):
 
 
 
+    def _realisation_dk_no_rsd(self, d, n):                                      
+        """Generate the density field in a 3d cube without velocity damping.
+        Also creates a mu/k filed. 
+        Notice that, unlike _realisation_dv(), this returns both cubes in 
+        Fourier space. 
+        Includes no treatment of redshift space distortions (no velocity damping).
+        """                                                               
+
+        def psv(karray):
+            """Assume k0 is line of sight"""
+            k = (karray**2).sum(axis=3)**0.5
+            return self.ps_vv(k)
+
+        # Generate an underlying random field realisation of the
+        # matter distribution. 
+
+        print "Gen field." 
+        rfv = gaussianfield.RandomField(npix = n, wsize = d)
+        rfv.powerspectrum = psv
+
+        vf0 = rfv.getfield()        
+
+        # Construct an array of \mu^2 for each Fourier mode.
+        print "Construct kvec"
+        spacing = rfv._w / rfv._n
+        kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
+        print "Construct mu/k = k_par/k^2"
+        mukarr = kvec[...,0] / (kvec**2).sum(axis=3)
+        mukarr.flat[0] = 0.0
+                                                                          
+        dk = fftutil.rfftn(vf0)
+                                                                          
+        #return (dk, mukarr) #, kvec)
+        return (dk, mukarr, kvec)
+
+
+    def realisation_za(self, z1, z2, thetax, thetay, numz, numx, numy):    
+#                 zspace=True, refinement=1, report_physical=False,     
+#                 density_only=False, no_mean=False, no_evolution=False,
+#                 pad=5):                                               
+        """ Generate a matter realization in a regular cubic volume, using the
+            Zeldovich Approximation. Also applies Redshift space distortions
+            within the same formalism.
+            TODO: Currently not applying bias
+            TODO: Currently does not apply differential evolution times in
+            the line-of-sight direction.
+        """
+    
+        redshift = np.mean([z1,z2]) # Redshift to compute data cube at
+    
+        d1 = self.cosmology.proper_distance(z1)   
+        d2 = self.cosmology.proper_distance(z2)   
+        c1 = self.cosmology.comoving_distance(z1) 
+        c2 = self.cosmology.comoving_distance(z2) 
+        c_center = (c1 + c2) / 2.                 
+    
+        d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])                                                               
+        n = np.array([numz, int(d2 / d1 * numx), int(d2 / d1 * numy)])
+    
+        # TODO: Richard does a bunch of more complicated things (such as padding) 
+        # here that I don't!!
+        # Fix n such that it is even in the last element
+        if n[-1] % 2 != 0:                                
+            n[-1] += 1 
+
+        Dz = self.growth_factor(redshift)/self.growth_factor(self.ps_redshift)
+        
+        dk, mukarr, kvec = self._realisation_dk_no_rsd(d,n)
+        # Apply growth factor (TODO: should od it later, but need invariants of matrix):
+        dk = Dz*dk
+        df = fftutil.irfftn(dk)
+        
+        psi_k = 1j*kvec*dk[...,np.newaxis]/(kvec**2).sum(axis=3)[...,np.newaxis]
+        # Correct for division by zero at origin:
+        # Power at zero k is zero (no mean value for delta_r)
+        psi_k[0,0,0,:] = np.zeros(3,dtype=psi_k.dtype)
+        # inverse Fourier transform:
+        # TODO: Carreful! This might differ from the rest of the fftutil 
+        # implementation if fftutil._use_anfft==True
+        # TODO: Modify fftutil to accept keyword arguments...?
+        psi = np.fft.irfftn(psi_k,axes=[0,1,2])
+        
+        # TODO: for now growth_rate is applied to a single redshift for the whole cube
+        # In the future it will be an array
+        # TODO: Do I need to normalize the growth factor by "/self.growth_factor(ps_redshift)" 
+        # as well? D -> D/D(1.5)  =>  dot(D) -> dot(D)/D(1.5)  ??
+        psi_rsd = ( self.growth_rate(redshift)
+                    *psi # Just project in the x direction:
+                    *np.array([1.,0.,0.])[np.newaxis,np.newaxis,np.newaxis,:] )
+    
+        # Matrix given by: k_i k_j (needed to define the deformation matrix)
+        k_matrix = np.array([ np.outer(vec,vec)
+                      for vec in kvec.reshape((np.prod(kvec.shape)/3,3)) ]
+                      ).reshape(np.append(kvec.shape,3))
+    
+        # Deformation matrix
+        deform_k = -1.*k_matrix*dk[...,np.newaxis,np.newaxis]/(kvec**2).sum(axis=3)[...,np.newaxis,np.newaxis]
+        # Correct for division by zero at k origin:
+        deform_k[0,0,0] = np.zeros((3,3),dtype=deform_k.dtype)
+        # Test for nans
+    #    print any(numpy.isnan(deform_k))
+        
+        # Inverse Fourier transform to get deformation matrix:
+        # TODO: Carreful! This might differ from the rest of the fftutil 
+        # implementation if fftutil._use_anfft==True
+        # TODO: Modify fftutil to accept keyword arguments...?
+        deform = np.fft.irfftn(deform_k,axes=[0,1,2])
+        
+        # Computes eigenvalues for last two dimmensions:
+        eigvals = np.linalg.eigvals(deform) # without rsd
+        # Compute overdensities in ZA:
+        rho_za = np.prod(1./(eigvals+1.),axis=-1) # normalized density
+        # TODO: delete rho_za for memory purposes
+        delta_za = abs(rho_za) - 1.
+        # delta_za = rho_za - 1.
+        
+        # TODO: do something with this statistic of number of shell crossings:
+        n_cross = np.sum(np.where(rho_za>=0.,0,1))
+        n_tot = np.prod(rho_za.shape)
+        frac_cross = n_cross/float(n_tot)
+        print 'Fraction of voxels that shell-crossed: {0:e} ({1} out of {2})'.format(frac_cross,n_cross,n_tot)
+        # Taking abs() is a hack for shell crossing. Should affect minimal number of voxels with truncation
+        
+        # Use ZA density + interpolation for real displacement:
+        delta_za_disp = _interpolate_cube(delta_za,psi,n,d)
+    
+        # Use re-mapping for RSD:
+        # Notice that I have displaced back the density to the regular grid
+        # so I use posi as the initial positions again:
+    #     delta_za_rsd_disp = _particle_mesh(psi_rsd,delta_za_disp,n,d)
+        
+    #     return df, rho_za, delta_za_disp, delta_za_rsd_disp
+        return n_cross, df, rho_za, delta_za_disp
+
+
+
+
+
     def angular_powerspectrum_full(self, la, za1, za2):
         r"""The angular powerspectrum C_l(z1, z2). Calculate explicitly.
 
@@ -1024,3 +1162,119 @@ def inverse_approx(f, x1, x2):
     fa = f(xa)
 
     return cs.Interpolater(fa, xa)
+
+def _voxel_centers(n,d):
+    """ Generates voxel centres for a cube of voxel dimmension n
+        and physical dimmension d. Assumes line-of-site binning
+        is linear in physical units.
+    """
+    nxs, nys, nzs = np.meshgrid(range(n[0]),
+                            range(n[1]),
+                            range(n[2]), indexing='ij')
+    
+    return ( np.array(zip(nxs.flatten(),
+                          nys.flatten(),
+                          nzs.flatten())
+                     ).reshape(np.append(n,3))*(d/n)[np.newaxis,np.newaxis,np.newaxis,:] 
+             + 0.5*(d/n)[np.newaxis,np.newaxis,np.newaxis,:] )
+
+def _interpolate_cube(data0,disp,n,d):
+    """ Interpolates values in a displaced grid back into a
+        regular grid
+        Assumes data is in a regular cube.
+    """
+
+    from scipy.interpolate import RegularGridInterpolator
+
+    # Two more points to have periodic b.c. wrap.
+    pts = [ (np.arange(n[ii]+2)-0.5)*d[ii]/n[ii] for ii in range(len(n))]
+
+    # Extend data beyond edges with periodic b.c.
+    # x-axis
+    data = np.insert(data0,0,data0[-1,:,:],axis=0)
+    data = np.append(data,data[1,:,:][None,:,:],axis=0)
+    # y-axis
+    data = np.insert(data,0,data[:,-1,:],axis=1)
+    data = np.append(data,data[:,1,:][:,None,:],axis=1)
+    # z-axis
+    data = np.insert(data,0,data[:,:,-1],axis=2)
+    data = np.append(data,data[:,:,1][:,:,None],axis=2)
+
+    interp_func = RegularGridInterpolator(pts, data)
+
+    # Inverse final positions (eulerian regular grid in Lagrangean coordinates)
+    inv_posf = _voxel_centers(n,d)-disp
+    # Implement periodic boundary conditions:
+    for ii in range(3):
+        out_of_bounds = np.logical_or(inv_posf[...,ii]<=0,inv_posf[...,ii]>d[ii])
+        inv_posf[...,ii] = np.where(out_of_bounds,inv_posf[...,ii]%d[ii],inv_posf[...,ii])
+
+    return interp_func(inv_posf.reshape(np.prod(n),3)).reshape(n)
+
+def _particle_mesh(psi,delta,n,d):
+    """ Uses a cloud-in-cells algorythm to compute a displaced density field.
+        Assumes data is in a regular cube.
+        TODO: Generates some ringing artifacts for large displacements.
+            Could be corrected by the use of a gaussian cloud?
+        TODO: This is slow code since it's implemented in python. Should move
+            to cython or c++.
+    """
+#    import time
+#    t1 = time.time()
+
+    # Initial positions
+    posi = _voxel_centers(n,d)
+
+    posf = posi + psi
+    
+    # Re-mapping from L space to E space
+    # Cloud-in-cells algorythm
+
+    # TODO: this might not be a contant in the future
+    l = d/n # sides of a single cell
+    voxel_volume = np.prod(l)
+
+    bins = [ (np.arange(n[ii])+1)*d[ii]/n[ii] for ii in range(len(n)) ]
+    idxs = np.array( zip( np.digitize(posf[...,0].flatten(),bins[0]),
+                          np.digitize(posf[...,1].flatten(),bins[1]),
+                          np.digitize(posf[...,2].flatten(),bins[2]) ) )
+
+    delta_disp = np.zeros(delta.shape)
+    wheights = np.zeros(delta.shape)
+
+    for ii in range(idxs.shape[0]):
+
+        slc = np.meshgrid(np.array([idxs[ii][0]-1,idxs[ii][0],idxs[ii][0]+1])%n[0],
+                          np.array([idxs[ii][1]-1,idxs[ii][1],idxs[ii][1]+1])%n[1],
+                          np.array([idxs[ii][2]-1,idxs[ii][2],idxs[ii][2]+1])%n[2], indexing='ij')
+
+        # Sliced initial and final positions:
+        posi_slc = posi[slc] # 3x3x3(x3) cube
+        posf_slc = posf.reshape(np.prod(n),3)[ii][None,None,None,:]
+        # Refer to start of first cell in posi slice. Enforce boundary conditions in 3x3x3 slice
+        bsln =  (posi_slc[0,0,0]-0.5*l)[None,None,None,:]
+        posf_slc = np.mod(posf_slc - bsln, d[None,None,None,:])
+        posi_slc = np.mod(posi_slc - bsln, d[None,None,None,:])
+
+        pos_diff = abs(posi_slc-posf_slc) # 3x3x3(x3) cube
+        
+        # Overlap:
+        overlap = np.logical_and(
+                        np.logical_and(pos_diff[...,0]<l[0],
+                                       pos_diff[...,1]<l[1]),
+                        pos_diff[...,2]<l[2])
+
+        overlap_fraction = np.prod(l[None,None,None,:]-pos_diff,axis=-1)/voxel_volume
+        overlap_fraction = np.where(overlap,overlap_fraction,0.)
+        
+        delta_disp[slc] += overlap_fraction*delta.flatten()[ii]
+        wheights[slc] += overlap_fraction
+
+    # See my notes for details
+    delta_disp += wheights - 1.
+
+#    print 'Time to run: ',time.time()-t1, 's'
+    
+    return delta_disp
+
+
