@@ -1000,7 +1000,83 @@ class RedshiftCorrelation(object):
 
     _freq_window = 0.0
 
+
+    # TODO: Names are changed here for purposes of testing only
+#    def angular_powerspectrum_fft(self, la, za1, za2):
+    def psi_angular_powerspectrum(self, la, za1, za2):
+        """The angular powerspectrum of the displacement field psi C_l(z1, z2) in a flat-sky limit.
+
+        Uses FFT based method to generate a lookup table for fast computation.
+
+        Parameters
+        ----------
+        l : array_like
+            The multipole moments to return at.
+        z1, z2 : array_like
+            The redshift slices to correlate.
+
+        Returns
+        -------
+        arr : array_like
+            The values of C_l(z1, z2)
+        """
+
+        kperpmin = 1e-4
+        kperpmax = 40.0
+        nkperp = 500
+        kparmax = 20.0
+        nkpar = 32768
+
+
+        kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[:, np.newaxis]
+        kpar = np.linspace(0, kparmax, nkpar)[np.newaxis, :]
+
+        k = (kpar**2 + kperp**2)**0.5
+
+        # Divide power spectrum by k^4 to get PS for gamma = nabla^(-2) delta 
+        self._dd_psi = self.ps_vv(k) / k**4 * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
+        self._aps_dd_psi = scipy.fftpack.dct(self._dd_psi, type=1) * kparmax / (2 * nkpar)
+#        self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
+#        self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2 * nkpar)
+
+        xa1 = self.cosmology.comoving_distance(za1)
+        xa2 = self.cosmology.comoving_distance(za2)
+
+        b1, b2 = self.bias_z(za1), self.bias_z(za2)
+        f1, f2 = self.growth_rate(za1), self.growth_rate(za2)
+        pf1, pf2 = self.prefactor(za1), self.prefactor(za2)
+        D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
+        D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
+
+        xc = 0.5 * (xa1 + xa2)
+        rpar = np.abs(xa2 - xa1)
+
+        # Bump anything that is zero upwards to avoid a log zero warning.
+        la = np.where(la == 0.0, 1e-10, la)
+
+        x = (np.log10(la) - np.log10(xc * kperpmin)) / np.log10(kperpmax / kperpmin) * (nkperp - 1)
+        y = rpar / (math.pi / kparmax)
+
+        def _interp2d(arr, x, y):
+            x, y = np.broadcast_arrays(x, y)
+            sh = x.shape
+
+            x, y = x.flatten(), y.flatten()
+            v = np.zeros_like(x)
+            bilinearmap.interp(arr, x, y, v)
+
+            return v.reshape(sh)
+
+        psdd_psi = _interp2d(self._aps_dd_psi, x, y)
+#        psdd = _interp2d(self._aps_dd, x, y)
+
+        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd_psi # I think this removes RSD?
+#        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd # I think this removes RSD?
+
+
+    # TODO: Names are changed here for purposes of testing only
     def angular_powerspectrum_fft(self, la, za1, za2):
+#    def angular_powerspectrum_fft_true(self, la, za1, za2):
         """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
 
         Uses FFT based method to generate a lookup table for fast computation.
@@ -1078,8 +1154,15 @@ class RedshiftCorrelation(object):
         psdd = _interp2d(self._aps_dd, x, y)
         psdv = _interp2d(self._aps_dv, x, y)
         psvv = _interp2d(self._aps_vv, x, y)
+#        print za1
+#        print za2
+#        print x # inf's
+#        print y # zeroes
+#        print self._aps_dd # Correct
+#        print psdd # All zeroes
 
-        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * ((b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv)
+#        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * ((b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv)
+        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd # I think this removes RSD?
 
     ## By default use the flat sky approximation.
     #angular_powerspectrum = profile(angular_powerspectrum_fft)

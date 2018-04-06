@@ -44,6 +44,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
         zspace = 2.0 * zhalf / 2**zromb
 
         za = (zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]).flatten()
+#        print za
 
         lsections = np.array_split(np.arange(lmax + 1), lmax / 5)
 
@@ -52,6 +53,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
         for lsec in lsections:
             clt = aps(lsec[:, np.newaxis, np.newaxis],
                       za[np.newaxis, :, np.newaxis], za[np.newaxis, np.newaxis, :])
+#            print clt
 
             clt = clt.reshape(-1, zlen, zint, zlen, zint)
 
@@ -68,11 +70,14 @@ def mkfullsky(corr, nside, alms=False):
 
     Make a set of full sky gaussian random fields, given the correlation
     structure. Useful for constructing a set of different redshift slices.
+    Now also accepts a list of correlation matrices to generate maps from
+    with a singe realization.
 
     Parameters
     ----------
-    corr : np.ndarray (lmax+1, numz, numz)
-        The correlation matrix :math:`C_l(z, z')`.
+    corr : np.ndarray (lmax+1, numz, numz) or list
+        The correlation matrix :math:`C_l(z, z')`, or a list
+        of correlation matrices
     nside : integer
         The resolution of the Healpix maps.
     alms : boolean, optional
@@ -83,34 +88,47 @@ def mkfullsky(corr, nside, alms=False):
     hpmaps : np.ndarray (numz, npix)
         The Healpix maps. hpmaps[i] is the i'th map.
     """
+    if not isinstance(corr,list):
+        corr = [corr]
+    ncorr = len(corr)
 
-    numz = corr.shape[1]
-    maxl = corr.shape[0] - 1
+    numz = corr[0].shape[1]
+    maxl = corr[0].shape[0] - 1
 
-    if corr.shape[2] != numz:
+    if corr[0].shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-    alm_array = np.zeros((numz, 1, maxl + 1, maxl + 1), dtype=np.complex128)
+    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1), 
+                           dtype=np.complex128) for ii in range(ncorr)]
 
     # Generate gaussian deviates and transform to have correct correlation
     # structure
     for l in range(maxl + 1):
-        # Add in a small diagonal to try and ensure positive definiteness
-        cmax = corr[l].diagonal().max() * 1e-14
-        corrm = corr[l] + np.identity(numz) * cmax
-
-        trans = nputil.matrix_root_manynull(corrm, truncate=False)
         gaussvars = nputil.complex_std_normal((numz, l + 1))
-        alm_array[:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
+        for ii in range(ncorr):
+            # Add in a small diagonal to try and ensure positive definiteness
+            cmax = corr[ii][l].diagonal().max() * 1e-14
+            corrm = corr[ii][l] + np.identity(numz) * cmax
+    
+            trans = nputil.matrix_root_manynull(corrm, truncate=False)
+            alm_list[ii][:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
 
     if alms:
-        return alm_array
+        if ncorr == 1:
+            return alm_list[0]
+        else:
+            return alm_list
 
-    # Perform the spherical harmonic transform for each z
-    sky = hputil.sphtrans_inv_sky(alm_array, nside)
-    sky = sky[:, 0]
+    sky = []
+    for ii in range(ncorr):
+        # Perform the spherical harmonic transform for each z
+        sky.append(hputil.sphtrans_inv_sky(alm_list[ii], nside))
+        sky[ii] = sky[ii][:, 0]
 
-    return sky
+    if ncorr == 1:
+        return sky[0]
+    else:
+        return sky
 
 
 def mkconstrained(corr, constraints, nside):
