@@ -208,6 +208,37 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
 
 
+    # Remove growth factor.
+    def angular_powerspectrum_nogrowth(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
+        D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
+        return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)/(D1*D2)
+
+
 #    # Override psi_angular_powerspectrum to switch to allow using frequency
     def psi_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
         """Calculate the angular powerspectrum of the inverse Laplacian of delta.

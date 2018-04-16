@@ -131,6 +131,76 @@ def mkfullsky(corr, nside, alms=False):
         return sky
 
 
+def mkfullsky_der1(corr, nside, comovd, alms=False):
+    """Construct a set of correlated Healpix maps and their derivatives.
+
+    Make a set of full sky gaussian random fields, given the correlation
+    structure. Useful for constructing a set of different redshift slices.
+    Also accepts a list of correlation matrices to generate maps from
+    with a singe realization.
+
+    Parameters
+    ----------
+    corr : np.ndarray (lmax+1, numz, numz) or list
+        The correlation matrix :math:`C_l(z, z')`, or a list
+        of correlation matrices
+    nside : integer
+        The resolution of the Healpix maps.
+    alms : boolean, optional
+        If True return the alms instead of the sky maps.
+
+    Returns
+    -------
+    resmaps : list [ncorr]
+        The Healpix maps and derivatives. 
+    """
+    if not isinstance(corr,list):
+        corr = [corr]
+    ncorr = len(corr)
+
+    numz = corr[0].shape[1]
+    maxl = corr[0].shape[0] - 1
+
+    if corr[0].shape[2] != numz:
+        raise Exception("Correlation matrix is incorrect shape.")
+
+    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1), 
+                           dtype=np.complex128) for ii in range(ncorr)]
+
+    # Generate gaussian deviates and transform to have correct correlation
+    # structure
+    for l in range(maxl + 1):
+        gaussvars = nputil.complex_std_normal((numz, l + 1))
+        for ii in range(ncorr):
+            # Add in a small diagonal to try and ensure positive definiteness
+            cmax = corr[ii][l].diagonal().max() * 1e-14
+            corrm = corr[ii][l] + np.identity(numz) * cmax
+    
+            trans = nputil.matrix_root_manynull(corrm, truncate=False)
+            alm_list[ii][:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
+
+    if alms:
+        if ncorr == 1:
+            return alm_list[0]
+        else:
+            return alm_list
+
+    resmaps = []
+    for ii in range(ncorr):
+        # Perform the spherical harmonic transform for each z
+        sky, d_theta, d_phi = hputil.sphtrans_inv_sky_der1(alm_list[ii], nside)
+        # TODO: I am not sure of  the units for comovd and what they were for 
+        # 'k' in psi_angular_pwerspectrum:
+        spacing = np.gradient(comovd)
+        d_x = np.gradient(sky[:,0],spacing[:,None],axis=0)
+        resmaps.append([sky[:,0], d_theta[:,0]/comovd[:,None], d_phi[:,0]/comovd[:,None], d_x])
+
+    if ncorr == 1:
+        return resmaps[0]
+    else:
+        return resmaps
+
+
 def mkconstrained(corr, constraints, nside):
     """Construct a set of Healpix maps, satisfying given constraints
     on specified frequency slices, by using the lowest eigenmodes.

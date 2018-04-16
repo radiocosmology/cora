@@ -1035,6 +1035,8 @@ class RedshiftCorrelation(object):
 
         # Divide power spectrum by k^4 to get PS for gamma = nabla^(-2) delta 
         self._dd_psi = self.ps_vv(k) / k**4 * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
+        # If I remove the 1/k^4 the spike goes away...
+#        self._dd_psi = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
         self._aps_dd_psi = scipy.fftpack.dct(self._dd_psi, type=1) * kparmax / (2 * nkpar)
 #        self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
 #        self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2 * nkpar)
@@ -1045,8 +1047,9 @@ class RedshiftCorrelation(object):
         b1, b2 = self.bias_z(za1), self.bias_z(za2)
         f1, f2 = self.growth_rate(za1), self.growth_rate(za2)
         pf1, pf2 = self.prefactor(za1), self.prefactor(za2)
-        D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
-        D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
+        # Don't include evolution at this point
+#        D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
+#        D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
 
         xc = 0.5 * (xa1 + xa2)
         rpar = np.abs(xa2 - xa1)
@@ -1068,10 +1071,8 @@ class RedshiftCorrelation(object):
             return v.reshape(sh)
 
         psdd_psi = _interp2d(self._aps_dd_psi, x, y)
-#        psdd = _interp2d(self._aps_dd, x, y)
 
-        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd_psi # I think this removes RSD?
-#        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd # I think this removes RSD?
+        return (pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd_psi # No Growth factor nor RSD
 
 
     # TODO: Names are changed here for purposes of testing only

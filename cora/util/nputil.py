@@ -71,22 +71,22 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
     """
 
     # Try to perform a Cholesky first as it's much faster (8x)
-    try:
-        root = la.cholesky(mat)
-        num_pos = mat.shape[0]
+#    try:
+#        root = la.cholesky(mat)
+#        num_pos = mat.shape[0]
+#
+#    # If that doesn't work do an eigenvalue and throw out any tiny modes
+#    except la.LinAlgError:
+    evals, evecs = la.eigh(mat)
 
-    # If that doesn't work do an eigenvalue and throw out any tiny modes
-    except la.LinAlgError:
-        evals, evecs = la.eigh(mat)
+    evals[np.where(evals < evals.max() * threshold)] = 0.0
+    num_pos = len(np.flatnonzero(evals))
 
-        evals[np.where(evals < evals.max() * threshold)] = 0.0
-        num_pos = len(np.flatnonzero(evals))
+    if truncate:
+        evals = evals[np.newaxis, -num_pos:]
+        evecs = evecs[:, -num_pos:]
 
-        if truncate:
-            evals = evals[np.newaxis, -num_pos:]
-            evecs = evecs[:, -num_pos:]
-
-        root = (evecs * evals[np.newaxis, :]**0.5)
+    root = (evecs * evals[np.newaxis, :]**0.5)
 
     if truncate:
         return root, num_pos

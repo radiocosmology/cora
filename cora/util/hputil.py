@@ -522,6 +522,41 @@ def sphtrans_inv_sky(alm, nside):
     return sky_freq
 
 
+def sphtrans_inv_sky_der1(alm, nside):
+    """Invert a set of alms back into a 3d sky and angular derivatives.
+
+    No support for polarization.
+
+    Parameters
+    ----------
+    alm : np.ndarray[freq, 1, l, m]
+        Expects the full range (both positive and negative m).
+    nside : integer
+        Resolution of final Healpix maps.
+
+    Returns
+    -------
+    skymaps : np.ndarray[freq, 1, healpix_index]
+    d_theta :  np.ndarray[freq, 1, healpix_index]
+    d_phi   :  np.ndarray[freq, 1, healpix_index]
+
+    """
+    nfreq = alm.shape[0]
+#    npol = alm.shape[1]
+#    pol = (npol >= 3)
+
+    sky_freq = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
+    d_theta = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
+    d_phi = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
+
+    for i in range(nfreq):
+        almp = pack_alm(alm[i,0])
+        sky_freq[i, 0], d_theta[i, 0], d_phi[i, 0] = healpy.alm2map_der1(almp,
+                                                            nside)
+
+    return sky_freq, d_theta, d_phi
+
+
 def coord_x2y(map, x, y):
     """Rotate a map from galactic co-ordinates into celestial co-ordinates.
 
