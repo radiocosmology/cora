@@ -189,10 +189,14 @@ def mkfullsky_der1(corr, nside, comovd, alms=False):
     for ii in range(ncorr):
         # Perform the spherical harmonic transform for each z
         sky, d_theta, d_phi = hputil.sphtrans_inv_sky_der1(alm_list[ii], nside)
-        # TODO: I am not sure of  the units for comovd and what they were for 
-        # 'k' in psi_angular_pwerspectrum:
-        spacing = np.gradient(comovd)
-        d_x = np.gradient(sky[:,0],spacing[:,None],axis=0)
+        # TODO: careful with np.gradient! meaning of second argument (varargs) changed
+        # from numpy 1.12 to 1.13. Now it accepts an array of 'x values' along the axis.
+        # Before it wanted a scalar representing the 'x-variation' between points.
+        # The problem is that if you give it an array in old versions it doesn't crash!
+        # I guess it silently takes the first value as 'x-variation'...? 
+        #spacing = np.gradient(comovd)
+        #d_x = np.gradient(sky[:,0],spacing,axis=0)
+        d_x = np.gradient(sky[:,0],comovd,axis=0)
         resmaps.append([sky[:,0], d_theta[:,0]/comovd[:,None], d_phi[:,0]/comovd[:,None], d_x])
 
     if ncorr == 1:
