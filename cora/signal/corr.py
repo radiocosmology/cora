@@ -1046,7 +1046,6 @@ class RedshiftCorrelation(object):
 
         b1, b2 = self.bias_z(za1), self.bias_z(za2)
         f1, f2 = self.growth_rate(za1), self.growth_rate(za2)
-        pf1, pf2 = self.prefactor(za1), self.prefactor(za2)
         # Don't include evolution at this point
 #        D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
 #        D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
@@ -1072,7 +1071,7 @@ class RedshiftCorrelation(object):
 
         psdd_psi = _interp2d(self._aps_dd_psi, x, y)
 
-        return (pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd_psi # No Growth factor nor RSD
+        return (1. / (xc**2 * np.pi)) * (b1 * b2) * psdd_psi # No Growth factor nor RSD
 
 
     # TODO: Names are changed here for purposes of testing only
@@ -1163,7 +1162,7 @@ class RedshiftCorrelation(object):
 #        print psdd # All zeroes
 
 #        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * ((b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv)
-        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * (b1 * b2) * psdd # I think this removes RSD?
+        return ( 1. / (xc**2 * np.pi)) * (b1 * b2) * psdd # I think this removes RSD, evolution and temperature normalization.
 
     ## By default use the flat sky approximation.
     #angular_powerspectrum = profile(angular_powerspectrum_fft)
