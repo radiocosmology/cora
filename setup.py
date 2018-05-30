@@ -48,12 +48,18 @@ bm_ext = Extension('cora.util.bilinearmap', [cython_file('cora/util/bilinearmap'
                    extra_compile_args=args,
                    extra_link_args=args)
 
+# Particle mesh extension
+pm_ext = Extension('cora.util.pmesh', [cython_file('cora/util/pmesh')],
+                   include_dirs=[np.get_include()],
+                   extra_compile_args=args,
+                   extra_link_args=args)
+
 setup(
     name='cora',
     version=cora.__version__,
 
     packages=find_packages(),
-    ext_modules=[cs_ext, bm_ext],
+    ext_modules=[cs_ext, bm_ext, pm_ext],
     install_requires=['numpy>=1.7', 'scipy>=0.10', 'healpy>=1.8', 'h5py', 'click'],
     extras_require={
         'sphfunc': ["pygsl"]
