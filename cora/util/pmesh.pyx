@@ -62,17 +62,25 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     # TODO: This might be slow too. Might include in the cython loop below?
     # (Actually only contains the small for loops, so it should be fine)
     # Interpolate angular displacements to higher resolution grid:
-    psi = np.array([[ hp.pixelfunc.get_interp_val(psi[ii,jj],*ang0)
-                    for jj in range(psi.shape[1]) ]
-                    for ii in range(psi.shape[0]) ])
-
-    # TODO: I am renaming psi 2 times in the function! One above and once
-    # below, in the loop. This is confusing, and the second re-naming 
-    # might even be creating problems.
+    psi_ugd = np.zeros((psi.shape[0],psi.shape[1],ang0.shape[1]),dtype=mapdtype)
+    for ii in range(psi.shape[0]):
+        for jj in range(psi.shape[1]):
+            psi_ugd[ii,jj] = hp.pixelfunc.get_interp_val(psi[ii,jj],*ang0)
+        
+# Not improving...
+#    psi_ugd = np.zeros((psi.shape[0],psi.shape[1],ang0.shape[1]),dtype=mapdtype)
+##    cpdef void upgrade_res(double[:,:,:] psi, double[:,:] ang0):
+#    def upgrade_res(psi, ang0):
+#        cdef long ii, jj
+#        for ii in range(psi.shape[0]):
+#            for jj in range(psi.shape[1]):
+#                psi_ugd[ii,jj] = hp.pixelfunc.get_interp_val(psi[ii,jj],*ang0)
+#
+#    upgrade_res(psi, ang0)
 
     # Output of psi_int has shape: 
     # (ndim=3,length of input argument, npix*nside_factor**2)
-    psi_int = interp1d(comovd, psi, axis=1, kind='linear')#,fill_value='extrapolate')
+    psi_int = interp1d(comovd, psi_ugd, axis=1, kind='linear')#,fill_value='extrapolate')
     delta_za = np.zeros((nz,npix),dtype=mapdtype)
     npasses = len(comov0)//nslices
     if len(comov0)%nslices > 0:
