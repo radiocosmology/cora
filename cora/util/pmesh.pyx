@@ -1,3 +1,5 @@
+# cython: profile=True
+
 """ Module for deriving a density filed from a distribution of particles. """
 
 import numpy as np
@@ -93,31 +95,20 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
         ang_idx = hp.pixelfunc.ang2pix(nside, *ang1)
         radial_idx = np.digitize(comov1,comov_bins)
 
-        # TODO: I am not passing 'maps' as an argument yet
-        idxs = zip(radial_idx.flatten(),ang_idx.flatten())
-        counts = Counter(idxs)
-
-        assign_counts(delta_za,counts,comovd,npix)
-
-#        for ii in range(len(comovd)):
-#            for jj in range(npix):
-#                # TODO: Check if this is still necessary!!
-##                 if (ii==0) or (ii==len(comovd)-1):
-##                     # TODO: The 4 should be a variable?
-##                     delta_za[ii,jj] = (counts[(ii,jj)]+4.)/float(n_subvoxels) - 1.
-##                 else:
-#                
-#                delta_za[ii,jj] += counts[(ii,jj)]
-##                 if ii==0 and jj==0:
-##                     print counts[(ii,jj)]
-##                     print delta_za[ii,jj]
-##                     print delta_za[ii,jj]/float(n_subvoxels) - 1.
+        fill_delta_za(delta_za, radial_idx.flatten(), ang_idx.flatten())
 
     return delta_za/float(n_subvoxels) - 1.
 
-def assign_counts(delta_za,counts,comovd,npix):
-    for ii in range(len(comovd)):
-        for jj in range(npix):
-            delta_za[ii,jj] += counts[(ii,jj)]
 
+# I tried to use 'nogil' in this function call but apparently it
+# degraded the performance slightly. 
+cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx, long[:] ang_idx):
+# 'delta_za' is defined in the argument as a cython memoryview.
+# It can take a numpy array as parameter and modifying one changes the other.
+    #cdef int ii, jj
+    cdef long ii, jj, kk
+    for kk in range(len(rad_idx)):
+        ii = rad_idx[kk]
+        jj = ang_idx[kk]
+        delta_za[ii,jj] += 1.
 
