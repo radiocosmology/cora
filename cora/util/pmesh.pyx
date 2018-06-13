@@ -29,23 +29,13 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
         x_new = x_new[nexclude:-nexclude]
         return fi(x_new)#, x_new
 
-    def interp_binlimits(f):
-        from scipy.interpolate import interp1d
-        n = len(f)
-        # TODO: my version of scipy doesn't have extrapolate (starts in 0.17.0).
-        # I implement it myself...
-        fi = interp1d(np.arange(n), f, kind='linear')#,fill_value='extrapolate')
-        # Remove out of range points because I don't have extrapolation yet
-        x_new = np.arange(n-1)+0.5
-        f_new = fi(x_new)
-        # Do not include edges due to way np.digitize works:
-        # # Insert zeroeth extrapolation:
-        # f_new = np.insert(f_new,0,2*f[0]-f_new[0])
-        # # Insert last extrapolation:
-        # f_new = np.append(f_new,2*f[-1]-f_new[-1])
-        return f_new#, x_new
+    # Comoving distance bins for digitizing:
+    # Does not include edges due to way np.digitize works.
+    # This actually adds all displacements past the last bins to
+    # the last bins. It doesn't matter with padding, 
+    # because the last bins get discarded.
+    comov_bins = (comovd[1:]+comovd[:-1])*0.5
 
-    comov_bins = interp_binlimits(comovd) # comoving distance bins for digitizing
     npix = hp.pixelfunc.nside2npix(nside) # In original size maps
     nz = len(comovd)
     mapdtype = psi.dtype
@@ -59,25 +49,18 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     ang0 = np.array(hp.pixelfunc.pix2ang(nside*nside_factor, 
                     np.arange(hp.pixelfunc.nside2npix(nside*nside_factor))))
 
-    # TODO: This might be slow too. Might include in the cython loop below?
-    # (Actually only contains the small for loops, so it should be fine)
-    # Interpolate angular displacements to higher resolution grid:
+    # TODO: To limit the amout of memory used, I would put this loop
+    # inside of the 'for passi...' loop below. This way I only generate
+    # psi_ugd for the redshift slices in the pass (less memory) and I give
+    # This to the interpolator 'psi_int'. I would have to create a slice
+    # corresponding to 'slci' to select the part of psi_ugd to generate.
+    # taking care to avoid extrapolation.
     psi_ugd = np.zeros((psi.shape[0],psi.shape[1],ang0.shape[1]),dtype=mapdtype)
+    # Interpolate angular displacements to higher resolution grid:
     for ii in range(psi.shape[0]):
         for jj in range(psi.shape[1]):
             psi_ugd[ii,jj] = hp.pixelfunc.get_interp_val(psi[ii,jj],*ang0)
         
-# Not improving...
-#    psi_ugd = np.zeros((psi.shape[0],psi.shape[1],ang0.shape[1]),dtype=mapdtype)
-##    cpdef void upgrade_res(double[:,:,:] psi, double[:,:] ang0):
-#    def upgrade_res(psi, ang0):
-#        cdef long ii, jj
-#        for ii in range(psi.shape[0]):
-#            for jj in range(psi.shape[1]):
-#                psi_ugd[ii,jj] = hp.pixelfunc.get_interp_val(psi[ii,jj],*ang0)
-#
-#    upgrade_res(psi, ang0)
-
     # Output of psi_int has shape: 
     # (ndim=3,length of input argument, npix*nside_factor**2)
     psi_int = interp1d(comovd, psi_ugd, axis=1, kind='linear')#,fill_value='extrapolate')
