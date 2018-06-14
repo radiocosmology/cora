@@ -8,7 +8,7 @@ import numpy as np
 #cimport numpy as np
 #cimport cython
 
-def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
+def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=1):
     """
     """
         
@@ -55,22 +55,73 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     # This to the interpolator 'psi_int'. I would have to create a slice
     # corresponding to 'slci' to select the part of psi_ugd to generate.
     # taking care to avoid extrapolation.
-    psi_ugd = np.zeros((psi.shape[0],psi.shape[1],ang0.shape[1]),dtype=mapdtype)
-    # Interpolate angular displacements to higher resolution grid:
-    for ii in range(psi.shape[0]):
-        for jj in range(psi.shape[1]):
-            psi_ugd[ii,jj] = hp.pixelfunc.get_interp_val(psi[ii,jj],*ang0)
+
+    # psi_ugd = np.zeros((psi.shape[0],psi.shape[1],ang0.shape[1]),dtype=mapdtype)
+    # # Interpolate angular displacements to higher resolution grid:
+    # for ii in range(psi.shape[0]):
+    #     for jj in range(psi.shape[1]):
+    #         psi_ugd[ii,jj] = hp.pixelfunc.get_interp_val(psi[ii,jj],*ang0)
         
-    # Output of psi_int has shape: 
-    # (ndim=3,length of input argument, npix*nside_factor**2)
-    psi_int = interp1d(comovd, psi_ugd, axis=1, kind='linear')#,fill_value='extrapolate')
+    # # Output of psi_int has shape: 
+    # # (ndim=3,length of input argument, npix*nside_factor**2)
+    # psi_int = interp1d(comovd, psi_ugd, axis=1, kind='linear')
+
+
     delta_za = np.zeros((nz,npix),dtype=mapdtype)
-    npasses = len(comov0)//nslices
-    if len(comov0)%nslices > 0:
+
+    #########################################
+    # Changing behaviour: now nslices correscpond to
+    # low resolution line of sight axis. Default should be 1
+    # which means 'ndiv_radial' slices of the higher resolution
+    # axis at a time.
+
+    npasses = len(comovd)//nslices
+    if len(comovd)%nslices > 0:
         npasses += 1
-    for passi in range(npasses):
-        slci = np.s_[passi*nslices:(passi+1)*nslices]
-        psi_slc = psi_int(comov0[slci])
+    for ii in range(npasses):
+        stt = ii*nslices
+        stp = (ii+1)*nslices
+        if stp>len(comovd): stp=len(comovd)
+        # Slice for selection in original radial axis
+        slc_orig = np.s_[stt:stp]
+        # Slice for selection in upgraded resolution radial axis
+        # The weird subtraction is needed because I remove initial points
+        # to avoid extrapolation.
+        stt_ugd = stt*ndiv_radial-int(ndiv_radial/2)
+        stp_ugd = stp*ndiv_radial-int(ndiv_radial/2)
+        if stt_ugd<0: stt_ugd=0
+        if stp_ugd>len(comov0): stp_ugd=len(comov0)
+        slc_ugd = np.s_[stt_ugd:stp_ugd]
+    
+        print 'Hey there!', comovd[slc_orig], comov0[slc_ugd]
+        print stt, stp, int(ndiv_radial/2), stt_ugd, stp_ugd
+    
+        nslc = stp-stt # Number of slices in this pass (could be < nslices)
+        # Displacements in higher pixel resolution, but lower radial resolution:
+        psi_ugd = np.zeros((psi.shape[0],nslc,ang0.shape[1]),dtype=mapdtype)
+        # Interpolate angular displacements to higher resolution grid:
+        for ii in range(psi.shape[0]):
+            for jj in range(nslc):
+                psi_ugd[ii,jj] = hp.pixelfunc.get_interp_val(psi[ii,jj+stt],*ang0)
+
+        # Interpolator for radial axis. Output of psi_int() has shape:
+        # (ndim=3,length of input argument, npix*nside_factor**2)
+        psi_int = interp1d(comovd[slc_orig], psi_ugd, axis=1, kind='linear')
+
+
+
+    ########################################
+
+#    npasses = len(comov0)//nslices
+#    if len(comov0)%nslices > 0:
+#        npasses += 1
+#    for passi in range(npasses):
+#        slci = np.s_[passi*nslices:(passi+1)*nslices]
+
+
+    ########################################
+
+        psi_slc = psi_int(comov0[slc_ugd])
         # Final angles:
         ang1 = ang0[:,None,:]+psi_slc[:2]
         # Wrap theta around pi:
@@ -81,7 +132,7 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
         wrap_idxs = np.where(np.logical_or(ang1[1]>2.*np.pi,ang1[1]<0))
         ang1[1][wrap_idxs] = ang1[1][wrap_idxs]%(2.*np.pi)
         # Final radial positions:
-        comov1 = comov0[slci,None] + psi_slc[2]
+        comov1 = comov0[slc_ugd,None] + psi_slc[2]
 
         ang_idx = hp.pixelfunc.ang2pix(nside, *ang1)
         radial_idx = np.digitize(comov1,comov_bins)
@@ -102,4 +153,3 @@ cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx, long[:] ang_idx)
         ii = rad_idx[kk]
         jj = ang_idx[kk]
         delta_za[ii,jj] += 1.
-
