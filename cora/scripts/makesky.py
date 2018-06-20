@@ -163,6 +163,35 @@ def _21cm(ctx, eor, oversample):
     write_map(ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
 
 
+# TODO: Need to implement the options to pass nside_factor and ndiv_radial
+@cli.command('21cm_za')
+@click.option('--oversample', type=int, help='Oversample in redshift by 2**oversample_z + 1 to capute finite width bins.')
+@click.pass_context
+def _21cm_za(ctx, oversample):
+    """Generate a simulation of the unresolved 21cm background
+    using the Zeldovich approximation.
+    """
+
+    from cora.signal import corr21cm
+
+    cr = corr21cm.Corr21cmZA()
+
+    cr.nside = ctx.obj.nside
+    cr.frequencies = ctx.obj.freq
+    cr.oversample = oversample if oversample is not None else 0
+
+    # Generate signal realization and save
+    sg_map = cr.getsky()
+
+    ## Generate signal realisation and save.
+    #sg_map = cr.getpolsky() if ctx.obj.full_pol else cr.getsky()
+
+    # TODO: need to think what to do with ctx.obj.include_pol here
+    # Should probably test to see if pol was asked and raise() in case afirmative
+    ## Save map
+    #write_map(ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
+
+
 @cli.command()
 @click.pass_context
 def gaussianfg(ctx):

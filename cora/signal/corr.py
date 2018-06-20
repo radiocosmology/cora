@@ -796,9 +796,6 @@ class RedshiftCorrelation(object):
 
 
     def realisation_za(self, z1, z2, thetax, thetay, numz, numx, numy):    
-#                 zspace=True, refinement=1, report_physical=False,     
-#                 density_only=False, no_mean=False, no_evolution=False,
-#                 pad=5):                                               
         """ Generate a matter realization in a regular cubic volume, using the
             Zeldovich Approximation. Also applies Redshift space distortions
             within the same formalism.
@@ -1002,17 +999,17 @@ class RedshiftCorrelation(object):
     _freq_window = 0.0
 
 
-    def psi_angular_powerspectrum(self, la, za1, za2):
-        """The angular powerspectrum C_l(z1, z2) of delta/k^4 ( a field
-        proportional to the Newtonian potential) in a flat-sky limit. 
-        It is useful for generating the displacement field psi. 
-        
+    #def phi_angular_powerspectrum(self, la, za1, za2):
+    def angular_powerspectrum_realspace(self, la, za1, za2):
+        """The matter angular powerspectrum C_l(z1, z2) in a flat-sky limit.
 
+        Does not include bias, nor prefactors, nor redshif-space distorsion 
+        effects.
         Uses FFT based method to generate a lookup table for fast computation.
 
         Parameters
         ----------
-        l : array_like
+        la : array_like
             The multipole moments to return at.
         z1, z2 : array_like
             The redshift slices to correlate.
@@ -1038,8 +1035,7 @@ class RedshiftCorrelation(object):
             k = (kpar**2 + kperp**2)**0.5
 
             # TODO: Should I have 'if self.ps_2d:...' here?
-            # Divide power spectrum by k^4 to get PS for gamma = nabla^(-2) delta 
-            self._dd_psi = self.ps_vv(k) / k**4 * np.sinc(
+            self._dd_psi = self.ps_vv(k) * np.sinc(
                                 kpar * self._freq_window / (2 * np.pi))**2
             self._aps_dd_psi = scipy.fftpack.dct(
                                 self._dd_psi, type=1) * kparmax / (2 * nkpar)
@@ -1048,9 +1044,6 @@ class RedshiftCorrelation(object):
 
         xa1 = self.cosmology.comoving_distance(za1)
         xa2 = self.cosmology.comoving_distance(za2)
-
-        # TODO: Should I include bias here?
-        b1, b2 = self.bias_z(za1), self.bias_z(za2)
 
         xc = 0.5 * (xa1 + xa2)
         rpar = np.abs(xa2 - xa1)
@@ -1074,7 +1067,7 @@ class RedshiftCorrelation(object):
 
         psdd_psi = _interp2d(self._aps_dd_psi, x, y)
 
-        return (1. / (xc**2 * np.pi)) * (b1 * b2) * psdd_psi # No Growth factor nor RSD
+        return (1. / (xc**2 * np.pi)) * psdd_psi # No Growth factor nor RSD
 
 
     def angular_powerspectrum_fft(self, la, za1, za2):
@@ -1157,7 +1150,7 @@ class RedshiftCorrelation(object):
         psvv = _interp2d(self._aps_vv, x, y)
 
         # TODO: Switch this back to normal before merging to master
-#        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * ((b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv)
+        #return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * ((b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv)
         return ( 1. / (xc**2 * np.pi)) * (b1 * b2) * psdd # I think this removes RSD, evolution and temperature normalization.
 
     ## By default use the flat sky approximation.
@@ -1298,8 +1291,8 @@ def _particle_mesh(psi,delta,n,d):
         TODO: This is slow code since it's implemented in python. Should move
             to cython or c++.
     """
-#    import time
-#    t1 = time.time()
+    #import time
+    #t1 = time.time()
 
     # Initial positions
     posi = _voxel_centers(n,d)
@@ -1352,7 +1345,7 @@ def _particle_mesh(psi,delta,n,d):
     # See my notes for details
     delta_disp += wheights - 1.
 
-#    print 'Time to run: ',time.time()-t1, 's'
+    #print 'Time to run: ',time.time()-t1, 's'
     
     return delta_disp
 

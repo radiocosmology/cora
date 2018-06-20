@@ -36,7 +36,7 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     # Comoving distance bins for digitizing:
     # Does not include edges due to way np.digitize works.
     # This actually adds all displacements past the last bins to
-    # the last bins. It doesn't matter with padding, 
+    # the last bins. It doesn't matter with redshift padding, 
     # because the last bins get discarded.
     comov_bins = (comovd[1:]+comovd[:-1])*0.5
 

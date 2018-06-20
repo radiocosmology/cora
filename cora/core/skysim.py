@@ -132,7 +132,8 @@ def mkfullsky(corr, nside, alms=False):
 
 
 def mkfullsky_der1(corr, nside, comovd, alms=False):
-    """Construct a set of correlated Healpix maps and their derivatives.
+    """Construct a set of correlated Healpix maps and their 3D
+    spacial derivatives.
 
     Make a set of full sky gaussian random fields, given the correlation
     structure. Useful for constructing a set of different redshift slices.
@@ -197,7 +198,8 @@ def mkfullsky_der1(corr, nside, comovd, alms=False):
         #spacing = np.gradient(comovd)
         #d_x = np.gradient(sky[:,0],spacing,axis=0)
         d_x = np.gradient(sky[:,0],comovd,axis=0)
-        resmaps.append([sky[:,0], d_theta[:,0]/comovd[:,None], d_phi[:,0]/comovd[:,None], d_x])
+        resmaps.append(np.array([sky[:,0], d_theta[:,0]/comovd[:,None], 
+                                d_phi[:,0]/comovd[:,None], d_x]))
 
     if ncorr == 1:
         return resmaps[0]

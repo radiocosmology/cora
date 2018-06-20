@@ -208,66 +208,6 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
 
 
-    # Remove growth factor.
-    def angular_powerspectrum_nogrowth(self, l, nu1, nu2, redshift=False):
-        """Calculate the angular powerspectrum.
-
-        Parameters
-        ----------
-        l : np.ndarray
-            Multipoles to calculate at.
-        nu1, nu2 : np.ndarray
-            Frequencies/redshifts to calculate at.
-        redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
-            otherwise they are redshifts (relative to the 21cm line).
-
-        Returns
-        -------
-        aps : np.ndarray
-        """
-
-        if not redshift:
-            z1 = units.nu21 / nu1 - 1.0
-            z2 = units.nu21 / nu2 - 1.0
-        else:
-            z1 = nu1
-            z2 = nu2
-
-        D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
-        D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
-        return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)/(D1*D2)
-
-
-#    # Override psi_angular_powerspectrum to switch to allow using frequency
-    def psi_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
-        """Calculate the angular powerspectrum of the inverse Laplacian of delta.
-
-        Parameters
-        ----------
-        l : np.ndarray
-            Multipoles to calculate at.
-        nu1, nu2 : np.ndarray
-            Frequencies/redshifts to calculate at.
-        redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
-            otherwise they are redshifts (relative to the 21cm line).
-
-        Returns
-        -------
-        aps : np.ndarray
-        """
-
-        if not redshift:
-            z1 = units.nu21 / nu1 - 1.0
-            z2 = units.nu21 / nu2 - 1.0
-        else:
-            z1 = nu1
-            z2 = nu2
-
-        return corr.RedshiftCorrelation.psi_angular_powerspectrum(self, l, z1, z2)
-
-
     # Override angular_power spectrum to switch to allow using frequency
     def angular_powerspectrum_full(self, l, nu1, nu2, redshift=False):
         """Calculate the angular powerspectrum by explicit integration.
@@ -348,6 +288,185 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
                                 no_mean=no_mean, no_evolution=no_evolution)
 
         return (cube, rsf, d)
+
+
+class Corr21cmZA(Corr21cm):
+    r"""Correlation function of HI brightness temperature fluctuations
+    using the Zeldovich approximation.
+
+    Incorporates reasonable approximations for the growth factor and
+    growth rate.
+
+    """
+
+    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
+                 redshift=0.0, sigma_v=0.0, **kwargs):
+
+        from os.path import join, dirname
+        if ps is None:
+
+            psfile = join(dirname(__file__), "data/ps_z1.5.dat")
+            redshift = 1.5
+
+            c1 = cs.LogInterpolater.fromfile(psfile)
+            # Divide power spectrum by k^4 to get a field proportional to
+            # the Newtonian potential. Usefull to generate the displacement
+            # field Psi.
+            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * c1(k) / k**4
+
+        self._sigma_v = sigma_v
+        # Factor to increase nside for the particle mesh
+        self.nside_factor = nside_factor
+        # Factor to increase radial resolution for the particle mesh 
+        self.ndiv_radial = ndiv_radial
+
+        corr.RedshiftCorrelation.__init__(self, ps_vv=ps, redshift=redshift)
+        self._load_cache(join(dirname(__file__), "data/corr_z1.5.dat"))
+        # self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
+
+    # Remove growth factor and allow using frequency.
+    # TODO: This function was used for testing, should be deleted.
+    def angular_powerspectrum_nogrowth(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
+        D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
+        return corr.RedshiftCorrelation.angular_powerspectrum(
+                                                    self, l, z1, z2)/(D1*D2)
+
+    # Override angular_powerspectrum_realspace to switch to allow using frequency
+    def angular_powerspectrum_realspace(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum of the inverse Laplacian of delta.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return corr.RedshiftCorrelation.angular_powerspectrum_realspace(
+                                                            self, l, z1, z2)
+
+    # Overwrite getsky to implement the steps necessary for the
+    # Zeldovich approximation case
+    # TODO: Questio: Maybe I should have put this functionality in
+    # cora.core.maps ?
+    def getsky(self):
+        """Create a map of the unpolarised sky using the
+        zeldovich approximation.
+        """
+
+        from cora.core import skysim
+        import healpy as hp
+        from cora.util import pmesh as pm
+
+        lmax = 3 * self.nside - 1
+
+        # Add frequency padding for correct particle displacement at edges
+        frequencies, freq_slice = self._pad_freqs(self._frequencies)
+
+        cla = skysim.clarray(self.angular_powerspectrum_nogrowth, lmax,
+                             frequencies, zromb=self.oversample)
+
+#        cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels,
+#                             zromb=self.oversample)
+
+        redshift_array = units.nu21 / frequencies - 1.
+        comovd = self.cosmology.comoving_distance(redshift_array)
+        # Generate maps and their spacial derivatives:
+        maps_der1 = skysim.mkfullsky_der1(cla, self.nside, comovd)
+
+        # Apply growth factor:
+        D = self.growth_factor(redshift_array) / self.growth_factor(self.ps_redshift)
+        maps_der1 *= D[np.newaxis, :, np.newaxis]
+
+        npix = hp.pixelfunc.nside2npix(self.nside)
+        base_coordinates = np.array(hp.pixelfunc.pix2ang(
+                                        self.nside, np.arange(npix)))
+
+        # Divide by comoving distance to get angular displacements:
+        maps_der1[1:3] /= comovd[np.newaxis, :, np.newaxis]
+        # Divide by sin(theta) to get phi displacements, 
+        # not angular displacements:
+        maps_der1[2] /= np.sin(base_coordinates[0][np.newaxis, :])
+        # Add extra displacement due to redshift space distortions.
+        maps_der1[3] *= (1. + self.growth_rate(redshift_array))[:, np.newaxis]
+
+        # Compute density in the Zeldovich approximation:
+        delta_za = pm.za_density(maps_der1[1:], self.nside, comovd,
+                                 self.nside_factor, self.ndiv_radial,
+                                 nslices=2)
+        # Recover original frequency range:
+        delta_za = delta_za[freq_slice]
+
+        # TODO: Before returning should I apply:
+        # prefactors (to get HI brightness)
+        # bias
+        # Add mean value: self.mean_nu(self.nu_pixels)
+        # ?
+        return delta_za
+
+    def _pad_freqs(self, freqs):
+        """ Add frequency padding for correct particle displacement at
+        the edges.
+        """
+
+        def get_zpad(ff):
+            # Pad with 2 bins at 400MHz and 5 bins ad 800MHz.
+            # Linear (integer) fill in between.
+            return int(np.around(3./400.*(ff-400.)+2.))
+
+        zpad = (get_zpad(freqs[0]), get_zpad(freqs[1]))
+        # Assume constant linear spacing in freqsuency:
+        df = freqs[1]-freqs[0]
+        # Overwrite frequency axis with padded one:
+        lower_freq_pad = freqs[0]+np.arange(-zpad[0], 0)*df
+        upper_freq_pad = freqs[-1]+np.arange(1, 1+zpad[1])*df
+        freqs = np.concatenate((lower_freq_pad, freqs, upper_freq_pad))
+        # Frequency slice to recover original axis:
+        frq_slc = np.ones(freqs.shape, dtype=bool)
+        frq_slc[:zpad[0]] = False
+        frq_slc[-zpad[1]:] = False
+
+        return freqs, frq_slc
 
 
 # TODO: this was moved from elsewhere and needs to be tested again
