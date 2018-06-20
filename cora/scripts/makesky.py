@@ -183,13 +183,11 @@ def _21cm_za(ctx, oversample):
     # Generate signal realization and save
     sg_map = cr.getsky()
 
-    ## Generate signal realisation and save.
-    #sg_map = cr.getpolsky() if ctx.obj.full_pol else cr.getsky()
-
-    # TODO: need to think what to do with ctx.obj.include_pol here
-    # Should probably test to see if pol was asked and raise() in case afirmative
-    ## Save map
-    #write_map(ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
+    # TODO: need to think what to do with ctx.obj.include_pol here. 
+    # For now I ignore it and use False in write_map.
+    # Should I test to see if pol was asked and raise() in case afirmative?
+    # Save map
+    write_map(ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, False)
 
 
 @cli.command()
