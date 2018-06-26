@@ -999,9 +999,11 @@ class RedshiftCorrelation(object):
     _freq_window = 0.0
 
 
-    #def phi_angular_powerspectrum(self, la, za1, za2):
-    def angular_powerspectrum_realspace(self, la, za1, za2):
-        """The matter angular powerspectrum C_l(z1, z2) in a flat-sky limit.
+    def phi_angular_powerspectrum(self, la, za1, za2):
+        """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
+
+        Divides the power spectrum by k^4 to get a field proportional to
+        the Newtonian potential Phi.
 
         Does not include bias, nor prefactors, nor redshif-space distorsion 
         effects.
@@ -1035,7 +1037,9 @@ class RedshiftCorrelation(object):
             k = (kpar**2 + kperp**2)**0.5
 
             # TODO: Should I have 'if self.ps_2d:...' here?
-            self._dd_psi = self.ps_vv(k) * np.sinc(
+            # Divide power spectrum by k^4 to get a function proportional to the 
+            # Newtonian potentioal Phi.
+            self._dd_psi = self.ps_vv(k) / k**4 * np.sinc(
                                 kpar * self._freq_window / (2 * np.pi))**2
             self._aps_dd_psi = scipy.fftpack.dct(
                                 self._dd_psi, type=1) * kparmax / (2 * nkpar)

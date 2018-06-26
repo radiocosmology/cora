@@ -173,6 +173,9 @@ def _21cm_za(ctx, oversample):
     """
 
     from cora.signal import corr21cm
+    from datetime import datetime
+
+    t1 = datetime.now()
 
     cr = corr21cm.Corr21cmZA()
 
@@ -188,6 +191,10 @@ def _21cm_za(ctx, oversample):
     # Should I test to see if pol was asked and raise() in case afirmative?
     # Save map
     write_map(ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, False)
+
+    t2 = datetime.now()
+    with open('runtime.dat','w') as fl:
+        fl.write('Total runtime: {0}'.format(t2-t1))
 
 
 @cli.command()
