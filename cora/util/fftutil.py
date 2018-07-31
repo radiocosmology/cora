@@ -32,7 +32,7 @@ def rfftfreqn(n, d = None):
     """
 
     n = np.array(n)
-    if d == None:
+    if d is None:
         d = n
     else:
         if(len(d) != len(n)):

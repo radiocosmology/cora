@@ -31,12 +31,12 @@ class RandomField(object):
     
     def __init__(self, npix = None, wsize = None):
         
-        self._n = np.array(npix) if npix != None else npix
-        self._w = np.array(wsize) if wsize != None else self._n
+        self._n = np.array(npix) if npix is not None else npix
+        self._w = np.array(wsize) if wsize is not None else self._n
         
         
     def _check_input(self):
-        if self._n == None or self._w == None:
+        if self._n is None or self._w is None:
             raise Exception("Either self._n or self._w has not been set.")
 
         if len(self._n) != len(self._w):
@@ -174,7 +174,7 @@ class Cmb(RandomFieldA2):
 
         from cora.util.cubicspline import LogInterpolater
                 
-        if(psfile == None):
+        if(psfile is None):
             from os.path import dirname, join
             psfile = join(dirname(__file__), 'ps_cmb2.dat')
         if(cambnorm):
