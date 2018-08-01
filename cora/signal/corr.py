@@ -795,13 +795,21 @@ class RedshiftCorrelation(object):
         return (dk, mukarr, kvec)
 
 
-    def realisation_za(self, z1, z2, thetax, thetay, numz, numx, numy):    
+    def realisation_za(self, z1, z2, thetax, thetay, 
+                       numz, numx, numy, meth = 'disp'):    
         """ Generate a matter realization in a regular cubic volume, using the
             Zeldovich Approximation. Also applies Redshift space distortions
             within the same formalism.
             TODO: Currently not applying bias
             TODO: Currently does not apply differential evolution times in
             the line-of-sight direction.
+
+            Parameters
+
+            meth : string
+                Method to generate the density. One of 
+                'defform' (analitic, using the Jacobian of the deformation matrix) or 
+                'disp' (displacing points, default)
         """
     
         redshift = np.mean([z1,z2]) # Redshift to compute data cube at
@@ -824,8 +832,9 @@ class RedshiftCorrelation(object):
         Dz = self.growth_factor(redshift)/self.growth_factor(self.ps_redshift)
         
         dk, mukarr, kvec = self._realisation_dk_no_rsd(d,n)
-        # Apply growth factor (TODO: should od it later, but need invariants of matrix):
+        # Apply growth factor (TODO: should do it later, but need invariants of matrix):
         dk = Dz*dk
+        # Evolved linear overdensities.
         df = fftutil.irfftn(dk)
         
         psi_k = 1j*kvec*dk[...,np.newaxis]/(kvec**2).sum(axis=3)[...,np.newaxis]
@@ -840,55 +849,68 @@ class RedshiftCorrelation(object):
         
         # TODO: for now growth_rate is applied to a single redshift for the whole cube
         # In the future it will be an array
-        # TODO: Do I need to normalize the growth factor by "/self.growth_factor(ps_redshift)" 
+        # TODO: Do I need to normalize the growth rate by "/self.growth_factor(ps_redshift)" 
         # as well? D -> D/D(1.5)  =>  dot(D) -> dot(D)/D(1.5)  ??
+        # Maybe, but for now the growth rate is unity throughout.
         psi_rsd = ( self.growth_rate(redshift)
                     *psi # Just project in the x direction:
                     *np.array([1.,0.,0.])[np.newaxis,np.newaxis,np.newaxis,:] )
-    
-        # Matrix given by: k_i k_j (needed to define the deformation matrix)
-        k_matrix = np.array([ np.outer(vec,vec)
-                      for vec in kvec.reshape((np.prod(kvec.shape)/3,3)) ]
-                      ).reshape(np.append(kvec.shape,3))
-    
-        # Deformation matrix
-        deform_k = -1.*k_matrix*dk[...,np.newaxis,np.newaxis]/(kvec**2).sum(axis=3)[...,np.newaxis,np.newaxis]
-        # Correct for division by zero at k origin:
-        deform_k[0,0,0] = np.zeros((3,3),dtype=deform_k.dtype)
-        # Test for nans
-    #    print any(numpy.isnan(deform_k))
-        
-        # Inverse Fourier transform to get deformation matrix:
-        # TODO: Carreful! This might differ from the rest of the fftutil 
-        # implementation if fftutil._use_anfft==True
-        # TODO: Modify fftutil to accept keyword arguments...?
-        deform = np.fft.irfftn(deform_k,axes=[0,1,2])
-        
-        # Computes eigenvalues for last two dimmensions:
-        eigvals = np.linalg.eigvals(deform) # without rsd
-        # Compute overdensities in ZA:
-        rho_za = np.prod(1./(eigvals+1.),axis=-1) # normalized density
-        # TODO: delete rho_za for memory purposes
-        delta_za = abs(rho_za) - 1.
-        # delta_za = rho_za - 1.
-        
-        # TODO: do something with this statistic of number of shell crossings:
-        n_cross = np.sum(np.where(rho_za>=0.,0,1))
-        n_tot = np.prod(rho_za.shape)
-        frac_cross = n_cross/float(n_tot)
-        print 'Fraction of voxels that shell-crossed: {0:e} ({1} out of {2})'.format(frac_cross,n_cross,n_tot)
-        # Taking abs() is a hack for shell crossing. Should affect minimal number of voxels with truncation
-        
-        # Use ZA density + interpolation for real displacement:
-        delta_za_disp = _interpolate_cube(delta_za,psi,n,d)
-    
+
+        if meth == 'deform':    
+            # Matrix given by: k_i k_j (needed to define the deformation matrix)
+            k_matrix = np.array([ np.outer(vec,vec)
+                          for vec in kvec.reshape((np.prod(kvec.shape)/3,3)) ]
+                          ).reshape(np.append(kvec.shape,3))
+
+            # Deformation matrix
+            deform_k = -1.*k_matrix*dk[...,np.newaxis,np.newaxis]/(kvec**2).sum(axis=3)[...,np.newaxis,np.newaxis]
+            # Correct for division by zero at k origin:
+            deform_k[0,0,0] = np.zeros((3,3),dtype=deform_k.dtype)
+            # Test for nans
+            #print any(numpy.isnan(deform_k))
+
+            # Inverse Fourier transform to get deformation matrix:
+            # TODO: Carreful! This might differ from the rest of the fftutil 
+            # implementation if fftutil._use_anfft==True
+            # TODO: Modify fftutil to accept keyword arguments...?
+            deform = np.fft.irfftn(deform_k,axes=[0,1,2])
+
+            # Computes eigenvalues for last two dimmensions:
+            eigvals = np.linalg.eigvals(deform) # without rsd
+            # Compute overdensities in ZA:
+            rho_za = np.prod(1./(eigvals+1.),axis=-1) # normalized density
+            # TODO: delete rho_za for memory purposes
+            delta_za = abs(rho_za) - 1.
+            # delta_za = rho_za - 1.
+
+            # TODO: do something with this statistic of number of shell crossings:
+            n_cross = np.sum(np.where(rho_za>=0.,0,1))
+            n_tot = np.prod(rho_za.shape)
+            frac_cross = n_cross/float(n_tot)
+            print 'Fraction of voxels that shell-crossed: {0:e} ({1} out of {2})'.format(frac_cross,n_cross,n_tot)
+            # Taking abs() is a hack for shell crossing. Should affect minimal number of voxels with truncation
+
+            # Interpolate ZA_density to Eulerian coordinates:
+            delta_za = _interpolate_cube(delta_za,psi,n,d)
+
+        else:
+            b_l = 1. #  Lagrangean bias
+            # Initial "halo" field is evolved gaussian delta time Lagrangian bias
+            delta_h_za = _particle_mesh(psi,df*b_l,n,d) # Halos
+
+            delta_i = np.zeros(psi.shape[:3]) #  Initial DM overdensity = 0
+            delta_za = _particle_mesh(psi,delta_i,n,d) # DM
+
+            
+
         # Use re-mapping for RSD:
         # Notice that I have displaced back the density to the regular grid
         # so I use posi as the initial positions again:
-    #     delta_za_rsd_disp = _particle_mesh(psi_rsd,delta_za_disp,n,d)
+        #delta_za_rsd = _particle_mesh(psi_rsd,delta_za,n,d)
         
-    #     return df, rho_za, delta_za_disp, delta_za_rsd_disp
-        return n_cross, df, rho_za, delta_za_disp
+    #    return df, rho_za, delta_za, delta_za_rsd
+    #    return n_cross, df, rho_za, delta_za
+        return df, delta_za, delta_h_za
 
 
 
@@ -1294,23 +1316,43 @@ def _particle_mesh(psi,delta,n,d):
             Could be corrected by the use of a gaussian cloud?
         TODO: This is slow code since it's implemented in python. Should move
             to cython or c++.
+
+    Parameters
+
+    delta : array of floats
+        The fractional density contrast (delta, NOT rho).
+
+    Returns
+
+    delta_disp : array of floats
+        The fractional density contrast (delta, NOT rho). 
+
     """
-    #import time
-    #t1 = time.time()
+    # TODO: delete
+    import time
+    t1 = time.time()
 
     # Initial positions
     posi = _voxel_centers(n,d)
-
-    posf = posi + psi
-    
-    # Re-mapping from L space to E space
-    # Cloud-in-cells algorythm
 
     # TODO: this might not be a contant in the future
     l = d/n # sides of a single cell
     voxel_volume = np.prod(l)
 
-    bins = [ (np.arange(n[ii])+1)*d[ii]/n[ii] for ii in range(len(n)) ]
+    # Final positions
+    posf = posi + psi
+    # Impose periodic boundary conditions
+    posf += 0.5*l[None,None,None,:] #  Reference to edge
+    posf = np.mod(posf, d[None,None,None,:]) #  Priodic b.c.
+    posf -= 0.5*l[None,None,None,:] #  Reference to voxel center
+
+    # Re-mapping from L space to E space
+    # Cloud-in-cells algorythm
+
+    #bins = [ (np.arange(n[ii])+1)*d[ii]/n[ii] for ii in range(len(n)) ]
+    # Bins from 0.5l to (n-0.5)l due to the way np.digitize works
+    bins = [ (np.arange(n[ii])+0.5)*l[ii] for ii in range(len(n)) ]
+    # Indices of each point in the grid after moving (wrapped up)
     idxs = np.array( zip( np.digitize(posf[...,0].flatten(),bins[0]),
                           np.digitize(posf[...,1].flatten(),bins[1]),
                           np.digitize(posf[...,2].flatten(),bins[2]) ) )
@@ -1319,7 +1361,8 @@ def _particle_mesh(psi,delta,n,d):
     wheights = np.zeros(delta.shape)
 
     for ii in range(idxs.shape[0]):
-
+        # Pick the center + two neighboring cells closest to the one the 
+        # point falls in (in each direction). Wrap up around edges of box.
         slc = np.meshgrid(np.array([idxs[ii][0]-1,idxs[ii][0],idxs[ii][0]+1])%n[0],
                           np.array([idxs[ii][1]-1,idxs[ii][1],idxs[ii][1]+1])%n[1],
                           np.array([idxs[ii][2]-1,idxs[ii][2],idxs[ii][2]+1])%n[2], indexing='ij')
@@ -1327,11 +1370,14 @@ def _particle_mesh(psi,delta,n,d):
         # Sliced initial and final positions:
         posi_slc = posi[slc] # 3x3x3(x3) cube
         posf_slc = posf.reshape(np.prod(n),3)[ii][None,None,None,:]
-        # Refer to start of first cell in posi slice. Enforce boundary conditions in 3x3x3 slice
+        # Reference to start edge of first cell in posi slice. 
+        # Then wrap all positions to be in box of size "d" 
+        # starting (ahead of) at baseline reference.
         bsln =  (posi_slc[0,0,0]-0.5*l)[None,None,None,:]
         posf_slc = np.mod(posf_slc - bsln, d[None,None,None,:])
         posi_slc = np.mod(posi_slc - bsln, d[None,None,None,:])
 
+        # Difference for each point in slice cube.
         pos_diff = abs(posi_slc-posf_slc) # 3x3x3(x3) cube
         
         # Overlap:
@@ -1346,10 +1392,11 @@ def _particle_mesh(psi,delta,n,d):
         delta_disp[slc] += overlap_fraction*delta.flatten()[ii]
         wheights[slc] += overlap_fraction
 
-    # See my notes for details
+    # This is correct! See my notes for details:
     delta_disp += wheights - 1.
 
-    #print 'Time to run: ',time.time()-t1, 's'
+    # TODO: delete
+    print 'Time to run: ',time.time()-t1, 's'
     
     return delta_disp
 
