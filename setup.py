@@ -11,8 +11,8 @@ import numpy as np
 import cora
 
 
-if ((re.search('gcc', sysconfig.get_config_var('CC')) is None) or
-    ('CORA_NO_OPENMP' in os.environ)):
+if (('CORA_NO_OPENMP' in os.environ) or 
+    (re.search('gcc', sysconfig.get_config_var('CC')) is None)):
     print "Not using OpenMP"
     args = []
 else:
