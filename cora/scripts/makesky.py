@@ -174,13 +174,18 @@ def gaussianfg(ctx):
     fsyn = galaxy.FullSkySynchrotron()
     fpol = galaxy.FullSkyPolarisedSynchrotron()
 
+    print ctx.obj.include_pol, ctx.obj.full_pol
+
     # Set frequency parameters
     fsyn.frequencies = ctx.obj.freq
+    fpol.frequencies = ctx.obj.freq
 
+    nside = ctx.obj.nside
     lmax = 3 * nside
     npol = 4 if ctx.obj.full_pol else 1
+    nfreq = len(ctx.obj.freq)
 
-    cv_fg = np.zeros((lmax+1, npol, nfreq, npol, nfreq))
+    cv_fg = np.zeros((lmax + 1, npol, nfreq, npol, nfreq))
 
     cv_fg[:, 0, :, 0, :] = skysim.clarray(fsyn.angular_powerspectrum, lmax, fsyn.nu_pixels)
 
@@ -188,12 +193,20 @@ def gaussianfg(ctx):
         cv_fg[:, 1, :, 1, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, fsyn.nu_pixels)
         cv_fg[:, 2, :, 2, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, fsyn.nu_pixels)
 
-    cv_fg = cv_fg.reshape(lmax+1, npol*nfreq, npol*nfreq)
+    cv_fg = cv_fg.reshape(lmax + 1, npol * nfreq, npol * nfreq)
 
-    alms = skysim.mkfullsky(cv_fg, nside, alms=True).reshape(npol, nfreq, lmax+1, lmax+1)
+    alms = skysim.mkfullsky(cv_fg, nside, alms=True).reshape(npol, nfreq, lmax + 1, lmax + 1)
     alms = alms.transpose((1, 0, 2, 3))
 
     maps = hputil.sphtrans_inv_sky(alms, nside)
+
+    min_I = maps[:, 0].min(axis=1)
+    offset = np.where(min_I < 0, -min_I, 0.0)
+    maps[:, 0] += offset[:, np.newaxis]
+
+    if not ctx.obj.full_pol:
+        maps = maps[:, 0]
+
     write_map(ctx.obj.filename, maps, fsyn.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
 
 
