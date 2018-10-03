@@ -7,8 +7,14 @@ from scipy.interpolate import interp1d
 import healpy as hp
 
 
-def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
+def za_density(psi,delta0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     """
+    psi : array-like [3,nz,npix]
+        Coordinate displacements
+    delta0 : array-like [nz,npix]
+        The underlying density field to be displaced. Usually the Gaussian 
+        matter density field linearly evolved to the correct redshifts and 
+        biased with a Lagrangian bias.
     """
         
     def interp_ugd(f,ndiv):
@@ -42,11 +48,15 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
 
     npix = hp.pixelfunc.nside2npix(nside) # In original size maps
     nz = len(comovd)
-    mapdtype = psi.dtype
+    #mapdtype = psi.dtype
+    mapdtype = delta0.dtype
+    print delta0.shape, len(comovd)
     # Number of pixels in upgraded resolution per pixel of original resolution:
     ndiv_ang = nside_factor**2
     # Number of voxels in upgraded resolution per voxel of original resolution:
     n_subvoxels = ndiv_ang*ndiv_radial
+    # Fraction of an original voxel occupied by a voxel of the upd resolution:
+    fracfactor = 1./float(n_subvoxels)
 
     # Initial radial positions in higher resolution grid:
     comov0 = interp_ugd(comovd,ndiv_radial)
@@ -63,6 +73,9 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     delta_za = np.zeros((nz,npix),dtype=mapdtype)
 
     for ii in range(len(comov0)):
+        # Initial density
+        delta0_slc = delta0[comov0_idx[ii],ang0_idx]
+        # Coordinate displacements
         psi_slc = psi[:,comov0_idx[ii],ang0_idx]
         # Final angles:
         ang1 = ang0[:,:]+psi_slc[:2]
@@ -79,19 +92,22 @@ def za_density(psi,nside,comovd,nside_factor,ndiv_radial,nslices=2):
         ang_idx = hp.pixelfunc.ang2pix(nside, *ang1)
         radial_idx = np.digitize(comov1,comov_bins)
 
-        fill_delta_za(delta_za, radial_idx.flatten(), ang_idx.flatten())
+        fill_delta_za(delta_za, radial_idx.flatten(), ang_idx.flatten(),
+                      delta0_slc.flatten())
 
-    return delta_za/float(n_subvoxels) - 1.
+    return delta_za*fracfactor - 1.
 
 
 # I tried to use 'nogil' in this function call but apparently it
 # degraded the performance slightly. 
-cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx, long[:] ang_idx):
+cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx, 
+                         long[:] ang_idx, double[:] delta0):
 # 'delta_za' is defined in the argument as a cython memoryview.
 # It can take a numpy array as parameter and modifying one changes the other.
-    #cdef int ii, jj
     cdef long ii, jj, kk
     for kk in range(len(rad_idx)):
         ii = rad_idx[kk]
         jj = ang_idx[kk]
-        delta_za[ii,jj] += 1.
+        #delta_za[ii,jj] += 1. # TODO: delete
+        delta_za[ii,jj] += delta0[kk]+1.
+        

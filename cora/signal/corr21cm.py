@@ -401,18 +401,21 @@ class Corr21cmZA(Corr21cm):
         maps_der1[3] *= (1. + self.growth_rate(redshift_array))[:, np.newaxis]
 
         # Compute density in the Zeldovich approximation:
-        delta_za = pm.za_density(maps_der1[1:], self.nside, comovd,
-                                 self.nside_factor, self.ndiv_radial,
+        # TODO: Multiply linear density maps_der1[0] by lagrangean bias of
+        # the tracers involved.
+        delta_za = pm.za_density(maps_der1[1:], maps_der1[0], self.nside,
+                                 comovd, self.nside_factor, self.ndiv_radial,
                                  nslices=2)
         # Recover original frequency range:
         delta_za = delta_za[freq_slice]
 
-        # Multiply by bias, prefactor
+        # Multiply by prefactor (21cm brightness)
         pref = self.prefactor(redshift_array[freq_slice])[:, np.newaxis]
-        bias = self.bias_z(redshift_array[freq_slice])[:, np.newaxis]
+#        bias = self.bias_z(redshift_array[freq_slice])[:, np.newaxis]
 
         # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
-        return delta_za * pref * bias
+        #return delta_za * pref * bias # TODO: remove. Bias done in Lagrangian space.
+        return delta_za * pref
 
     def _pad_freqs(self, freqs):
         """ Add frequency padding for correct particle displacement at
