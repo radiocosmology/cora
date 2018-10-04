@@ -997,7 +997,8 @@ class RedshiftCorrelation(object):
 
 
     _aps_cache = False
-    _aps_cache_psi = False
+    _aps_cache_raw = False
+    _aps_cache_pot = False
 
     def save_fft_cache(self, fname):
         """Save FFT angular powerspecturm cache."""
@@ -1021,15 +1022,17 @@ class RedshiftCorrelation(object):
     _freq_window = 0.0
 
 
-    def phi_angular_powerspectrum(self, la, za1, za2):
+    def raw_angular_powerspectrum(self, la, za1, za2, potential=False):
         """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
-
-        Divides the power spectrum by k^4 to get a field proportional to
-        the Newtonian potential Phi.
 
         Does not include bias, nor prefactors, nor redshif-space distorsion 
         effects.
+
+        If potential=True, divides the power spectrum by k^4 to get a 
+        field proportional to the Newtonian potential Phi.
+
         Uses FFT based method to generate a lookup table for fast computation.
+        Keeps independent lookout tables for raw matter and potential fields.
 
         Parameters
         ----------
@@ -1037,6 +1040,11 @@ class RedshiftCorrelation(object):
             The multipole moments to return at.
         z1, z2 : array_like
             The redshift slices to correlate.
+        potential : boolean
+            If true, divide the power spectrum by k^4 to get a 
+            field proportional to the Newtonian potential Phi. 
+            Default is False.
+
 
         Returns
         -------
@@ -1050,23 +1058,31 @@ class RedshiftCorrelation(object):
         kparmax = 20.0
         nkpar = 32768
 
-        if not self._aps_cache_psi:
-
+        if (not self._aps_cache_raw) and (not potential):
             kperp = np.logspace(np.log10(kperpmin), np.log10(
                                         kperpmax), nkperp)[:, np.newaxis]
             kpar = np.linspace(0, kparmax, nkpar)[np.newaxis, :]
-
             k = (kpar**2 + kperp**2)**0.5
-
             # TODO: Should I have 'if self.ps_2d:...' here?
-            # Divide power spectrum by k^4 to get a function proportional to the 
-            # Newtonian potentioal Phi.
-            self._dd_psi = self.ps_vv(k) / k**4 * np.sinc(
+            self._dd_raw = self.ps_vv(k) * np.sinc(
                                 kpar * self._freq_window / (2 * np.pi))**2
-            self._aps_dd_psi = scipy.fftpack.dct(
-                                self._dd_psi, type=1) * kparmax / (2 * nkpar)
+            self._aps_dd_raw = scipy.fftpack.dct(
+                                self._dd_raw, type=1) * kparmax / (2 * nkpar)
+            self._aps_cache_raw = True
 
-            self._aps_cache_psi = True
+        elif (not self._aps_cache_pot) and potential:
+            kperp = np.logspace(np.log10(kperpmin), np.log10(
+                                        kperpmax), nkperp)[:, np.newaxis]
+            kpar = np.linspace(0, kparmax, nkpar)[np.newaxis, :]
+            k = (kpar**2 + kperp**2)**0.5
+            # TODO: Should I have 'if self.ps_2d:...' here?
+            # Divide power spectrum by k^4 to get a function 
+            # proportional to the Newtonian potential Phi.
+            self._dd_pot = self.ps_vv(k) / k**4 * np.sinc(
+                                kpar * self._freq_window / (2 * np.pi))**2
+            self._aps_dd_pot = scipy.fftpack.dct(
+                            self._dd_pot, type=1) * kparmax / (2 * nkpar)
+            self._aps_cache_pot = True
 
         xa1 = self.cosmology.comoving_distance(za1)
         xa2 = self.cosmology.comoving_distance(za2)
@@ -1091,9 +1107,12 @@ class RedshiftCorrelation(object):
 
             return v.reshape(sh)
 
-        psdd_psi = _interp2d(self._aps_dd_psi, x, y)
+        if not potential:
+            psdd = _interp2d(self._aps_dd_raw, x, y)
+        else:
+            psdd = _interp2d(self._aps_dd_pot, x, y)
 
-        return (1. / (xc**2 * np.pi)) * psdd_psi # No Growth factor nor RSD
+        return (1. / (xc**2 * np.pi)) * psdd # No Growth factor nor RSD
 
 
     def angular_powerspectrum_fft(self, la, za1, za2):

@@ -65,7 +65,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
         return cla
 
 
-def mkfullsky(corr, nside, alms=False):
+def mkfullsky(corr, nside, alms=False, gaussvars_list=None):
     """Construct a set of correlated Healpix maps.
 
     Make a set of full sky gaussian random fields, given the correlation
@@ -82,6 +82,11 @@ def mkfullsky(corr, nside, alms=False):
         The resolution of the Healpix maps.
     alms : boolean, optional
         If True return the alms instead of the sky maps.
+    gaussvars_list : list or array-like
+        The complex standard normal variables to be used to generate the
+        realization. Default is None which generates them on the fly.
+        This is usefull when one needs different maps to be drawn from
+        the same realization.
 
     Returns
     -------
@@ -104,7 +109,10 @@ def mkfullsky(corr, nside, alms=False):
     # Generate gaussian deviates and transform to have correct correlation
     # structure
     for l in range(maxl + 1):
-        gaussvars = nputil.complex_std_normal((numz, l + 1))
+        if gaussvars_list is None:
+            gaussvars = nputil.complex_std_normal((numz, l + 1))
+        else:
+            gaussvars = gaussvars_list[l]
         for ii in range(ncorr):
             # Add in a small diagonal to try and ensure positive definiteness
             cmax = corr[ii][l].diagonal().max() * 1e-14
@@ -131,7 +139,7 @@ def mkfullsky(corr, nside, alms=False):
         return sky
 
 
-def mkfullsky_der1(corr, nside, comovd, alms=False):
+def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
     """Construct a set of correlated Healpix maps and their 3D
     spacial derivatives.
 
@@ -149,6 +157,11 @@ def mkfullsky_der1(corr, nside, comovd, alms=False):
         The resolution of the Healpix maps.
     alms : boolean, optional
         If True return the alms instead of the sky maps.
+    gaussvars_list : list or array-like
+        The complex standard normal variables to be used to generate the
+        realization. Default is None which generates them on the fly.
+        This is usefull when one needs different maps to be drawn from
+        the same realization.
 
     Returns
     -------
@@ -171,7 +184,10 @@ def mkfullsky_der1(corr, nside, comovd, alms=False):
     # Generate gaussian deviates and transform to have correct correlation
     # structure
     for l in range(maxl + 1):
-        gaussvars = nputil.complex_std_normal((numz, l + 1))
+        if gaussvars_list is None:
+            gaussvars = nputil.complex_std_normal((numz, l + 1))
+        else:
+            gaussvars = gaussvars_list[l]
         for ii in range(ncorr):
             # Add in a small diagonal to try and ensure positive definiteness
             cmax = corr[ii][l].diagonal().max() * 1e-14

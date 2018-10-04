@@ -3,7 +3,7 @@ import numpy as np
 
 from cora.core import maps
 from cora.util import cubicspline as cs
-from cora.util import units
+from cora.util import units, nputil
 from cora.signal import corr
 
 
@@ -332,8 +332,38 @@ class Corr21cmZA(Corr21cm):
 #        self._load_cache(join(dirname(__file__), "data/corr_z1.5.dat"))
 #        # self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
-    # Override phi_angular_powerspectrum to switch to allow using frequency
-    def phi_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+    # Override raw_angular_powerspectrum to switch to allow using frequency
+    def raw_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum of the matter over-density
+        without time evolution, RSD or 21cm normalization.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return corr.RedshiftCorrelation.raw_angular_powerspectrum(
+                                                        self, l, z1, z2)
+
+    # Override raw_angular_powerspectrum to gen the PS of the Newtonian potential
+    def potential_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
         """Calculate the angular powerspectrum of the inverse Laplacian of delta.
 
         Parameters
@@ -358,7 +388,9 @@ class Corr21cmZA(Corr21cm):
             z1 = nu1
             z2 = nu2
 
-        return corr.RedshiftCorrelation.phi_angular_powerspectrum(self, l, z1, z2)
+        return corr.RedshiftCorrelation.raw_angular_powerspectrum(
+                                        self, l, z1, z2, potential=True)
+
 
     # Overwrite getsky to implement the steps necessary for the
     # Zeldovich approximation case
@@ -376,16 +408,29 @@ class Corr21cmZA(Corr21cm):
         # Add frequency padding for correct particle displacement at edges
         frequencies, freq_slice = self._pad_freqs(self._frequencies)
 
-        cla = skysim.clarray(self.phi_angular_powerspectrum, lmax,
+        # Angular power spectrum for the matter field
+        cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
                              frequencies, zromb=self.oversample)
+        # Angular power spectrum for the Newtonian potential
+        cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
+                                 frequencies, zromb=self.oversample)
 
         redshift_array = units.nu21 / frequencies - 1.
         comovd = self.cosmology.comoving_distance(redshift_array)
-        # Generate maps and their spacial derivatives:
-        maps_der1 = skysim.mkfullsky_der1(cla, self.nside, comovd)
+
+        # Generate gaussian random numbers for realization
+        gaussvars_list = [nputil.complex_std_normal((cla_pot.shape[1], l + 1)) 
+                          for l in range(cla_pot.shape[0])]
+        # Generate matter field maps
+        maps = skysim.mkfullsky(cla, self.nside, 
+                                gaussvars_list=gaussvars_list)
+        # Generate potential field maps and their spacial derivatives:
+        maps_der1 = skysim.mkfullsky_der1(cla_pot, self.nside, comovd, 
+                                          gaussvars_list=gaussvars_list)
 
         # Apply growth factor:
         D = self.growth_factor(redshift_array) / self.growth_factor(self.ps_redshift)
+        maps *= D[:, np.newaxis]
         maps_der1 *= D[np.newaxis, :, np.newaxis]
 
         npix = hp.pixelfunc.nside2npix(self.nside)
@@ -403,7 +448,9 @@ class Corr21cmZA(Corr21cm):
         # Compute density in the Zeldovich approximation:
         # TODO: Multiply linear density maps_der1[0] by lagrangean bias of
         # the tracers involved.
-        delta_za = pm.za_density(maps_der1[1:], maps_der1[0], self.nside,
+        # maps0 = np.zeros(maps.shape,dtype=maps.dtype) # TODO: delete
+        #delta_za = pm.za_density(maps_der1[1:], maps0, self.nside,
+        delta_za = pm.za_density(maps_der1[1:], maps, self.nside,
                                  comovd, self.nside_factor, self.ndiv_radial,
                                  nslices=2)
         # Recover original frequency range:
@@ -415,7 +462,8 @@ class Corr21cmZA(Corr21cm):
 
         # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
         #return delta_za * pref * bias # TODO: remove. Bias done in Lagrangian space.
-        return delta_za * pref
+        #return delta_za * pref
+        return delta_za, maps, maps_der1
 
     def _pad_freqs(self, freqs):
         """ Add frequency padding for correct particle displacement at
