@@ -392,6 +392,89 @@ class Corr21cmZA(Corr21cm):
                                         self, l, z1, z2, potential=True)
 
 
+    # Za in two steps: displace - bias - displace RSD
+    def getsky_2s(self):
+        """Create a map of the unpolarised sky using the
+        zeldovich approximation.
+        """
+
+        from cora.core import skysim
+        import healpy as hp
+        from cora.util import pmesh as pm
+
+        lmax = 3 * self.nside - 1
+
+        # Add frequency padding for correct particle displacement at edges
+        frequencies, freq_slice = self._pad_freqs(self._frequencies)
+
+#        # Angular power spectrum for the matter field
+#        cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
+#                             frequencies, zromb=self.oversample)
+
+        # Angular power spectrum for the Newtonian potential
+        cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
+                                 frequencies, zromb=self.oversample)
+
+        redshift_array = units.nu21 / frequencies - 1.
+        comovd = self.cosmology.comoving_distance(redshift_array)
+
+#        # Generate gaussian random numbers for realization
+#        gaussvars_list = [nputil.complex_std_normal((cla_pot.shape[1], l + 1)) 
+#                          for l in range(cla_pot.shape[0])]
+#        # Generate matter field maps
+#        maps = skysim.mkfullsky(cla, self.nside, 
+#                                gaussvars_list=gaussvars_list)
+
+        # Generate potential field maps and their spacial derivatives:
+        maps_der1 = skysim.mkfullsky_der1(cla_pot, self.nside, comovd)
+
+        # Apply growth factor:
+        D = self.growth_factor(redshift_array) / self.growth_factor(self.ps_redshift)
+#        maps *= D[:, np.newaxis]
+        maps_der1 *= D[np.newaxis, :, np.newaxis]
+
+        npix = hp.pixelfunc.nside2npix(self.nside)
+        base_coordinates = np.array(hp.pixelfunc.pix2ang(
+                                        self.nside, np.arange(npix)))
+
+        # Divide by comoving distance to get angular displacements:
+        maps_der1[1:3] /= comovd[np.newaxis, :, np.newaxis]
+        # Divide by sin(theta) to get phi displacements, 
+        # not angular displacements:
+        maps_der1[2] /= np.sin(base_coordinates[0][np.newaxis, :])
+
+        # Compute extra displacement due to redshift space distortions.
+        disp_rsd = np.zeros(maps_der1[1:].shape, dtype=maps_der1.dtype)
+        disp_rsd[2] = maps_der1[3] * self.growth_rate(redshift_array)[:, np.newaxis]
+
+        # Compute density in the Zeldovich approximation:
+        # TODO: Multiply linear density maps_der1[0] by lagrangean bias of
+        # the tracers involved.
+        maps0 = np.zeros(maps_der1[0].shape, dtype=maps_der1.dtype) # TODO: delete
+#        delta_za = pm.za_density(maps_der1[1:], maps, self.nside,
+        delta_za = pm.za_density(maps_der1[1:], maps0, self.nside,
+                                 comovd, self.nside_factor, self.ndiv_radial,
+                                 nslices=2)
+        # Apply simple Eulerian bias
+        delta_za = delta_za * 2.
+        # Displace for RSD:
+        delta_za = pm.za_density(disp_rsd, delta_za, self.nside,
+                                 comovd, self.nside_factor, self.ndiv_radial,
+                                 nslices=2) 
+
+        # Recover original frequency range:
+        delta_za = delta_za[freq_slice]
+
+        # Multiply by prefactor (21cm brightness)
+        pref = self.prefactor(redshift_array[freq_slice])[:, np.newaxis]
+#        bias = self.bias_z(redshift_array[freq_slice])[:, np.newaxis]
+
+        # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
+        #return delta_za * pref * bias # TODO: remove. Bias done in Lagrangian space.
+        #return delta_za * pref
+        return delta_za, maps_der1
+
+
     # Overwrite getsky to implement the steps necessary for the
     # Zeldovich approximation case
     def getsky(self):
