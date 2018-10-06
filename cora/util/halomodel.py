@@ -3,31 +3,33 @@ import numpy as np
 import scipy.integrate as integrate
 
 
-class haloModel(object):
+class HaloModel(object):
 
     # TODO: move these to util/units.py ?
     dc = 1.686  # Critical density of colapse
     solar_mass = 1.98847E30
-    # TODO: move this to init?
-    redshift = 0.
 
-    def __init__(self, gf=None, window='tophat', collapse_method='ellipsoidal', ps=None, cosmology=None):
+    def __init__(self, redshift=0., gf=None, window='tophat', 
+                 collapse_method='ellipsoidal', ps=None, cosmology=None):
+
+        # Redshift to compute hm at.
+        self.redshift = redshift
 
         if cosmology is None:
             cosmology = corr.Cosmology()
 
         if gf is None:
             from .cosmology import growth_factor as gf
-            self.gf = gf
+        # Ensure growth factor is normalized to z=0.
+        self.growth_factor = lambda z: gf(z)/gf(0.)
 
         if ps is None:
             from . import cubicspline as cs
             from os.path import join, dirname
             ps_redshift = 1.5  # Redshift of the power sectrum to be loaded
             psfile = join(dirname(corr.__file__), "data/ps_z1.5.dat")
-            # psfile = join(dirname(corr.__file__),"data/ps_z1.5_planck.dat")
             cs1 = cs.LogInterpolater.fromfile(psfile)
-            self.ps = lambda k: cs1(k) / self.growth_factor(ps_redshift)**2
+            self.ps = lambda k: cs1(k) * (gf(0.) / gf(ps_redshift))**2
 
         h = cosmology.H0/100.
         H0_1s = cosmology.H0/(corr.units.kilo_parsec)  # H0 in 1/s (SI)
@@ -60,14 +62,13 @@ class haloModel(object):
             # Window functio in k-space
             self.Wk = lambda kR: 3.*(np.sin(kR)-kR*np.cos(kR))/kR**3
 
-    def growth_factor(self, z=None):
-        """TODO: There are three definition of this function (growth_factor())
-        in CORA: in corr.py, corr21cm.py and cosmology.py."""
-        if z is None:
-            z = self.redshift
-        
-        # return 1./(1. + z)
-        return self.gf(z)/self.gf(0.)
+#    def growth_factor(self, z=None):
+#        """ Ensure growth factor is normalized to z=0."""
+#        if z is None:
+#            z = self.redshift
+#        
+#        # return 1./(1. + z)
+#        return self.gf(z)/self.gf(0.)
 
     def dct(self, z=None):
         if z is None:
