@@ -300,19 +300,17 @@ class CorrZA(Corr21cm):
     """
 
     def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-                 redshift=0.0, sigma_v=0.0, **kwargs):
+                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
 
         # Factor to increase nside for the particle mesh
         self.nside_factor = nside_factor
         # Factor to increase radial resolution for the particle mesh 
         self.ndiv_radial = ndiv_radial
 
-        super(CorrZA, self).__init__(ps, redshift, sigma_v, **kwargs)
+        super(CorrZA, self).__init__(ps, ps_redshift, sigma_v, **kwargs)
 
-        # TODO: I defined the three quantities below for the whole class.
-        # Now remove them from other parts and subs for the self.__ versions
-        self.frequencies, self.freq_slice = self._pad_freqs(self._frequencies)
-        self.redshift_array = units.nu21 / frequencies - 1.
+        # Simpler alias for Power spectrum
+        self.ps = self.ps_vv
 
     # Override raw_angular_powerspectrum to switch to allow using frequency
     def raw_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
@@ -471,16 +469,16 @@ class CorrZA(Corr21cm):
         lmax = 3 * self.nside - 1
 
         # Add frequency padding for correct particle displacement at edges
-        frequencies, freq_slice = self._pad_freqs(self._frequencies)
+        freqs_full, freq_slice = self._pad_freqs(self.frequencies)
 
         # Angular power spectrum for the matter field
         cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
-                             frequencies, zromb=self.oversample)
+                             freqs_full, zromb=self.oversample)
         # Angular power spectrum for the Newtonian potential
         cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
-                                 frequencies, zromb=self.oversample)
+                                 freqs_full, zromb=self.oversample)
 
-        redshift_array = units.nu21 / frequencies - 1.
+        redshift_array = units.nu21 / freqs_full - 1.
         comovd = self.cosmology.comoving_distance(redshift_array)
 
         # Generate gaussian random numbers for realization
@@ -520,14 +518,7 @@ class CorrZA(Corr21cm):
         # Recover original frequency range:
         delta_za = delta_za[freq_slice]
 
-        # Multiply by prefactor (21cm brightness)
-        # TODO: move prefactor to the specific class Corr21cmZA, CorrQsoZA
-#        pref = self.prefactor(redshift_array[freq_slice])[:, np.newaxis]
-#        bias = self.bias_z(redshift_array[freq_slice])[:, np.newaxis]
-
         # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
-        #return delta_za * pref * bias # TODO: remove. Bias done in Lagrangian space.
-        #return delta_za * pref
         #return delta_za, maps, maps_der1
         return delta_za
 
@@ -595,51 +586,58 @@ class Corr21cmZA(CorrZA):
                  ps_redshift=0.0, sigma_v=0.0, **kwargs):
         """
         """
+
         from os.path import join, dirname
         if ps is None:
-
-            psfile = join(dirname(__file__), "data/ps_z1.5.dat")
+            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
             ps_redshift = 1.5
-
-            c1 = cs.LogInterpolater.fromfile(psfile)
-            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * c1(k)
+            ps_full = cs.LogInterpolater.fromfile(psfile)
+            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * ps_full(k)
+        else:
+            # This might mean passing a smoothed PS to the halo model. 
+            # TODO: This is probably a bug. Maybe I should not accept ps as
+            # an input parameter in Corr21cmZA.
+            ps_full = ps
 
         super(Corr21cmZA, self).__init__(ps, nside_factor, ndiv_radial,
                                          ps_redshift, sigma_v, **kwargs)
 
+        # Pass the full (not smoothed) Power Spectrum to the halo model
         # HaloModel uses powerspectrum normalized to z=0
         def hmps(k):
-            return ps(k) * (self.growth_factor(0.)
-                            / self.growth_factor(ps_redshift))**2
+            return ps_full(k) * (self.growth_factor(0.)
+                            / self.growth_factor(self.ps_redshift))**2
 
-        # HaloModel
+        # Initialize HaloModel
         self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
+        self.hm.check_update()
 
-#        # TODO: gen the halo model bias for each redshift.
-#        # I might not need so many 'rs' (now I go as low as M=10^3 solar masses)
-#        rs = np.logspace(np.log10(2E-3),np.log10(15),250)
-#        ms = hm.M(rs) # Corresponding masses
-#        for zz in self.redshift_array:
-#            self.hm.redshift = zz
+    def lagbias_z(self, z):
+        """ Overwrites lagbias_z to use a halo model derived HI bias.
+        """
+        bias = []
+        for zz in z:
+            self.hm.redshift = zz
+            bias.append(self.hm.lbias_h1())
 
-
+        return np.array(bias)
 
     def bias_z(self, z):
-        """ Overwrites bias_z to include a halo model derived HI bias.
+        """Linear Eulerian bias from the Lagrangian counterpart
         """
-        return np.ones_like(z) * 1.5 
+        return self.lagbias_z(z) + 1.
 
     def getsky(self):
         """ Overwrites getsky to add correct pre-factors
         """
+        # Get sky
         delta_za = super(Corr21cmZA, self).getsky()
         # Apply prefactor
-        frequencies, freq_slice = self._pad_freqs(self._frequencies)
-        redshift_array = units.nu21 / frequencies - 1.
-        pref = self.prefactor(redshift_array[freq_slice])[:, np.newaxis]
+        redshift_array = units.nu21 / self.frequencies - 1.
+        pref = self.prefactor(redshift_array)[:, np.newaxis]
 
+        # TODO: add prefactor
         print pref
-
         #return delta_za * pref
         return delta_za
 

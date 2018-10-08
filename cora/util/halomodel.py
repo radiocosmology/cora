@@ -9,11 +9,18 @@ class HaloModel(object):
     dc = 1.686  # Critical density of colapse
     solar_mass = 1.98847E30
 
-    def __init__(self, redshift=0., gf=None, window='tophat', 
+    def __init__(self, redshift=0., r_scales=None, gf=None, window='tophat',
                  collapse_method='ellipsoidal', ps=None, cosmology=None):
 
         # Redshift to compute hm at.
         self.redshift = redshift
+
+        if r_scales is None:
+            # To get as low as M=10^3 solar masses
+            r_scales = np.logspace(np.log10(2E-3), np.log10(15), 250)
+        self.rs = r_scales
+
+        self._set_mh1_interp()
 
         if cosmology is None:
             cosmology = corr.Cosmology()
@@ -30,6 +37,8 @@ class HaloModel(object):
             psfile = join(dirname(corr.__file__), "data/ps_z1.5.dat")
             cs1 = cs.LogInterpolater.fromfile(psfile)
             self.ps = lambda k: cs1(k) * (gf(0.) / gf(ps_redshift))**2
+        else:
+            self.ps = ps
 
         h = cosmology.H0/100.
         H0_1s = cosmology.H0/(corr.units.kilo_parsec)  # H0 in 1/s (SI)
@@ -62,98 +71,165 @@ class HaloModel(object):
             # Window functio in k-space
             self.Wk = lambda kR: 3.*(np.sin(kR)-kR*np.cos(kR))/kR**3
 
-#    def growth_factor(self, z=None):
-#        """ Ensure growth factor is normalized to z=0."""
-#        if z is None:
-#            z = self.redshift
-#        
-#        # return 1./(1. + z)
-#        return self.gf(z)/self.gf(0.)
+    @property
+    def rs(self):
+        """ Array of scales R
+        """
+        return self._rs
 
-    def dct(self, z=None):
-        if z is None:
-            z = self.redshift
-        return self.dc/self.growth_factor(z)
+    @rs.setter
+    def rs(self, value):
+        """ Setter for scales R
+        """
+        # Ensure rs is array-like
+        if not isinstance(value, (np.ndarray, list)):
+            value = np.array([value])
+        self._rs = value
+        self.rs_up_to_date = False
 
-    def V(self, R):
-        """From MBW discussion after eq.(6.35)"""
-        return self.gammaf*R**3
+    @property
+    def redshift(self):
+        """
+        """
+        return self._z
+    
+    @redshift.setter
+    def redshift(self, value):
+        """
+        """
+        self._z = value
+        self.z_up_to_date = False
 
-    def M(self, R):
-        """From MBW eq.(6.36)"""
-        return self.rho_bar * self.V(R)
+    def _update_rs(self):
+        """
+        """
+        # Variance at each scale
+        self._s2s = np.array([self._sigma2(r) for r in self.rs])
+        # Volumes associated with the scales in rs
+        self._vs = self.gammaf * self.rs**3
+        # Masses associated with the scales in rs
+        self._ms = self.rho_bar * self._vs
+        # Mark as updated
+        self.rs_up_to_date = True
+        # Need to update redshift dependent quantities also
+        self._update_z()
 
-    def sigma2(self, R, k_int_lim=None):
+    def _update_z(self):
+        """
+        """
+        self._dct = self.dc/self.growth_factor(self.redshift)
+        self._nus = self._dct / self._s2s**0.5
+        self._nu2s = self._dct**2 / self._s2s
+        # Mark as updated
+        self.z_up_to_date = True
+
+    def check_update(self):
+        """
+        """
+        if not self.rs_up_to_date:
+            # Updates z-dependent quantities as well
+            self._update_rs()
+        elif not self.z_up_to_date:
+            self._update_z()
+
+    def _sigma2(self, r, k_int_lim=None):
         """From MBW eq.(7.44)
         R is a scalar here"""
         
         def integrand(k):
-            return self.ps(k) * self.Wk(k*R)**2 * k**2
+            return self.ps(k) * self.Wk(k*r)**2 * k**2
         
         # Determine integration limit if not given.
         if k_int_lim is None:
-            k_int_lim = [0., 3./R]
+            k_int_lim = [0., 3./r]
         # integrate.quad returns a tupple (value, error)
-        return integrate.quad(integrand, k_int_lim[0], k_int_lim[1])[0]/(2.*np.pi**2)
+        return integrate.quad(integrand, k_int_lim[0], 
+                              k_int_lim[1])[0]/(2.*np.pi**2)
 
-    def s2_array(self, R):
-        if not isinstance(R, (np.ndarray, list)):
-            R = np.array([R])
-        return np.array([self.sigma2(r) for r in R])
-
-    def nu(self, s2, z=None):
-        if z is None:
-            z = self.redshift
-        return self.dct(z) / s2**0.5
-
-    def nu2(self, s2, z=None):
-        if z is None:
-            z = self.redshift
-        return self.dct(z)**2 / s2
-
-    def fps(self, nu, nu2):
+    def _fps(self, nu, nu2):
         """ From MBW eq.(7.47) """
         return (2./np.pi)**0.5*nu*np.exp(-0.5*nu2)
 
-    def f(self, R, z=None):
+    def f(self):
         """ From MBW eq.(7.47) and eq.(7.67)
         or from arXiv:astro-ph/9907024 eq.(6)"""
-        if z is None:
-            z = self.redshift
-        s2 = self.s2_array(R)
-        nus = self.nu(s2, z)
-        nu2s = self.nu2(s2, z)
+        self.check_update()
+
         if self.collapse_method == 'ellipsoidal':
             A = 0.322
             q = 0.3
             a = 0.707
-            nutilde = a**0.5*nus
-            nutilde2 = a*nu2s
-            return A * (1.+1./nutilde2**q) * self.fps(nutilde, nutilde2)
+            nutilde = a**0.5*self._nus
+            nutilde2 = a*self._nu2s
+            return A * (1.+1./nutilde2**q) * self._fps(nutilde, nutilde2)
         elif self.collapse_method == 'spherical':
-            return self.fps(nus, nu2s)
+            return self._fps(self._nus, self._nu2s)
 
-    def n(self, R, z=None):
+    def n(self):
         """ From MBW eq.(7.46) """
-        if z is None:
-            z = self.redshift
-        Ms = self.M(R)
-        s2 = self.s2_array(R)
-        nus = self.nu(s2, z)
-        return self.rho_bar / Ms**2 * self.f(R, z) * abs(np.gradient(np.log(nus), np.log(Ms)))
+        self.check_update()
+        return self.rho_bar / self._ms**2 * self.f() * abs(
+                        np.gradient(np.log(self._nus), np.log(self._ms)))
     
-    def lbias(self, R, z=None):
+    def lbias(self):
         """ Lagrangian halo bias.
         From arXiv:astro-ph/9907024"""
-        if z is None:
-            z = self.redshift
-        s2 = self.s2_array(R)
-        nu2s = self.nu2(s2, z)
+        self.check_update()
         a = 0.707
         b = 0.5
         c = 0.6
-        nutilde2 = a*nu2s
+        nutilde2 = a * self._nu2s
 #         return 1./self.dct(z) * ( nutilde2
         return 1./self.dc * (nutilde2
-                             + b*nutilde2**(1.-c)
-                             - (nutilde2**c / a**0.5)/(nutilde2**c + b*(1.-c)*(1.-c*0.5)))
+                             + b * nutilde2**(1.-c)
+                             - (nutilde2**c / a**0.5)/(nutilde2**c 
+                                                       + b*(1.-c)*(1.-c*0.5)))
+
+    def _set_mh1_interp(self):
+        """ Halo HI mass function - the average HI mass 
+        hosted by a halo of mass M at redshift z.
+        Taken from arXiv:1804.09180 eq.(13).
+        (all masses in h^-1 M_solar)"""
+
+        import scipy.interpolate as interpolate
+
+        kind = 'quadratic'
+
+        zs = np.array([0, 1, 2, 3, 4, 5])
+        M0pts = np.array([4.3, 1.5, 1.3, 0.29, 0.14, 0.19])*1E10
+        Mminpts = np.array([200., 60., 36., 6.7, 2.1, 2.])*1E10
+        alphapts = np.array([0.24, 0.53, 0.6, 0.76, 0.79, 0.74])
+
+        # TODO: use the errors to introduce stochastic variability?
+        M0err = np.array([1.1, 0.7, 0.6, 0.2, 0.1, 0.12])*1E10
+        Mminerr = np.array([60., 29., 16., 4., 1.3, 1.2])*1E10
+        alphaerr = np.array([0.05, 0.06, 0.05, 0.05, 0.04, 0.04])
+
+        self.M0 = interpolate.interp1d(zs, M0pts, kind=kind)
+        self.Mmin = interpolate.interp1d(zs, Mminpts, kind=kind)
+        self.alpha = interpolate.interp1d(zs, alphapts, kind=kind)
+
+    def mh1(self, M, z=None):
+        """ Halo HI mass function - the average HI mass 
+        hosted by a halo of mass M at redshift z.
+        Taken from arXiv:1804.09180 eq.(13).
+        (all masses in h^-1 M_solar)"""
+
+        if z is None:
+            z = self.redshift
+
+        return (self.M0(z) * (M/self.Mmin(z))**self.alpha(z) 
+                * np.exp(-(self.Mmin(z)/M)**0.35))
+
+    def lbias_h1(self):
+        """ """
+        # Check that object is up to date
+        self.check_update()
+    
+        dndm = self.n()
+        mh1 = self.mh1(self._ms)
+        rhoh1 = np.sum(dndm * mh1 * np.gradient(self._ms))
+        return (1./rhoh1 * np.sum(dndm * mh1
+                                  * self.lbias() * np.gradient(self._ms)))
+
+
