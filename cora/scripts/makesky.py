@@ -164,6 +164,51 @@ def _21cm(ctx, eor, oversample):
 
 
 # TODO: Need to implement the options to pass nside_factor and ndiv_radial
+@cli.command('21cm_qso_za')
+@click.option('--oversample', type=int, help='Oversample in redshift by 2**oversample_z + 1 to capute finite width bins.')
+@click.pass_context
+def _21cm_qso_za(ctx, oversample):
+    """Generate a simulation of the unresolved 21cm background
+    and the quasars overdensities using the Zeldovich approximation.
+    """
+
+    from cora.signal import corr21cm
+    from datetime import datetime
+    from cora.util import nputil
+
+    t1 = datetime.now()
+
+    cr = corr21cm.Corr21cmZA()
+    crq = corr21cm.CorrQuasarZA()
+
+    cr.nside = ctx.obj.nside
+    cr.frequencies = ctx.obj.freq
+    cr.oversample = oversample if oversample is not None else 0
+    crq.nside = ctx.obj.nside
+    crq.frequencies = ctx.obj.freq
+    crq.oversample = oversample if oversample is not None else 0
+
+    lmax = 3 * cr.nside - 1
+    gaussvars_list = [nputil.complex_std_normal((len(cr.freqs_full), l + 1))
+                      for l in range(lmax+1)]
+
+    # Generate signal realization and save
+    sg_map = cr.getsky(gaussvars_list=gaussvars_list)
+    qs_map = crq.getsky(gaussvars_list=gaussvars_list)
+
+    # TODO: need to think what to do with ctx.obj.include_pol here. 
+    # For now I ignore it and use False in write_map.
+    # Should I test to see if pol was asked and raise() in case afirmative?
+    # Save map
+    write_map('21cm_'+ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, False)
+    write_map('qso_'+ctx.obj.filename, qs_map, cr.frequencies, ctx.obj.freq_width, False)
+
+    t2 = datetime.now()
+    with open('runtime.dat','w') as fl:
+        fl.write('Total runtime: {0}'.format(t2-t1))
+
+
+# TODO: Need to implement the options to pass nside_factor and ndiv_radial
 @cli.command('21cm_za')
 @click.option('--oversample', type=int, help='Oversample in redshift by 2**oversample_z + 1 to capute finite width bins.')
 @click.pass_context

@@ -649,7 +649,7 @@ class Corr21cmZA(CorrZA):
         """
         return self.lagbias_z(z) + 1.
 
-    def getsky(self,gaussvars_list):
+    def getsky(self,gaussvars_list=None):
         """ Overwrites getsky to add correct pre-factors
         """
         # Get sky
