@@ -454,10 +454,17 @@ class CorrZA(Corr21cm):
         #return delta_za * pref
         return delta_za, maps_der1
 
+    @Corr21cm.frequencies.setter
+    def frequencies(self,freq):
+        """Overrides the frequencies setter to also
+        define freqs_full and freq_slice.
+        """
+        self._frequencies = freq
+        self.freqs_full, self.freq_slice = self._pad_freqs(self.frequencies)
 
     # Overwrite getsky to implement the steps necessary for the
     # Zeldovich approximation case
-    def getsky(self):
+    def getsky(self, gaussvars_list=None):
         """Create a map of the unpolarised sky using the
         zeldovich approximation.
         """
@@ -467,23 +474,23 @@ class CorrZA(Corr21cm):
         from cora.util import pmesh as pm
 
         lmax = 3 * self.nside - 1
+        nz_full = len(self.freqs_full)
 
-        # Add frequency padding for correct particle displacement at edges
-        freqs_full, freq_slice = self._pad_freqs(self.frequencies)
+        if gaussvars_list is None:
+            # Generate gaussian random numbers for realization
+            gaussvars_list = [nputil.complex_std_normal((nz_full, l + 1))
+                              for l in range(lmax+1)]
 
         # Angular power spectrum for the matter field
         cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
-                             freqs_full, zromb=self.oversample)
+                             self.freqs_full, zromb=self.oversample)
         # Angular power spectrum for the Newtonian potential
         cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
-                                 freqs_full, zromb=self.oversample)
+                                 self.freqs_full, zromb=self.oversample)
 
-        redshift_array = units.nu21 / freqs_full - 1.
+        redshift_array = units.nu21 / self.freqs_full - 1.
         comovd = self.cosmology.comoving_distance(redshift_array)
 
-        # Generate gaussian random numbers for realization
-        gaussvars_list = [nputil.complex_std_normal((cla_pot.shape[1], l + 1)) 
-                          for l in range(cla_pot.shape[0])]
         # Generate matter field maps
         maps = skysim.mkfullsky(cla, self.nside, 
                                 gaussvars_list=gaussvars_list)
@@ -516,7 +523,7 @@ class CorrZA(Corr21cm):
             self.nside, comovd, self.nside_factor, self.ndiv_radial, nslices=2)
 
         # Recover original frequency range:
-        delta_za = delta_za[freq_slice]
+        delta_za = delta_za[self.freq_slice]
 
         # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
         #return delta_za, maps, maps_der1
@@ -573,6 +580,21 @@ def theory_power_spectrum(redshift_filekey, bin_centers,
     outfile.close()
 
 
+class CorrQuasarZA(CorrZA):
+    r"""Correlation function of the Quasar number density fluctuations
+    using the Zeldovich approximation.
+
+    Overwrites CorrZA to include the bias taken from arXiv:1705.04718 
+
+    """
+
+    def bias_z(self, z):
+        """Linear Eulerian bias taken from arXiv:1705.04718
+        """
+        alpha, beta = 0.278, 2.393
+        return alpha*((1 + z)**2 - 6.565) + beta
+
+
 class Corr21cmZA(CorrZA):
     r"""Correlation function of HI brightness temperature fluctuations
     using the Zeldovich approximation.
@@ -627,11 +649,11 @@ class Corr21cmZA(CorrZA):
         """
         return self.lagbias_z(z) + 1.
 
-    def getsky(self):
+    def getsky(self,gaussvars_list):
         """ Overwrites getsky to add correct pre-factors
         """
         # Get sky
-        delta_za = super(Corr21cmZA, self).getsky()
+        delta_za = super(Corr21cmZA, self).getsky(gaussvars_list)
         # Apply prefactor
         redshift_array = units.nu21 / self.frequencies - 1.
         pref = self.prefactor(redshift_array)[:, np.newaxis]
