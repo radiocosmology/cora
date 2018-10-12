@@ -516,11 +516,17 @@ class CorrZA(Corr21cm):
         # Add extra displacement due to redshift space distortions.
         maps_der1[3] *= (1. + self.growth_rate(redshift_array))[:, np.newaxis]
 
+        # Apply a lognormal transformation on the biased Lagrangian field
+        # to get rid of negative densities. Pass filed with mean 1, not 0.
+#        maps = np.exp(maps*self.lagbias_z(redshift_array)[:, np.newaxis])
+        maps = maps*self.lagbias_z(redshift_array)[:, np.newaxis] + 1.
+        maps = np.where(maps<0.,0.,maps)
+
         # Compute density in the Zeldovich approximation:
         # Multiply linear density maps by lagrangian bias of the tracer.
         delta_za = pm.za_density(
-            maps_der1[1:], maps*self.lagbias_z(redshift_array)[:, np.newaxis],
-            self.nside, comovd, self.nside_factor, self.ndiv_radial, nslices=2)
+                        maps_der1[1:], maps, self.nside, comovd,
+                        self.nside_factor, self.ndiv_radial, nslices=2)
 
         # Recover original frequency range:
         delta_za = delta_za[self.freq_slice]
@@ -659,9 +665,9 @@ class Corr21cmZA(CorrZA):
         pref = self.prefactor(redshift_array)[:, np.newaxis]
 
         # TODO: add prefactor
-        print pref
-        #return delta_za * pref
-        return delta_za
+        #print pref
+        return delta_za * pref
+        #return delta_za
 
 
 class EoR21cm(Corr21cm):

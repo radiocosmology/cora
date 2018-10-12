@@ -7,14 +7,14 @@ from scipy.interpolate import interp1d
 import healpy as hp
 
 
-def za_density(psi,delta0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
+def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     """
     psi : array-like [3,nz,npix]
         Coordinate displacements
-    delta0 : array-like [nz,npix]
+    rho0 : array-like [nz,npix]
         The underlying density field to be displaced. Usually the Gaussian 
         matter density field linearly evolved to the correct redshifts and 
-        biased with a Lagrangian bias.
+        biased with a Lagrangian bias (with mean 1, not 0).
     """
         
     def interp_ugd(f,ndiv):
@@ -49,8 +49,7 @@ def za_density(psi,delta0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     npix = hp.pixelfunc.nside2npix(nside) # In original size maps
     nz = len(comovd)
     #mapdtype = psi.dtype
-    mapdtype = delta0.dtype
-    print delta0.shape, len(comovd)
+    mapdtype = rho0.dtype
     # Number of pixels in upgraded resolution per pixel of original resolution:
     ndiv_ang = nside_factor**2
     # Number of voxels in upgraded resolution per voxel of original resolution:
@@ -74,7 +73,7 @@ def za_density(psi,delta0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
 
     for ii in range(len(comov0)):
         # Initial density
-        delta0_slc = delta0[comov0_idx[ii],ang0_idx]
+        rho0_slc = rho0[comov0_idx[ii],ang0_idx]
         # Coordinate displacements
         psi_slc = psi[:,comov0_idx[ii],ang0_idx]
         # Final angles:
@@ -93,7 +92,7 @@ def za_density(psi,delta0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
         radial_idx = np.digitize(comov1,comov_bins)
 
         fill_delta_za(delta_za, radial_idx.flatten(), ang_idx.flatten(),
-                      delta0_slc.flatten())
+                      rho0_slc.flatten())
 
     return delta_za*fracfactor - 1.
 
@@ -101,7 +100,7 @@ def za_density(psi,delta0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
 # I tried to use 'nogil' in this function call but apparently it
 # degraded the performance slightly. 
 cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx, 
-                         long[:] ang_idx, double[:] delta0):
+                         long[:] ang_idx, double[:] rho0):
 # 'delta_za' is defined in the argument as a cython memoryview.
 # It can take a numpy array as parameter and modifying one changes the other.
     cdef long ii, jj, kk
@@ -109,5 +108,4 @@ cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx,
         ii = rad_idx[kk]
         jj = ang_idx[kk]
         #delta_za[ii,jj] += 1. # TODO: delete
-        delta_za[ii,jj] += delta0[kk]+1.
-        
+        delta_za[ii,jj] += rho0[kk]
