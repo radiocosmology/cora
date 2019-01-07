@@ -7,6 +7,13 @@ References
 ----------
 .. [1] http://arxiv.org/abs/0804.1130
 """
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
 import numpy as np
 
 from cora.core import maps, gaussianfield
@@ -47,7 +54,7 @@ class LofarGDSE(maps.Map3d):
     def getfield(self):
         r"""Lofar synchrotron."""
 
-        numz = int((self.x_num + self.y_num) / 2)
+        numz = int((self.x_num + self.y_num) // 2)
 
         # Set up 3D field generator
         npix = [self.x_num, self.y_num, numz]

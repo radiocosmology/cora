@@ -1,3 +1,9 @@
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
 
 import numpy as np
 import scipy.linalg as la
@@ -45,7 +51,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
 
         za = (zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]).flatten()
 
-        lsections = np.array_split(np.arange(lmax + 1), lmax / 5)
+        lsections = np.array_split(np.arange(lmax + 1), lmax // 5)
 
         cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
@@ -141,7 +147,7 @@ def mkconstrained(corr, constraints, nside):
     nmodes = len(constraints)
 
     # The frequency slices that are constrained.
-    f_ind = zip(*constraints)[0]
+    f_ind = [c[0] for c in constraints]
 
     if corr.shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")

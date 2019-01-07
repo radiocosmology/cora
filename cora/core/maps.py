@@ -1,3 +1,10 @@
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
 import numpy as np
 
 from cora.util import units
@@ -184,9 +191,9 @@ class Map3d(Map2d):
         c.nu_upper = max(freq_axis)/1.e6
         c.nu_num = len(freq_axis)
 
-        print "Map3D: %dx%d field (%fx%f deg) from nu=%f to nu=%f (%d bins)" % \
+        print("Map3D: %dx%d field (%fx%f deg) from nu=%f to nu=%f (%d bins)" % \
                  (c.x_num, c.y_num, c.x_width, c.y_width,
-                  c.nu_lower, c.nu_upper, c.nu_num)
+                  c.nu_lower, c.nu_upper, c.nu_num))
 
         return c
 

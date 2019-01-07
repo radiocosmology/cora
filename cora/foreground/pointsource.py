@@ -1,4 +1,10 @@
 """Simulating extra-galactic point sources."""
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
 
 from os.path import join, dirname
 
@@ -155,7 +161,7 @@ class PointSourceModel(maps.Map3d):
         if(flux_max == None):
             ratelog = lambda s: (s*area*self.source_count(s) - 5e-2)
             flux_max = newton(ratelog, self.flux_min)
-            print "Using maximum flux: %e Jy" % flux_max
+            print("Using maximum flux: %e Jy" % flux_max)
 
         # Generate realisation by creating a rate and treating like an
         # inhomogenous Poisson process.
@@ -191,7 +197,7 @@ class PointSourceModel(maps.Map3d):
 
         sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
 
-        for i in xrange(sr.shape[0]):
+        for i in range(sr.shape[0]):
             # Pick random pixel
             x = int(rnd.rand() * self.x_num)
             y = int(rnd.rand() * self.y_num)
@@ -214,7 +220,7 @@ class PointSourceModel(maps.Map3d):
         """
 
         if self.flux_min < 0.1:
-            print "This is going to take a long time. Try raising the flux limit."
+            print("This is going to take a long time. Try raising the flux limit.")
 
         npix = 12*self.nside**2
 
@@ -229,7 +235,7 @@ class PointSourceModel(maps.Map3d):
 
         sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
 
-        for i in xrange(sr.shape[0]):
+        for i in range(sr.shape[0]):
             # Pick random pixel
             ix = int(rnd.rand() * npix)
 
@@ -451,7 +457,7 @@ class RealPointSources(maps.Map3d):
         self._generate_catalogue()
 
         if self.flux_min < 2.0:
-            print "Flux limit probably too low for reliable catalogue."
+            print("Flux limit probably too low for reliable catalogue.")
 
         freq = self.nu_pixels
         nfreq = len(freq)
