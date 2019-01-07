@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file. This
 project adheres to [Semantic Versioning](http://semver.org/), with the exception
 that I'm using PEP440 to denote pre-releases.
 
+## [2.1.2] - 2019-01-07
+
+### Added
+
+- Basic unit tests checking the calculation of correlation functions and map
+  generation.
+
+### Fixed
+
+- Major bug in drawing a realisation of a power spectrum. This my have
+  significantly impacted simulated maps since 2.1.1.
+
+
 ## [2.1.1] - 2017-08-02
 
 ### Added
