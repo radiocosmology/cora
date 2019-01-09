@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file. This
 project adheres to [Semantic Versioning](http://semver.org/), with the exception
 that I'm using PEP440 to denote pre-releases.
 
+
+## [3.0.0] - 2019-01-07
+
+### Changed
+
+- Python 3 support. This may break some things, please report any issues you
+  have.
+
+
 ## [2.1.2] - 2019-01-07
 
 ### Added
