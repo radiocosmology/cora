@@ -72,7 +72,7 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
 
     # Try to perform a Cholesky first as it's much faster (8x)
     try:
-        root = la.cholesky(mat)
+        root = la.cholesky(mat, lower=True)
         num_pos = mat.shape[0]
 
     # If that doesn't work do an eigenvalue and throw out any tiny modes
