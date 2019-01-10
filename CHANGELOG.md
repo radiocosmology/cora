@@ -11,6 +11,7 @@ that I'm using PEP440 to denote pre-releases.
 
 - Python 3 support. This may break some things, please report any issues you
   have.
+- Setup travis integration.
 
 
 ## [2.1.2] - 2019-01-07
