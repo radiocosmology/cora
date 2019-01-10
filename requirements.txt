@@ -1,4 +1,5 @@
 caput
+cython
 skyfield
 numpy>=1.7
 scipy>=0.10
