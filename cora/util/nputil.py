@@ -1,4 +1,11 @@
 """Utility functions to help with pure numpy stuff."""
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
 
 import numpy as np
 import scipy.linalg as la
@@ -36,7 +43,7 @@ def load_ndarray_list(fname):
     """
 
     d1 = np.load(fname)
-    la = [ v for i, v in sorted(d1.iteritems(), key=lambda kv: int(kv[0]))]
+    la = [ v for i, v in sorted(iter(d1.items()), key=lambda kv: int(kv[0]))]
 
     return la
 

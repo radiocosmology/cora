@@ -1,3 +1,10 @@
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
 from os.path import dirname, join, exists
 
 import scipy
@@ -556,7 +563,7 @@ class RedshiftCorrelation(object):
         This is stored internally as `self._sigma_v` in units of km/s
         Note that e.g. WiggleZ reports sigma_v in h km/s
         """
-        print "using sigma_v (km/s): " + repr(self._sigma_v)
+        print("using sigma_v (km/s): " + repr(self._sigma_v))
         sigma_v_hinvMpc = (self._sigma_v / 100.)
         return np.ones_like(z) * sigma_v_hinvMpc
 
@@ -583,24 +590,24 @@ class RedshiftCorrelation(object):
         # Generate an underlying random field realisation of the
         # matter distribution.
 
-        print "Gen field."
+        print("Gen field.")
         rfv = gaussianfield.RandomField(npix = n, wsize = d)
         rfv.powerspectrum = psv
 
         vf0 = rfv.getfield()
 
         # Construct an array of \mu^2 for each Fourier mode.
-        print "Construct kvec"
+        print("Construct kvec")
         spacing = rfv._w / rfv._n
         kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
-        print "Construct mu2"
+        print("Construct mu2")
         mu2arr = kvec[...,0]**2 / (kvec**2).sum(axis=3)
         mu2arr.flat[0] = 0.0
         del kvec
 
         df = vf0
 
-        print "FFT vel"
+        print("FFT vel")
         # Construct the line of sight velocity field.
         # TODO: is the s=rfv._n the correct thing here?
         vf = fftutil.irfftn(mu2arr * fftutil.rfftn(vf0))
@@ -679,8 +686,8 @@ class RedshiftCorrelation(object):
         # now multiply by scaling for a finer sub-grid.
         n = refinement*n
 
-        print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
-              (c1, c2, d[1], d[2], n[0], n[1], n[2])
+        print("Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
+              (c1, c2, d[1], d[2], n[0], n[1], n[2]))
 
         cube = self._realisation_dv(d, n)
         # TODO: this is probably unnecessary now (realisation used to change
@@ -726,7 +733,7 @@ class RedshiftCorrelation(object):
         da = self.cosmology.proper_distance(za)
         xa = self.cosmology.comoving_distance(za)
 
-        print "Constructing mapping.."
+        print("Constructing mapping..")
         # Construct the angular offsets into cube
         tx = np.linspace(-thetax / 2., thetax / 2., numx) * units.degree
         ty = np.linspace(-thetay / 2., thetay / 2., numy) * units.degree
@@ -995,7 +1002,7 @@ def _integrate(r, l, psfunc):
     r3 = _int(_integrand_offset, cutk * d, maxk * d, args=argv)
 
     if _feedback:
-        print r1, r2, r3
+        print(r1, r2, r3)
 
     return r1 + r2 + r3
 
