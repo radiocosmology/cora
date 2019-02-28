@@ -6,9 +6,11 @@ from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
 # === End Python 2/3 compatibility
 
+from future.utils import native_str
 
 import numpy as np
 import scipy.linalg as la
+
 
 def save_ndarray_list(fname, la):
     """Save a list of numpy arrays to disk.
@@ -25,7 +27,8 @@ def save_ndarray_list(fname, la):
     """
     d1 = { repr(i) : v for i, v in enumerate(la)}
 
-    np.savez(fname, **d1)
+    np.savez(native_str(fname), **d1)
+
 
 def load_ndarray_list(fname):
     """Load a list of arrays saved by `save_ndarray_list`.
@@ -42,7 +45,7 @@ def load_ndarray_list(fname):
         what was saved by `save_ndarray_list`.
     """
 
-    d1 = np.load(fname)
+    d1 = np.load(native_str(fname))
     la = [ v for i, v in sorted(iter(d1.items()), key=lambda kv: int(kv[0]))]
 
     return la

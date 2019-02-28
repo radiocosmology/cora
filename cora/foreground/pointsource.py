@@ -6,6 +6,8 @@ from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
 # === End Python 2/3 compatibility
 
+from future.utils import native_str
+
 from os.path import join, dirname
 
 import numpy as np
@@ -89,7 +91,8 @@ class PointSourceModel(maps.Map3d):
 
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
 
-        f = np.load(_data_file)
+        # TODO: Python 3 workaround numpy issue
+        f = np.load(native_str(_data_file))
         self._faraday = f['faraday']
 
 
@@ -418,7 +421,10 @@ class RealPointSources(maps.Map3d):
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
         _catalogue_file = join(dirname(__file__), 'data', "combinedps.dat")
 
-        f = np.load(_data_file)
+        _data_file = native_str(_data_file)
+
+        # TODO: Python 3 workaround numpy issue
+        f = np.load(native_str(_data_file))
         self._faraday = f['faraday']
 
         with open(_catalogue_file, 'r') as f:
