@@ -186,7 +186,9 @@ def gaussianfg(ctx):
 
     # Set frequency parameters
     fsyn.frequencies = ctx.obj.freq
+    nfreq = len(fsyn.frequencies)
 
+    nside = ctx.obj.nside
     lmax = 3 * nside
     npol = 4 if ctx.obj.full_pol else 1
 
