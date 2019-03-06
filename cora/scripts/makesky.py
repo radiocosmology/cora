@@ -12,9 +12,9 @@ import numpy as np
 @click.option('--channels', help='Select a range of frequency channels',
               type=(int, int), metavar='CSTART CSTOP', default=(None, None))
 @click.option('--channel-bin', help='If set, average over BIN channels', metavar='BIN', type=int, default=1)
-@click.option('--freq-mode', type=click.Choice(['centre', 'pathfinder']), default='centre',
-              help=('Choose whether FSTART and FSTOP are the very edges of the band, '+
-                    'or whether they are the centre frequencies (default: centre).'))
+@click.option('--freq-mode', type=click.Choice(['centre', 'chime', 'edge']), multiple=True, default='centre',
+              help=('Choose whether FSTART and FSTOP are the centre frequencies, the frequencies for ' +
+                    'the CHIME telescope or the very edges of the band, (default: centre).'))
 @click.option('--pol', type=click.Choice(['full', 'zero', 'none']), default='full',
               help='Pick polarisation mode. Full output, zero polarisation, or only return Stokes I (default: full).')
 @click.option('--filename', help='Output file [default=map.h5]', metavar='FILENAME', default='map.h5')
@@ -32,7 +32,7 @@ def cli(ctx, nside, freq, channels, channel_bin, freq_mode, pol, filename):
     if freq_mode == 'centre':
         df = abs((freq[1] - freq[0]) / (freq[2] - 1))
         frequencies = np.linspace(freq[0], freq[1], freq[2], endpoint=True)
-    if freq_mode == 'pathfinder':
+    if freq_mode == 'chime':
         df = (freq[1] - freq[0]) / freq[2]
         frequencies = np.linspace(freq[0], freq[1], freq[2], endpoint=False)
     else:
@@ -183,7 +183,9 @@ def gaussianfg(ctx):
 
     # Set frequency parameters
     fsyn.frequencies = ctx.obj.freq
+    nfreq = len(fsyn.frequencies)
 
+    nside = ctx.obj.nside
     lmax = 3 * nside
     npol = 4 if ctx.obj.full_pol else 1
 
