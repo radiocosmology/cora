@@ -7,6 +7,8 @@ from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
 # === End Python 2/3 compatibility
 
+import os
+
 import click
 
 import numpy as np
@@ -63,6 +65,9 @@ def cli(ctx, nside, freq, channels, channel_bin, freq_mode, pol, filename):
     ctx.obj.full_pol = (pol == 'full')
     ctx.obj.include_pol = (pol != 'none')
     ctx.obj.filename = filename
+
+    if os.path.exists(filename):
+        raise click.ClickException("Output file %s already exists" % filename)
 
 
 @cli.command()
