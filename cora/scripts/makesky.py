@@ -214,6 +214,7 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
 
     import h5py
     import numpy as np
+    from future.utils import text_type
 
     # Make into 3D array
     if data.ndim == 3:
@@ -238,12 +239,13 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
         f.attrs['__memh5_distributed_file'] = True
 
         dset = f.create_dataset('map', data=data)
-        dset.attrs['axis'] = np.array(['freq', 'pol', 'pixel'])
+        dt = h5py.special_dtype(vlen=text_type)
+        dset.attrs['axis'] = np.array(['freq', 'pol', 'pixel']).astype(dt)
         dset.attrs['__memh5_distributed_dset'] = True
 
         dset = f.create_dataset('index_map/freq', data=freqmap)
         dset.attrs['__memh5_distributed_dset'] = False
-        dset = f.create_dataset('index_map/pol', data=polmap)
+        dset = f.create_dataset('index_map/pol', data=polmap.astype(dt))
         dset.attrs['__memh5_distributed_dset'] = False
         dset = f.create_dataset('index_map/pixel', data=np.arange(data.shape[2]))
         dset.attrs['__memh5_distributed_dset'] = False
