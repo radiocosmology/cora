@@ -208,7 +208,8 @@ def inhomogeneous_process_approx(t, rate):
     rs = rate(ts)
 
     cumr = np.zeros_like(ts)
-    cumr[1:] = cumtrapz(ts, rs)
+    #cumr[1:] = cumtrapz(ts, rs)
+    cumr[1:] = cumtrapz(rs, ts)
     cumr /= cumr[-1]
 
     # Interpolate to generate the inverse CDF and use this to generate
