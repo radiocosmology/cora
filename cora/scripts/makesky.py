@@ -10,8 +10,10 @@ from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
 import os
 
 import click
-
 import numpy as np
+
+from caput import memh5, mpiarray
+
 
 @click.group()
 @click.option('--nside', help='Set the map resolution (default: 256)', metavar='NSIDE', default=256)
@@ -217,9 +219,9 @@ def gaussianfg(ctx):
 def write_map(filename, data, freq, fwidth=None, include_pol=True):
     # Write out the map into an HDF5 file.
 
-    import h5py
     import numpy as np
-    from future.utils import text_type
+
+    m = memh5.BasicCont(distributed=True)
 
     # Make into 3D array
     if data.ndim == 3:
@@ -239,18 +241,17 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
     freqmap['centre'][:] = freq
     freqmap['width'][:] = fwidth if fwidth is not None else np.abs(np.diff(freq)[0])
 
-    # Open up file for writing
-    with h5py.File(filename) as f:
-        f.attrs['__memh5_distributed_file'] = True
+    m.create_index_map("pol", polmap)
+    m.create_index_map("freq", freqmap)
+    m.create_index_map("pixel", np.arange(data.shape[2]))
 
-        dset = f.create_dataset('map', data=data)
-        dt = h5py.special_dtype(vlen=text_type)
-        dset.attrs['axis'] = np.array(['freq', 'pol', 'pixel']).astype(dt)
-        dset.attrs['__memh5_distributed_dset'] = True
+    data = mpiarray.MPIArray.wrap(data, axis=0)
+    dset = m.create_dataset("map", data=data, distributed=True,
+                            distributed_axis=0)
+    dset.attrs["axis"] = np.array(['freq', 'pol', 'pixel'])
+    dset.attrs['__memh5_distributed_dset'] = True
 
-        dset = f.create_dataset('index_map/freq', data=freqmap)
-        dset.attrs['__memh5_distributed_dset'] = False
-        dset = f.create_dataset('index_map/pol', data=polmap.astype(dt))
-        dset.attrs['__memh5_distributed_dset'] = False
-        dset = f.create_dataset('index_map/pixel', data=np.arange(data.shape[2]))
-        dset.attrs['__memh5_distributed_dset'] = False
+    m.attrs['__memh5_subclass'] = "draco.core.containers.Map"
+
+    # Write file
+    m.save(filename)
