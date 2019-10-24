@@ -240,7 +240,7 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
     freqmap['width'][:] = fwidth if fwidth is not None else np.abs(np.diff(freq)[0])
 
     # Open up file for writing
-    with h5py.File(filename) as f:
+    with h5py.File(filename, "w") as f:
         f.attrs['__memh5_distributed_file'] = True
 
         dset = f.create_dataset('map', data=data)
