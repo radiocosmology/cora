@@ -13,9 +13,12 @@ from os.path import join, dirname
 import numpy as np
 import numpy.random as rnd
 
-from scipy.optimize import newton
-
+# There's a very strange issue here, importing the following two lines in the
+# (original) reverse order causes a segfault. It's maybe related to:
+# https://github.com/Alwnikrotikz/healpy/issues/58 This was in 10/2019 running
+# on macOS 10.15. I imagine other OSs are not affected.
 import healpy
+from scipy.optimize import newton
 
 from cora.core import maps
 from cora.util import units
