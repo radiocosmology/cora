@@ -1,13 +1,24 @@
 """Simulating extra-galactic point sources."""
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
+from future.utils import native_str
 
 from os.path import join, dirname
 
 import numpy as np
 import numpy.random as rnd
 
-from scipy.optimize import newton
-
+# There's a very strange issue here, importing the following two lines in the
+# (original) reverse order causes a segfault. It's maybe related to:
+# https://github.com/Alwnikrotikz/healpy/issues/58 This was in 10/2019 running
+# on macOS 10.15. I imagine other OSs are not affected.
 import healpy
+from scipy.optimize import newton
 
 from cora.core import maps
 from cora.util import units
@@ -83,7 +94,8 @@ class PointSourceModel(maps.Map3d):
 
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
 
-        f = np.load(_data_file)
+        # TODO: Python 3 workaround numpy issue
+        f = np.load(native_str(_data_file))
         self._faraday = f['faraday']
 
 
@@ -155,7 +167,7 @@ class PointSourceModel(maps.Map3d):
         if(flux_max == None):
             ratelog = lambda s: (s*area*self.source_count(s) - 5e-2)
             flux_max = newton(ratelog, self.flux_min)
-            print "Using maximum flux: %e Jy" % flux_max
+            print("Using maximum flux: %e Jy" % flux_max)
 
         # Generate realisation by creating a rate and treating like an
         # inhomogenous Poisson process.
@@ -191,7 +203,7 @@ class PointSourceModel(maps.Map3d):
 
         sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
 
-        for i in xrange(sr.shape[0]):
+        for i in range(sr.shape[0]):
             # Pick random pixel
             x = int(rnd.rand() * self.x_num)
             y = int(rnd.rand() * self.y_num)
@@ -214,7 +226,7 @@ class PointSourceModel(maps.Map3d):
         """
 
         if self.flux_min < 0.1:
-            print "This is going to take a long time. Try raising the flux limit."
+            print("This is going to take a long time. Try raising the flux limit.")
 
         npix = 12*self.nside**2
 
@@ -229,7 +241,7 @@ class PointSourceModel(maps.Map3d):
 
         sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
 
-        for i in xrange(sr.shape[0]):
+        for i in range(sr.shape[0]):
             # Pick random pixel
             ix = int(rnd.rand() * npix)
 
@@ -412,7 +424,10 @@ class RealPointSources(maps.Map3d):
         _data_file = join(dirname(__file__), 'data', "skydata.npz")
         _catalogue_file = join(dirname(__file__), 'data', "combinedps.dat")
 
-        f = np.load(_data_file)
+        _data_file = native_str(_data_file)
+
+        # TODO: Python 3 workaround numpy issue
+        f = np.load(native_str(_data_file))
         self._faraday = f['faraday']
 
         with open(_catalogue_file, 'r') as f:
@@ -451,7 +466,7 @@ class RealPointSources(maps.Map3d):
         self._generate_catalogue()
 
         if self.flux_min < 2.0:
-            print "Flux limit probably too low for reliable catalogue."
+            print("Flux limit probably too low for reliable catalogue.")
 
         freq = self.nu_pixels
         nfreq = len(freq)

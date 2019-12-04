@@ -1,3 +1,10 @@
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+from future.utils import native_str
 
 import numpy as np
 import math
@@ -178,7 +185,8 @@ class Cmb(RandomFieldA2):
             from os.path import dirname, join
             psfile = join(dirname(__file__), 'ps_cmb2.dat')
         if(cambnorm):
-            a = np.loadtxt(psfile)
+            # TODO: Python 3 workaround numpy requiring a native string
+            a = np.loadtxt(native_str(psfile))
             l = a[:,0]
             tt = (2*math.pi) *a[:,1] / (l*(l+1.0))
             self._powerspectrum_int = LogInterpolater(np.vstack((l,tt)).T)

@@ -16,6 +16,14 @@ Classes
 
     ConstrainedGalaxy
 """
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
+from future.utils import native_str
 
 from os.path import join, dirname
 
@@ -58,7 +66,7 @@ def map_variance(input_map, nside):
     # Convert to NESTED and then take advantage of this to group into lower
     # resolution pixels
     map_nest = healpy.reorder(input_map, r2n=True)
-    map_nest = map_nest.reshape(-1, (inp_nside / nside)**2)
+    map_nest = map_nest.reshape(-1, (inp_nside // nside)**2)
 
     # Calculate the variance in each low resolution pixel
     var_map = map_nest.var(axis=1)
@@ -128,11 +136,12 @@ class ConstrainedGalaxy(maps.Sky3d):
         self._amp_map = healpy.smoothing(healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0), verbose=False)
 
     def _load_data(self):
-        print "Loading data for galaxy simulation."
+        print("Loading data for galaxy simulation.")
 
         _data_file = join(_datadir, "skydata.npz")
 
-        f = np.load(_data_file)
+        # TODO: Python 3 workaround numpy issue
+        f = np.load(native_str(_data_file))
         self._haslam = f['haslam']
 
         self._sp_ind = {'gsm': f['spectral_gsm'],
@@ -271,7 +280,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         # equivalent to generating random uncorrelated phi maps and FFting
         # into the conjugate.
         map2 = np.zeros((12 * self.nside**2, nphi), dtype=np.complex128)
-        print "SHTing to give random maps"
+        print("SHTing to give random maps")
         for i in range(nphi):
             w = np.random.standard_normal((lmax + 1, 2 * lmax + 1, 2)).view(np.complex128)[..., 0]
             w *= ps_weight
@@ -302,7 +311,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         # is small, as grid is too large).
         w /= w.sum(axis=1)[:, np.newaxis]
 
-        print "Applying phi weighting"
+        print("Applying phi weighting")
         map2 *= w
 
         if not debug:
@@ -321,13 +330,13 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         pta = ptrans(phifreq[:, np.newaxis], fa[np.newaxis, :], df) / dphi
 
-        print "Transforming to freq"
+        print("Transforming to freq")
         map4 = np.dot(map2, pta)
 
         if not debug:
             del map2
 
-        print "Rescaling freq"
+        print("Rescaling freq")
         map4a = np.abs(map4)
         map4 = map4 * np.tanh(map4a) / map4a
 
@@ -335,7 +344,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         map5 = np.zeros((self.nu_num, 4, 12 * self.nside**2), dtype=np.float64)
 
-        print "Scaling by T"
+        print("Scaling by T")
         # Unflatten the intensity by multiplying by the unpolarised realisation
         map5[:, 0] = self.getsky(celestial=False)
         map5[:, 1] = map4.real.T
@@ -345,7 +354,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         if not debug:
             del map4
 
-        print "Rotating"
+        print("Rotating")
         # Rotate to celestial co-ordinates if required.
         if celestial:
             map5 = hputil.coord_g2c(map5)

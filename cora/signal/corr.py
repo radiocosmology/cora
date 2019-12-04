@@ -1,3 +1,11 @@
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
+from future.utils import native_str
 from os.path import dirname, join, exists
 
 import scipy
@@ -372,7 +380,8 @@ class RedshiftCorrelation(object):
         if not exists(fname):
             raise Exception("Cache file does not exist.")
 
-        a = np.loadtxt(fname)
+        # TODO: Python 3 workaround numpy issue
+        a = np.loadtxt(native_str(fname))
         ra = a[:,0]
         vv0 = a[:,1]
         vv2 = a[:,2]
@@ -428,6 +437,8 @@ class RedshiftCorrelation(object):
             dv0 = _integrate(ra, 0, self.ps_dv)
             dv2 = _integrate(ra, 2, self.ps_dv)
 
+        # TODO: Python 3 workaround numpy issue
+        fname = native_str(fname)
         if fname and not exists(fname):
             if self._vv_only:
                 np.savetxt(fname, np.dstack([ra, vv0, vv2, vv4])[0])
@@ -556,7 +567,7 @@ class RedshiftCorrelation(object):
         This is stored internally as `self._sigma_v` in units of km/s
         Note that e.g. WiggleZ reports sigma_v in h km/s
         """
-        print "using sigma_v (km/s): " + repr(self._sigma_v)
+        print("using sigma_v (km/s): " + repr(self._sigma_v))
         sigma_v_hinvMpc = (self._sigma_v / 100.)
         return np.ones_like(z) * sigma_v_hinvMpc
 
@@ -583,24 +594,24 @@ class RedshiftCorrelation(object):
         # Generate an underlying random field realisation of the
         # matter distribution.
 
-        print "Gen field."
+        print("Gen field.")
         rfv = gaussianfield.RandomField(npix = n, wsize = d)
         rfv.powerspectrum = psv
 
         vf0 = rfv.getfield()
 
         # Construct an array of \mu^2 for each Fourier mode.
-        print "Construct kvec"
+        print("Construct kvec")
         spacing = rfv._w / rfv._n
         kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
-        print "Construct mu2"
+        print("Construct mu2")
         mu2arr = kvec[...,0]**2 / (kvec**2).sum(axis=3)
         mu2arr.flat[0] = 0.0
         del kvec
 
         df = vf0
 
-        print "FFT vel"
+        print("FFT vel")
         # Construct the line of sight velocity field.
         # TODO: is the s=rfv._n the correct thing here?
         vf = fftutil.irfftn(mu2arr * fftutil.rfftn(vf0))
@@ -679,8 +690,8 @@ class RedshiftCorrelation(object):
         # now multiply by scaling for a finer sub-grid.
         n = refinement*n
 
-        print "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
-              (c1, c2, d[1], d[2], n[0], n[1], n[2])
+        print("Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
+              (c1, c2, d[1], d[2], n[0], n[1], n[2]))
 
         cube = self._realisation_dv(d, n)
         # TODO: this is probably unnecessary now (realisation used to change
@@ -726,7 +737,7 @@ class RedshiftCorrelation(object):
         da = self.cosmology.proper_distance(za)
         xa = self.cosmology.comoving_distance(za)
 
-        print "Constructing mapping.."
+        print("Constructing mapping..")
         # Construct the angular offsets into cube
         tx = np.linspace(-thetax / 2., thetax / 2., numx) * units.degree
         ty = np.linspace(-thetay / 2., thetay / 2., numy) * units.degree
@@ -1005,13 +1016,14 @@ class RedshiftCorrelation(object):
         if not self._aps_cache:
             self.angular_powerspectrum_fft(np.array([100]), np.array([1.0]), np.array([1.0]))
 
-        np.savez(fname, dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
+        np.savez(native_str(fname), dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
 
 
     def load_fft_cache(self, fname):
         """Load FFT angular powerspectrum cache.
         """
-        a = np.load(fname)
+        # TODO: Python 3 workaround numpy issue
+        a = np.load(native_str(fname))
 
         self._aps_dd = a['dd']
         self._aps_dv = a['dv']
@@ -1250,7 +1262,7 @@ def _integrate(r, l, psfunc):
     r3 = _int(_integrand_offset, cutk * d, maxk * d, args=argv)
 
     if _feedback:
-        print r1, r2, r3
+        print(r1, r2, r3)
 
     return r1 + r2 + r3
 

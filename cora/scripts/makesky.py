@@ -1,5 +1,13 @@
 """Command line script for making sky maps.
 """
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
+import os
 
 import click
 
@@ -57,6 +65,9 @@ def cli(ctx, nside, freq, channels, channel_bin, freq_mode, pol, filename):
     ctx.obj.full_pol = (pol == 'full')
     ctx.obj.include_pol = (pol != 'none')
     ctx.obj.filename = filename
+
+    if os.path.exists(filename):
+        raise click.ClickException("Output file %s already exists" % filename)
 
 
 @cli.command()
@@ -259,7 +270,9 @@ def gaussianfg(ctx):
 
     # Set frequency parameters
     fsyn.frequencies = ctx.obj.freq
+    nfreq = len(fsyn.frequencies)
 
+    nside = ctx.obj.nside
     lmax = 3 * nside
     npol = 4 if ctx.obj.full_pol else 1
 
@@ -285,6 +298,7 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
 
     import h5py
     import numpy as np
+    from future.utils import text_type
 
     # Make into 3D array
     if data.ndim == 3:
@@ -305,16 +319,17 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
     freqmap['width'][:] = fwidth if fwidth is not None else np.abs(np.diff(freq)[0])
 
     # Open up file for writing
-    with h5py.File(filename) as f:
+    with h5py.File(filename, "w") as f:
         f.attrs['__memh5_distributed_file'] = True
 
         dset = f.create_dataset('map', data=data)
-        dset.attrs['axis'] = np.array(['freq', 'pol', 'pixel'])
+        dt = h5py.special_dtype(vlen=text_type)
+        dset.attrs['axis'] = np.array(['freq', 'pol', 'pixel']).astype(dt)
         dset.attrs['__memh5_distributed_dset'] = True
 
         dset = f.create_dataset('index_map/freq', data=freqmap)
         dset.attrs['__memh5_distributed_dset'] = False
-        dset = f.create_dataset('index_map/pol', data=polmap)
+        dset = f.create_dataset('index_map/pol', data=polmap.astype(dt))
         dset.attrs['__memh5_distributed_dset'] = False
         dset = f.create_dataset('index_map/pixel', data=np.arange(data.shape[2]))
         dset.attrs['__memh5_distributed_dset'] = False
