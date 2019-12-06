@@ -786,17 +786,17 @@ class RedshiftCorrelation(object):
         # Generate an underlying random field realisation of the
         # matter distribution. 
 
-        print "Gen field." 
+        print("Gen field.")
         rfv = gaussianfield.RandomField(npix = n, wsize = d)
         rfv.powerspectrum = psv
 
         vf0 = rfv.getfield()        
 
         # Construct an array of \mu^2 for each Fourier mode.
-        print "Construct kvec"
+        print("Construct kvec")
         spacing = rfv._w / rfv._n
         kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
-        print "Construct mu/k = k_par/k^2"
+        print("Construct mu/k = k_par/k^2")
         mukarr = kvec[...,0] / (kvec**2).sum(axis=3)
         mukarr.flat[0] = 0.0
                                                                           
@@ -898,7 +898,7 @@ class RedshiftCorrelation(object):
             n_cross = np.sum(np.where(rho_za>=0.,0,1))
             n_tot = np.prod(rho_za.shape)
             frac_cross = n_cross/float(n_tot)
-            print 'Fraction of voxels that shell-crossed: {0:e} ({1} out of {2})'.format(frac_cross,n_cross,n_tot)
+            print('Fraction of voxels that shell-crossed: {0:e} ({1} out of {2})'.format(frac_cross,n_cross,n_tot))
             # Taking abs() is a hack for shell crossing. Should affect minimal number of voxels with truncation
 
             # Interpolate ZA_density to Eulerian coordinates:
@@ -1427,7 +1427,7 @@ def _particle_mesh(psi,delta,n,d):
     delta_disp += wheights - 1.
 
     # TODO: delete
-    print 'Time to run: ',time.time()-t1, 's'
+    print('Time to run: ',time.time()-t1, 's')
     
     return delta_disp
 

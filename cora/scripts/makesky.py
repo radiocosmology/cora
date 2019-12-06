@@ -207,12 +207,12 @@ def _21cm_qso_za(ctx, oversample):
     sg_map = cr.getsky(gaussvars_list=gaussvars_list)
     qs_map = crq.getsky(gaussvars_list=gaussvars_list)
 
-    # TODO: need to think what to do with ctx.obj.include_pol here. 
-    # For now I ignore it and use False in write_map.
-    # Should I test to see if pol was asked and raise() in case afirmative?
+    if ctx.obj.full_pol:
+        print("ZA code does not support polarizations. Writting zeros for Stokes Q, U, V")
+
     # Save map
-    write_map('21cm_'+ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, False)
-    write_map('qso_'+ctx.obj.filename, qs_map, cr.frequencies, ctx.obj.freq_width, False)
+    write_map('21cm_'+ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
+    write_map('qso_'+ctx.obj.filename, qs_map, cr.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
 
     t2 = datetime.now()
     with open('runtime.dat','w') as fl:
@@ -242,11 +242,11 @@ def _21cm_za(ctx, oversample):
     # Generate signal realization and save
     sg_map = cr.getsky()
 
-    # TODO: need to think what to do with ctx.obj.include_pol here. 
-    # For now I ignore it and use False in write_map.
-    # Should I test to see if pol was asked and raise() in case afirmative?
+    if ctx.obj.full_pol:
+        print("ZA code does not support polarizations. Writting zeros for Stokes Q, U, V")
+
     # Save map
-    write_map(ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, False)
+    write_map(ctx.obj.filename, sg_map, cr.frequencies, ctx.obj.freq_width, ctx.obj.include_pol)
 
     t2 = datetime.now()
     with open('runtime.dat','w') as fl:
