@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 from future.utils import native_str
@@ -21,10 +21,9 @@ from cora.util import cubicspline as cs
 from cora.util.cosmology import Cosmology
 from cora.core import gaussianfield
 
-#ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
+# ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
 
 _feedback = False
-
 
 
 class RedshiftCorrelation(object):
@@ -111,8 +110,7 @@ class RedshiftCorrelation(object):
 
     cosmology = Cosmology()
 
-    def __init__(self, ps_vv = None, ps_dd = None, ps_dv = None,
-                 redshift = 0.0, bias = 1.0):
+    def __init__(self, ps_vv=None, ps_dd=None, ps_dv=None, redshift=0.0, bias=1.0):
         self.ps_vv = ps_vv
         self.ps_dd = ps_dd
         self.ps_dv = ps_dv
@@ -120,9 +118,8 @@ class RedshiftCorrelation(object):
         self.bias = bias
         self._vv_only = False if ps_dd and ps_dv else True
 
-
     @classmethod
-    def from_file_matterps(cls, fname, redshift = 0.0, bias = 1.0):
+    def from_file_matterps(cls, fname, redshift=0.0, bias=1.0):
         r"""Initialise from a cached, single power spectrum, file.
 
         Parameters
@@ -142,7 +139,7 @@ class RedshiftCorrelation(object):
         return rc
 
     @classmethod
-    def from_file_fullps(cls, fname, redshift = 0.0):
+    def from_file_fullps(cls, fname, redshift=0.0):
         r"""Initialise from a cached, multi power spectrum, file.
 
         Parameters
@@ -159,8 +156,7 @@ class RedshiftCorrelation(object):
 
         return rc
 
-
-    def powerspectrum(self, kpar, kperp, z1 = None, z2 = None):
+    def powerspectrum(self, kpar, kperp, z1=None, z2=None):
         r"""A vectorized routine for calculating the redshift space powerspectrum.
 
         Parameters
@@ -192,10 +188,10 @@ class RedshiftCorrelation(object):
         pf1 = self.prefactor(z1)
         pf2 = self.prefactor(z2)
 
-        k2 = kpar**2 + kperp**2
-        k = k2**0.5
+        k2 = kpar ** 2 + kperp ** 2
+        k = k2 ** 0.5
         mu = kpar / k
-        mu2 = kpar**2 / k2
+        mu2 = kpar ** 2 / k2
 
         if self._vv_only:
             if self.ps_2d:
@@ -203,10 +199,13 @@ class RedshiftCorrelation(object):
             else:
                 ps = self.ps_vv(k) * (b1 + mu2 * f1) * (b2 + mu2 * f2)
         else:
-            ps = (b1*b2*self.ps_dd(k) + mu2 * self.ps_dv(k) * (f1*b2 + f2*b1) + mu2**2 * f1*f2 * self.ps_vv(k))
+            ps = (
+                b1 * b2 * self.ps_dd(k)
+                + mu2 * self.ps_dv(k) * (f1 * b2 + f2 * b1)
+                + mu2 ** 2 * f1 * f2 * self.ps_vv(k)
+            )
 
-        return D1*D2*pf1*pf2*ps
-
+        return D1 * D2 * pf1 * pf2 * ps
 
     def powerspectrum_1D(self, k_vec, z1, z2, numz):
         r"""A vectorized routine for calculating the real space powerspectrum.
@@ -232,7 +231,7 @@ class RedshiftCorrelation(object):
         c2 = self.cosmology.comoving_distance(z2)
         # Construct an array of the redshifts on each slice of the cube.
         comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
-        da = np.linspace(c1, c2, numz+1, endpoint=True)
+        da = np.linspace(c1, c2, numz + 1, endpoint=True)
         za = comoving_inv(da)
 
         # Calculate the bias and growth factors for each slice of the cube.
@@ -247,8 +246,7 @@ class RedshiftCorrelation(object):
 
         return self.ps_vv(k_vec) * dfactor * dfactor
 
-
-    def redshiftspace_correlation(self, pi, sigma, z1 = None, z2 = None):
+    def redshiftspace_correlation(self, pi, sigma, z1=None, z2=None):
         """The correlation function in the flat-sky approximation.
 
         This is a vectorized function. The inputs `pi` and `sigma`
@@ -280,7 +278,7 @@ class RedshiftCorrelation(object):
         the first.
         """
 
-        r = (pi**2 + sigma**2)**0.5
+        r = (pi ** 2 + sigma ** 2) ** 0.5
 
         # Calculate mu with a small constant added to regularise cases
         # of pi = sigma = 0
@@ -320,19 +318,19 @@ class RedshiftCorrelation(object):
                 xdv_0 = _integrate(r, 0, self.ps_dv)
                 xdv_2 = _integrate(r, 2, self.ps_dv)
 
-        #if self._vv_only:
+        # if self._vv_only:
         b1 = self.bias_z(z1)
         b2 = self.bias_z(z2)
         f1 = self.growth_rate(z1)
         f2 = self.growth_rate(z2)
 
-        xdd_0 *= b1*b2
-        xdv_0 *= 0.5*(b1*f2 + b2*f1)
-        xdv_2 *= 0.5*(b1*f2 + b2*f1)
+        xdd_0 *= b1 * b2
+        xdv_0 *= 0.5 * (b1 * f2 + b2 * f1)
+        xdv_2 *= 0.5 * (b1 * f2 + b2 * f1)
 
-        xvv_0 *= f1*f2
-        xvv_2 *= f1*f2
-        xvv_4 *= f1*f2
+        xvv_0 *= f1 * f2
+        xvv_2 *= f1 * f2
+        xvv_4 *= f1 * f2
 
         D1 = self.growth_factor(z1) / self.growth_factor(self.ps_redshift)
         D2 = self.growth_factor(z2) / self.growth_factor(self.ps_redshift)
@@ -344,11 +342,17 @@ class RedshiftCorrelation(object):
         pl2 = _pl(2, mu)
         pl4 = _pl(4, mu)
 
-        return ((xdd_0 + 2.0 / 3.0 * xdv_0 + 1.0 / 5.0 * xvv_0) * pl0 -
-                (4.0 / 3.0 * xdv_2 + 4.0 / 7.0 * xvv_2) * pl2 +
-                8.0 / 35.0 * xvv_4 * pl4) * D1 * D2 * pf1 * pf2
-
-
+        return (
+            (
+                (xdd_0 + 2.0 / 3.0 * xdv_0 + 1.0 / 5.0 * xvv_0) * pl0
+                - (4.0 / 3.0 * xdv_2 + 4.0 / 7.0 * xvv_2) * pl2
+                + 8.0 / 35.0 * xvv_4 * pl4
+            )
+            * D1
+            * D2
+            * pf1
+            * pf2
+        )
 
     def angular_correlation(self, theta, z1, z2):
         r"""Angular correlation function (in a flat-sky approximation).
@@ -366,14 +370,11 @@ class RedshiftCorrelation(object):
             The correlation function at the points.
         """
 
-
-        za = (z1+z2) / 2.0
+        za = (z1 + z2) / 2.0
         sigma = theta * self.cosmology.proper_distance(za)
         pi = self.cosmology.comoving_distance(z2) - self.cosmology.comoving_distance(z1)
 
         return self.redshiftspace_correlation(pi, sigma, z1, z2)
-
-
 
     def _load_cache(self, fname):
 
@@ -382,16 +383,16 @@ class RedshiftCorrelation(object):
 
         # TODO: Python 3 workaround numpy issue
         a = np.loadtxt(native_str(fname))
-        ra = a[:,0]
-        vv0 = a[:,1]
-        vv2 = a[:,2]
-        vv4 = a[:,3]
+        ra = a[:, 0]
+        vv0 = a[:, 1]
+        vv2 = a[:, 2]
+        vv4 = a[:, 3]
         if not self._vv_only:
-            if(a.shape[1] != 7):
+            if a.shape[1] != 7:
                 raise Exception("Cache file has wrong number of columns.")
-            dd0 = a[:,4]
-            dv0 = a[:,5]
-            dv2 = a[:,6]
+            dd0 = a[:, 4]
+            dv0 = a[:, 5]
+            dv2 = a[:, 6]
 
         self._vv0i = cs.Interpolater(ra, vv0)
         self._vv2i = cs.Interpolater(ra, vv2)
@@ -404,8 +405,7 @@ class RedshiftCorrelation(object):
 
         self._cached = True
 
-
-    def gen_cache(self, fname = None, rmin = 1e-3, rmax = 1e4, rnum = 1000):
+    def gen_cache(self, fname=None, rmin=1e-3, rmax=1e4, rnum=1000):
         r"""Generate the cache.
 
         Calculate a table of the integrals required for the
@@ -426,7 +426,7 @@ class RedshiftCorrelation(object):
         rnum : integer
             The number of points to generate (using a log spacing).
         """
-        ra  = np.logspace(np.log10(rmin), np.log10(rmax), rnum)
+        ra = np.logspace(np.log10(rmin), np.log10(rmax), rnum)
 
         vv0 = _integrate(ra, 0, self.ps_vv)
         vv2 = _integrate(ra, 2, self.ps_vv)
@@ -456,7 +456,6 @@ class RedshiftCorrelation(object):
             self._dv0i = cs.Interpolater(ra, dv0)
             self._dv2i = cs.Interpolater(ra, dv2)
 
-
     def bias_z(self, z):
         r"""The linear bias at redshift z.
 
@@ -476,7 +475,6 @@ class RedshiftCorrelation(object):
             The bias at `z`.
         """
         return self.bias * np.ones_like(z)
-
 
     def growth_factor(self, z):
         r"""The growth factor D_+ as a function of redshift.
@@ -501,7 +499,6 @@ class RedshiftCorrelation(object):
         """
         return 1.0 / (1.0 + z)
 
-
     def growth_rate(self, z):
         r"""The growth rate f as a function of redshift.
 
@@ -523,7 +520,6 @@ class RedshiftCorrelation(object):
         """
         return 1.0 * np.ones_like(z)
 
-
     def prefactor(self, z):
         r"""An arbitrary scaling multiplying on each perturbation.
 
@@ -544,7 +540,6 @@ class RedshiftCorrelation(object):
 
         return 1.0 * np.ones_like(z)
 
-
     def mean(self, z):
         r"""Mean value of the field at a given redshift.
 
@@ -560,23 +555,21 @@ class RedshiftCorrelation(object):
         """
         return np.ones_like(z) * 0.0
 
-
     _sigma_v = 0.0
+
     def sigma_v(self, z):
         """Return the pairwise velocity dispersion at a given redshift.
         This is stored internally as `self._sigma_v` in units of km/s
         Note that e.g. WiggleZ reports sigma_v in h km/s
         """
         print("using sigma_v (km/s): " + repr(self._sigma_v))
-        sigma_v_hinvMpc = (self._sigma_v / 100.)
+        sigma_v_hinvMpc = self._sigma_v / 100.0
         return np.ones_like(z) * sigma_v_hinvMpc
-
 
     def velocity_damping(self, kpar):
         """The velocity damping term for the non-linear power spectrum.
         """
-        return (1.0 + (kpar * self.sigma_v(self.ps_redshift))**2.)**-1.
-
+        return (1.0 + (kpar * self.sigma_v(self.ps_redshift)) ** 2.0) ** -1.0
 
     def _realisation_dv(self, d, n):
         """Generate the density and line of sight velocity fields in a
@@ -584,18 +577,20 @@ class RedshiftCorrelation(object):
         """
 
         if not self._vv_only:
-            raise Exception("Doesn't work for independent fields, I need to think a bit more first.")
+            raise Exception(
+                "Doesn't work for independent fields, I need to think a bit more first."
+            )
 
         def psv(karray):
             """Assume k0 is line of sight"""
-            k = (karray**2).sum(axis=3)**0.5
+            k = (karray ** 2).sum(axis=3) ** 0.5
             return self.ps_vv(k) * self.velocity_damping(karray[..., 0])
 
         # Generate an underlying random field realisation of the
         # matter distribution.
 
         print("Gen field.")
-        rfv = gaussianfield.RandomField(npix = n, wsize = d)
+        rfv = gaussianfield.RandomField(npix=n, wsize=d)
         rfv.powerspectrum = psv
 
         vf0 = rfv.getfield()
@@ -603,9 +598,9 @@ class RedshiftCorrelation(object):
         # Construct an array of \mu^2 for each Fourier mode.
         print("Construct kvec")
         spacing = rfv._w / rfv._n
-        kvec = fftutil.rfftfreqn(rfv._n, spacing / (2*math.pi))
+        kvec = fftutil.rfftfreqn(rfv._n, spacing / (2 * math.pi))
         print("Construct mu2")
-        mu2arr = kvec[...,0]**2 / (kvec**2).sum(axis=3)
+        mu2arr = kvec[..., 0] ** 2 / (kvec ** 2).sum(axis=3)
         mu2arr.flat[0] = 0.0
         del kvec
 
@@ -616,14 +611,26 @@ class RedshiftCorrelation(object):
         # TODO: is the s=rfv._n the correct thing here?
         vf = fftutil.irfftn(mu2arr * fftutil.rfftn(vf0))
 
-        #return (df, vf, rfv, kvec)
-        return (df, vf) #, rfv)
+        # return (df, vf, rfv, kvec)
+        return (df, vf)  # , rfv)
 
-
-    def realisation(self, z1, z2, thetax, thetay, numz, numx, numy,
-                    zspace=True, refinement=1, report_physical=False,
-                    density_only=False, no_mean=False, no_evolution=False,
-                    pad=5):
+    def realisation(
+        self,
+        z1,
+        z2,
+        thetax,
+        thetay,
+        numz,
+        numx,
+        numy,
+        zspace=True,
+        refinement=1,
+        report_physical=False,
+        density_only=False,
+        no_mean=False,
+        no_evolution=False,
+        pad=5,
+    ):
         r"""Simulate a redshift-space volume.
 
         Generates a 3D (angle-angle-redshift) volume from the given
@@ -666,11 +673,11 @@ class RedshiftCorrelation(object):
         d2 = self.cosmology.proper_distance(z2)
         c1 = self.cosmology.comoving_distance(z1)
         c2 = self.cosmology.comoving_distance(z2)
-        c_center = (c1 + c2) / 2.
+        c_center = (c1 + c2) / 2.0
 
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
-        d = np.array([c2-c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
+        d = np.array([c2 - c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
         # Note that the ratio of deltas in Ra, Dec in degrees may
         # be different than the Ra, Dec in physical coordinates due to
         # rounding onto this grid
@@ -683,21 +690,22 @@ class RedshiftCorrelation(object):
         # Enlarge cube size by pad in each dimension, so raytraced cube
         # sits exactly within the gridded points.
         d = d * (n + pad).astype(float) / n.astype(float)
-        c1 = c_center - (c_center - c1)*(n[0] + pad) / float(n[0])
-        c2 = c_center + (c2 - c_center)*(n[0] + pad) / float(n[0])
+        c1 = c_center - (c_center - c1) * (n[0] + pad) / float(n[0])
+        c2 = c_center + (c2 - c_center) * (n[0] + pad) / float(n[0])
         n = n + pad
 
         # now multiply by scaling for a finer sub-grid.
-        n = refinement*n
+        n = refinement * n
 
-        print("Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3" % \
-              (c1, c2, d[1], d[2], n[0], n[1], n[2]))
+        print(
+            "Generating cube: (%f to %f) x %f x %f (%d, %d, %d) (h^-1 cMpc)^3"
+            % (c1, c2, d[1], d[2], n[0], n[1], n[2])
+        )
 
         cube = self._realisation_dv(d, n)
         # TODO: this is probably unnecessary now (realisation used to change
         # shape through irfftn)
         n = cube[0].shape
-
 
         # Construct an array of the redshifts on each slice of the cube.
         comoving_inv = inverse_approx(self.cosmology.comoving_distance, z1, z2)
@@ -713,8 +721,8 @@ class RedshiftCorrelation(object):
 
         # Construct the observable and velocity fields.
         if not no_evolution:
-            df = cube[0] * (Dz * pz * bz)[:,np.newaxis,np.newaxis]
-            vf = cube[1] * (Dz * pz * fz)[:,np.newaxis,np.newaxis]
+            df = cube[0] * (Dz * pz * bz)[:, np.newaxis, np.newaxis]
+            vf = cube[1] * (Dz * pz * fz)[:, np.newaxis, np.newaxis]
         else:
             df = cube[0] * np.mean(Dz * pz * bz)
             vf = cube[1] * np.mean(Dz * pz * fz)
@@ -725,24 +733,30 @@ class RedshiftCorrelation(object):
             rsf += vf
 
         if not no_mean:
-            rsf += mz[:,np.newaxis,np.newaxis]
+            rsf += mz[:, np.newaxis, np.newaxis]
 
         # Find the distances that correspond to a regular redshift
         # spacing (or regular spacing in a).
         if zspace:
-            za = np.linspace(z1, z2, numz, endpoint = False)
+            za = np.linspace(z1, z2, numz, endpoint=False)
         else:
-            za = 1.0 / np.linspace(1.0 / (1+z2), 1.0 / (1+z1), numz, endpoint = False)[::-1] - 1.0
+            za = (
+                1.0
+                / np.linspace(1.0 / (1 + z2), 1.0 / (1 + z1), numz, endpoint=False)[
+                    ::-1
+                ]
+                - 1.0
+            )
 
         da = self.cosmology.proper_distance(za)
         xa = self.cosmology.comoving_distance(za)
 
         print("Constructing mapping..")
         # Construct the angular offsets into cube
-        tx = np.linspace(-thetax / 2., thetax / 2., numx) * units.degree
-        ty = np.linspace(-thetay / 2., thetay / 2., numy) * units.degree
+        tx = np.linspace(-thetax / 2.0, thetax / 2.0, numx) * units.degree
+        ty = np.linspace(-thetay / 2.0, thetay / 2.0, numy) * units.degree
 
-        #tgridx, tgridy = np.meshgrid(tx, ty)
+        # tgridx, tgridy = np.meshgrid(tx, ty)
         tgridy, tgridx = np.meshgrid(ty, tx)
         tgrid2 = np.zeros((3, numx, numy))
         acube = np.zeros((numz, numx, numy))
@@ -751,24 +765,24 @@ class RedshiftCorrelation(object):
         # and interpolating into the 3d cube. Note that the multipliers scale
         # from 0 to 1, or from i=0 to i=N-1
         for i in range(numz):
-            #print "Slice:", i
-            tgrid2[0,:,:] = (xa[i] - c1) / (c2-c1) * (n[0] - 1.)
-            tgrid2[1,:,:] = (tgridx * da[i]) / d[1] * (n[1] - 1.) + \
-                            0.5*(n[1] - 1.)
-            tgrid2[2,:,:] = (tgridy * da[i]) / d[2] * (n[2] - 1.) + \
-                            0.5*(n[2] - 1.)
+            # print "Slice:", i
+            tgrid2[0, :, :] = (xa[i] - c1) / (c2 - c1) * (n[0] - 1.0)
+            tgrid2[1, :, :] = (tgridx * da[i]) / d[1] * (n[1] - 1.0) + 0.5 * (
+                n[1] - 1.0
+            )
+            tgrid2[2, :, :] = (tgridy * da[i]) / d[2] * (n[2] - 1.0) + 0.5 * (
+                n[2] - 1.0
+            )
 
-            #if(zi > numz - 2):
+            # if(zi > numz - 2):
             # TODO: what order here?; do end-to-end P(k) study
-            #acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
-            acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
+            # acube[i,:,:] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=2)
+            acube[i, :, :] = scipy.ndimage.map_coordinates(rsf, tgrid2, order=1)
 
         if report_physical:
             return acube, rsf, (c1, c2, d[1], d[2])
         else:
             return acube
-
-
 
     def angular_powerspectrum_full(self, la, za1, za2):
         r"""The angular powerspectrum C_l(z1, z2). Calculate explicitly.
@@ -804,30 +818,43 @@ class RedshiftCorrelation(object):
             d1 = math.pi / (x1 + x2)
 
             def _int_lin(k):
-                return (k**2 * self.ps_vv(k) * (b1 * sphfunc.jl(l, k*x1) - f1 * sphfunc.jl_d2(l, k*x1)) *
-                       (b2 * sphfunc.jl(l, k*x2) - f2 * sphfunc.jl_d2(l, k*x2)))
+                return (
+                    k ** 2
+                    * self.ps_vv(k)
+                    * (b1 * sphfunc.jl(l, k * x1) - f1 * sphfunc.jl_d2(l, k * x1))
+                    * (b2 * sphfunc.jl(l, k * x2) - f2 * sphfunc.jl_d2(l, k * x2))
+                )
 
             def _int_log(lk):
                 k = np.exp(lk)
-                return k*_int_lin(k)
+                return k * _int_lin(k)
 
             def _int_offset(k):
-                return (_int_lin(k) + 4*_int_lin(k + d1) + 6*_int_lin(k + 2*d1)
-                        + 4*_int_lin(k + 3*d1) + _int_lin(k + 4*d1)) / 16.0
+                return (
+                    _int_lin(k)
+                    + 4 * _int_lin(k + d1)
+                    + 6 * _int_lin(k + 2 * d1)
+                    + 4 * _int_lin(k + 3 * d1)
+                    + _int_lin(k + 4 * d1)
+                ) / 16.0
 
             def _int_taper(k):
-                return (15.0*_int_lin(k) + 11.0*_int_lin(k + d1) +
-                        5.0*_int_lin(k + 2*d1) + _int_lin(k + 3*d1)) / 16.0
+                return (
+                    15.0 * _int_lin(k)
+                    + 11.0 * _int_lin(k + d1)
+                    + 5.0 * _int_lin(k + 2 * d1)
+                    + _int_lin(k + 3 * d1)
+                ) / 16.0
 
             def _integrator(f, a, b):
-                return integrate.chebyshev(f, a, b, epsrel = 1e-8, epsabs=1e-10)
+                return integrate.chebyshev(f, a, b, epsrel=1e-8, epsabs=1e-10)
 
             mink = 1e-2 * l / (x1 + x2)
             cutk = 2e0 * l / (x1 + x2)
-            cutk2 = 20.0  * l / (x1 + x2)
+            cutk2 = 20.0 * l / (x1 + x2)
             maxk = 1e2 * l / (x1 + x2)
 
-            i1 = _integrator(_int_log, np.log(mink), np.log(cutk) )
+            i1 = _integrator(_int_log, np.log(mink), np.log(cutk))
             i2 = _integrator(_int_taper, cutk, cutk + d1)
             i3 = _integrator(_int_offset, cutk, cutk2)
             i4 = _integrator(_int_offset, cutk2, maxk)
@@ -844,21 +871,20 @@ class RedshiftCorrelation(object):
         else:
             # Broadcast from arrays
             cla = np.empty(bobj.shape)
-            cla.flat = [ _ps_single(l, z1, z2) for (l, z1, z2) in bobj ]
+            cla.flat = [_ps_single(l, z1, z2) for (l, z1, z2) in bobj]
 
             return cla
-
-
 
     _aps_cache = False
 
     def save_fft_cache(self, fname):
         """Save FFT angular powerspecturm cache."""
         if not self._aps_cache:
-            self.angular_powerspectrum_fft(np.array([100]), np.array([1.0]), np.array([1.0]))
+            self.angular_powerspectrum_fft(
+                np.array([100]), np.array([1.0]), np.array([1.0])
+            )
 
         np.savez(native_str(fname), dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
-
 
     def load_fft_cache(self, fname):
         """Load FFT angular powerspectrum cache.
@@ -866,9 +892,9 @@ class RedshiftCorrelation(object):
         # TODO: Python 3 workaround numpy issue
         a = np.load(native_str(fname))
 
-        self._aps_dd = a['dd']
-        self._aps_dv = a['dv']
-        self._aps_vv = a['vv']
+        self._aps_dd = a["dd"]
+        self._aps_dv = a["dv"]
+        self._aps_vv = a["vv"]
 
         self._aps_cache = True
 
@@ -900,20 +926,27 @@ class RedshiftCorrelation(object):
 
         if not self._aps_cache:
 
-            kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[:, np.newaxis]
+            kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[
+                :, np.newaxis
+            ]
             kpar = np.linspace(0, kparmax, nkpar)[np.newaxis, :]
 
-            k = (kpar**2 + kperp**2)**0.5
+            k = (kpar ** 2 + kperp ** 2) ** 0.5
             mu = kpar / k
-            mu2 = kpar**2 / k**2
+            mu2 = kpar ** 2 / k ** 2
 
             if self.ps_2d:
-                self._dd = self.ps_vv(k, mu) * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
+                self._dd = (
+                    self.ps_vv(k, mu)
+                    * np.sinc(kpar * self._freq_window / (2 * np.pi)) ** 2
+                )
             else:
-                self._dd = self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi))**2
+                self._dd = (
+                    self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi)) ** 2
+                )
 
             self._dv = self._dd * mu2
-            self._vv = self._dd * mu2**2
+            self._vv = self._dd * mu2 ** 2
 
             self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2 * nkpar)
             self._aps_dv = scipy.fftpack.dct(self._dv, type=1) * kparmax / (2 * nkpar)
@@ -936,7 +969,11 @@ class RedshiftCorrelation(object):
         # Bump anything that is zero upwards to avoid a log zero warning.
         la = np.where(la == 0.0, 1e-10, la)
 
-        x = (np.log10(la) - np.log10(xc * kperpmin)) / np.log10(kperpmax / kperpmin) * (nkperp - 1)
+        x = (
+            (np.log10(la) - np.log10(xc * kperpmin))
+            / np.log10(kperpmax / kperpmin)
+            * (nkperp - 1)
+        )
         y = rpar / (math.pi / kparmax)
 
         def _interp2d(arr, x, y):
@@ -953,10 +990,12 @@ class RedshiftCorrelation(object):
         psdv = _interp2d(self._aps_dv, x, y)
         psvv = _interp2d(self._aps_vv, x, y)
 
-        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * ((b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv)
+        return (D1 * D2 * pf1 * pf2 / (xc ** 2 * np.pi)) * (
+            (b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv
+        )
 
     ## By default use the flat sky approximation.
-    #angular_powerspectrum = profile(angular_powerspectrum_fft)
+    # angular_powerspectrum = profile(angular_powerspectrum_fft)
     angular_powerspectrum = angular_powerspectrum_fft
 
 
@@ -971,29 +1010,41 @@ def _integrate(r, l, psfunc):
     from ..util import sphfunc
 
     def _integrand_linear(k, r, l, psfunc):
-        return 1.0 / (2 * math.pi**2) * k**2 * sphfunc.jl(l, k * r) * psfunc(k)
-
+        return 1.0 / (2 * math.pi ** 2) * k ** 2 * sphfunc.jl(l, k * r) * psfunc(k)
 
     def _integrand_log(lk, r, l, psfunc):
         k = np.exp(lk)
         return k * _integrand_linear(k, r, l, psfunc)
 
-
     def _integrand_offset(k, *args):
         d1 = math.fabs(math.pi / args[0])
-        return (_integrand_linear(k, *args) + 4 * _integrand_linear(k + d1, *args) +
-                6 * _integrand_linear(k + 2 * d1, *args) + 4 * _integrand_linear(k + 3 * d1, *args) +
-                _integrand_linear(k + 4 * d1, *args)) / 16.0
-
+        return (
+            _integrand_linear(k, *args)
+            + 4 * _integrand_linear(k + d1, *args)
+            + 6 * _integrand_linear(k + 2 * d1, *args)
+            + 4 * _integrand_linear(k + 3 * d1, *args)
+            + _integrand_linear(k + 4 * d1, *args)
+        ) / 16.0
 
     def _integrand_taper(k, *args):
         d1 = math.fabs(math.pi / args[0])
-        return (15.0 * _integrand_linear(k, *args) + 11.0 * _integrand_linear(k + d1, *args) +
-                5.0 * _integrand_linear(k + 2 * d1, *args) + _integrand_linear(k + 3 * d1, *args)) / 16.0
+        return (
+            15.0 * _integrand_linear(k, *args)
+            + 11.0 * _integrand_linear(k + d1, *args)
+            + 5.0 * _integrand_linear(k + 2 * d1, *args)
+            + _integrand_linear(k + 3 * d1, *args)
+        ) / 16.0
 
     def _int(f, a, b, args=()):
-        return quad(f, a, b, args=args, limit=1000, epsrel=1e-7,
-                    full_output=(0 if _feedback else 1))[0]
+        return quad(
+            f,
+            a,
+            b,
+            args=args,
+            limit=1000,
+            epsrel=1e-7,
+            full_output=(0 if _feedback else 1),
+        )[0]
 
     mink = 1e-4
     maxk = 1e3

@@ -11,10 +11,10 @@ References
 
 """
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 
@@ -33,7 +33,7 @@ class ForegroundMap(maps.Sky3d):
     covariances of the form:
     .. math:: C_l(\nu,\nu') = A_l B(\nu, \nu')
     """
-    
+
     _weight_gen = False
 
     def angular_ps(self, l):
@@ -42,14 +42,11 @@ class ForegroundMap(maps.Sky3d):
         """
         pass
 
-
     def frequency_covariance(self, nu1, nu2):
         pass
 
-
     def angular_powerspectrum(self, l, nu1, nu2):
-        return (self.angular_ps(l) * self.frequency_covariance(nu1, nu2))
-
+        return self.angular_ps(l) * self.frequency_covariance(nu1, nu2)
 
     def generate_weight(self, regen=False):
         r"""Pregenerate the k weights array.
@@ -60,10 +57,10 @@ class ForegroundMap(maps.Sky3d):
             If True, force regeneration of the weights, to be used if
             parameters have been changed,
         """
-        
+
         if self._weight_gen and not regen:
             return
-        
+
         f1, f2 = np.meshgrid(self.nu_pixels, self.nu_pixels)
 
         ch = self.frequency_covariance(f1, f2)
@@ -74,11 +71,12 @@ class ForegroundMap(maps.Sky3d):
 
         ## Construct a lambda function to evalutate the array of
         ## k-vectors.
-        rf.powerspectrum = lambda karray: self.angular_ps((karray**2).sum(axis=2)**0.5)
+        rf.powerspectrum = lambda karray: self.angular_ps(
+            (karray ** 2).sum(axis=2) ** 0.5
+        )
 
         self._ang_field = rf
         self._weight_gen = True
-
 
     def getfield(self):
 
@@ -88,9 +86,11 @@ class ForegroundMap(maps.Sky3d):
 
         s2 = (self._num_corr_freq,) + aff.shape
 
-        norm = np.tensordot(self._freq_weight, np.random.standard_normal(s2), axes = (1,0))
+        norm = np.tensordot(
+            self._freq_weight, np.random.standard_normal(s2), axes=(1, 0)
+        )
 
-        return np.fft.irfft(np.fft.ifft(norm * aff[np.newaxis,:,:], axis = 1), axis=2)
+        return np.fft.irfft(np.fft.ifft(norm * aff[np.newaxis, :, :], axis=1), axis=2)
 
 
 class ForegroundSCK(ForegroundMap):
@@ -119,7 +119,7 @@ class ForegroundSCK(ForegroundMap):
             mask0 = np.where(larray == 0)
             larray[mask0] = 1.0
 
-        psarray =  self.A*(larray / self.l_0)**(-self.beta)
+        psarray = self.A * (larray / self.l_0) ** (-self.beta)
 
         if isinstance(larray, np.ndarray):
             psarray[mask0] = 0.0
@@ -127,18 +127,17 @@ class ForegroundSCK(ForegroundMap):
         return psarray
 
     def frequency_covariance(self, nu1, nu2):
-        return (self.frequency_variance(nu1) * self.frequency_variance(nu2))**0.5 * self.frequency_correlation(nu1, nu2)
-
+        return (
+            self.frequency_variance(nu1) * self.frequency_variance(nu2)
+        ) ** 0.5 * self.frequency_correlation(nu1, nu2)
 
     def frequency_variance(self, nu):
         r"""Variance on a single frequency slice."""
-        return (nu/self.nu_0)**(-2*self.alpha)
-
+        return (nu / self.nu_0) ** (-2 * self.alpha)
 
     def frequency_correlation(self, nu1, nu2):
         r"""Correlation between two frequency slices."""
-        return np.exp( -0.5 * (np.log(nu1/nu2) / self.zeta)**2)
-
+        return np.exp(-0.5 * (np.log(nu1 / nu2) / self.zeta) ** 2)
 
     def frequency_correlation_dlog(self, dlognu):
         r"""Correlation between two slices as a function of the seperation of the
@@ -157,9 +156,7 @@ class ForegroundSCK(ForegroundMap):
         -------
         acf: array_like
         """
-        return np.exp( - (dlognu**2) / (2*self.zeta**2))
-
-
+        return np.exp(-(dlognu ** 2) / (2 * self.zeta ** 2))
 
     def angular_correlation(self, tarray):
         r"""The 2-point angular correlation function.
@@ -184,19 +181,19 @@ class ForegroundSCK(ForegroundMap):
             def cf(theta):
                 nmax = 10000
                 nmin = 1
-                larr = np.arange(nmin,nmax+1).astype(np.float64)
+                larr = np.arange(nmin, nmax + 1).astype(np.float64)
                 pl = lpn(nmax, np.cos(theta))[0][nmin:]
-                
-                return ((2*larr+1.0)*pl*self.angular_ps(larr)).sum() / (4*np.pi)
+
+                return ((2 * larr + 1.0) * pl * self.angular_ps(larr)).sum() / (
+                    4 * np.pi
+                )
 
             tarr = np.linspace(0, np.pi, 1000)
             cfarr = cf(tarr)
             self._cf_int = cs.Interpolater(tarr, cfarr)
 
         return self._cf_int(tarray)
-            
 
-        
 
 class Synchrotron(ForegroundSCK):
     A = 7.00e-4
@@ -204,11 +201,13 @@ class Synchrotron(ForegroundSCK):
     beta = 2.4
     zeta = 4.0
 
+
 class ExtraGalacticFreeFree(ForegroundSCK):
     A = 1.40e-8
     alpha = 2.10
     beta = 1.0
     zeta = 35.0
+
 
 class GalacticFreeFree(ForegroundSCK):
     A = 8.80e-8
@@ -216,9 +215,9 @@ class GalacticFreeFree(ForegroundSCK):
     beta = 3.0
     zeta = 35.0
 
+
 class PointSources(ForegroundSCK):
     A = 5.70e-5
     alpha = 2.07
     beta = 1.1
     zeta = 1.0
-

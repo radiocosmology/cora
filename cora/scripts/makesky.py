@@ -1,10 +1,10 @@
 """Command line script for making sky maps.
 """
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import os
@@ -41,7 +41,7 @@ class FreqState(object):
         # Generate the set of frequency channels given the parameters
 
         sf, ef, nf = self.freq
-        if self.freq_mode == 'centre':
+        if self.freq_mode == "centre":
             df = abs((ef - sf) / (nf - 1))
             frequencies = np.linspace(sf, ef, nf, endpoint=True)
         else:
@@ -50,7 +50,7 @@ class FreqState(object):
 
         # Select a subset of channels if required
         if self.channels is not None:
-            frequencies = frequencies[self.channels[0]:self.channels[1]]
+            frequencies = frequencies[self.channels[0] : self.channels[1]]
 
         # Rebin frequencies if needed
         if self.channel_bin > 1:
@@ -68,23 +68,56 @@ class FreqState(object):
     @classmethod
     def options(cls, f):
         options = [
-            click.option('--freq', help=('Define the frequency channels (in MHz). '
-                                         'Default is for CHIME: FSTART=800.0, FSTOP=400.0, FNUM=1025'),
-                         metavar='FSTART FSTOP FNUM', type=(float, float, int), default=(800.0, 400.0, 1025),
-                         expose_value=False, callback=cls._set_attr),
-            click.option('--channels', help='Select a range of frequency channels',
-                         type=(int, int), metavar='CSTART CSTOP', default=(None, None),
-                         expose_value=False, callback=cls._set_attr),
-            click.option('--channel-bin', help='If set, average over BIN channels',
-                         metavar='BIN', type=int, default=1,
-                         expose_value=False, callback=cls._set_attr),
-            click.option('--freq-mode', help='If set, average over BIN channels',
-                         metavar='BIN', type=int, default=1,
-                         expose_value=False, callback=cls._set_attr),
-            click.option('--freq-mode', type=click.Choice(['centre', 'edge']), default='centre',
-                          help=('Choose whether FSTART and FSTOP are the very edges of the band, '
-                                'or whether they are the centre frequencies (default: centre).'),
-                         expose_value=False, callback=cls._set_attr)
+            click.option(
+                "--freq",
+                help=(
+                    "Define the frequency channels (in MHz). "
+                    "Default is for CHIME: FSTART=800.0, FSTOP=400.0, FNUM=1025"
+                ),
+                metavar="FSTART FSTOP FNUM",
+                type=(float, float, int),
+                default=(800.0, 400.0, 1025),
+                expose_value=False,
+                callback=cls._set_attr,
+            ),
+            click.option(
+                "--channels",
+                help="Select a range of frequency channels",
+                type=(int, int),
+                metavar="CSTART CSTOP",
+                default=(None, None),
+                expose_value=False,
+                callback=cls._set_attr,
+            ),
+            click.option(
+                "--channel-bin",
+                help="If set, average over BIN channels",
+                metavar="BIN",
+                type=int,
+                default=1,
+                expose_value=False,
+                callback=cls._set_attr,
+            ),
+            click.option(
+                "--freq-mode",
+                help="If set, average over BIN channels",
+                metavar="BIN",
+                type=int,
+                default=1,
+                expose_value=False,
+                callback=cls._set_attr,
+            ),
+            click.option(
+                "--freq-mode",
+                type=click.Choice(["centre", "edge"]),
+                default="centre",
+                help=(
+                    "Choose whether FSTART and FSTOP are the very edges of the band, "
+                    "or whether they are the centre frequencies (default: centre)."
+                ),
+                expose_value=False,
+                callback=cls._set_attr,
+            ),
         ]
 
         handle = click.make_pass_decorator(cls, ensure=True)(f)
@@ -94,13 +127,28 @@ class FreqState(object):
 
         return handle
 
+
 def map_options(f):
     """The set of options for generating a map."""
     options = [
-        click.option('--nside', help='Set the map resolution (default: 256)', metavar='NSIDE', default=256),
-        click.option('--pol', type=click.Choice(['full', 'zero', 'none']), default='full',
-                     help='Pick polarisation mode. Full output, zero polarisation, or only return Stokes I (default: full).'),
-        click.option('--filename', help='Output file [default=map.h5]', metavar='FILENAME', default='map.h5')
+        click.option(
+            "--nside",
+            help="Set the map resolution (default: 256)",
+            metavar="NSIDE",
+            default=256,
+        ),
+        click.option(
+            "--pol",
+            type=click.Choice(["full", "zero", "none"]),
+            default="full",
+            help="Pick polarisation mode. Full output, zero polarisation, or only return Stokes I (default: full).",
+        ),
+        click.option(
+            "--filename",
+            help="Output file [default=map.h5]",
+            metavar="FILENAME",
+            default="map.h5",
+        ),
     ]
 
     handle = FreqState.options(f)
@@ -122,9 +170,15 @@ def cli():
     """
     pass
 
+
 @cli.command()
 @map_options
-@click.option('--maxflux', default=1e6, type=float, help='Maximum flux of point included point source (in Jy). Default is 1 MJy.')
+@click.option(
+    "--maxflux",
+    default=1e6,
+    type=float,
+    help="Maximum flux of point included point source (in Jy). Default is 1 MJy.",
+)
 def foreground(fstate, nside, pol, filename, maxflux):
     """Generate a full foreground sky map."""
 
@@ -150,7 +204,7 @@ def foreground(fstate, nside, pol, filename, maxflux):
 
 @cli.command()
 @map_options
-@click.option('--spectral-index', default='md', type=click.Choice(['md', 'gsm', 'gd']))
+@click.option("--spectral-index", default="md", type=click.Choice(["md", "gsm", "gd"]))
 def galaxy(fstate, nside, pol, filename, spectral_index):
     """Generate a Milky way only foreground map.
 
@@ -176,7 +230,12 @@ def galaxy(fstate, nside, pol, filename, spectral_index):
 
 @cli.command()
 @map_options
-@click.option('--maxflux', default=1e6, type=float, help='Maximum flux of point included point source (in Jy). Default is 1 MJy.')
+@click.option(
+    "--maxflux",
+    default=1e6,
+    type=float,
+    help="Maximum flux of point included point source (in Jy). Default is 1 MJy.",
+)
 def pointsource(fstate, nside, pol, filename, maxflux):
     """Generate a point source only foreground map.
 
@@ -199,10 +258,18 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     write_map(filename, cs, ps.frequencies, fstate.freq_width, pol != "none")
 
 
-@cli.command('21cm')
+@cli.command("21cm")
 @map_options
-@click.option('--eor', is_flag=True, help='Use parameters more suitable for reionisation epoch (rather than intensity mapping).')
-@click.option('--oversample', type=int, help='Oversample in redshift by 2**oversample_z + 1 to capute finite width bins.')
+@click.option(
+    "--eor",
+    is_flag=True,
+    help="Use parameters more suitable for reionisation epoch (rather than intensity mapping).",
+)
+@click.option(
+    "--oversample",
+    type=int,
+    help="Oversample in redshift by 2**oversample_z + 1 to capute finite width bins.",
+)
 def _21cm(fstate, nside, pol, filename, eor, oversample):
     """Generate a Gaussian simulation of the unresolved 21cm background.
     """
@@ -248,17 +315,25 @@ def gaussianfg(fstate, nside, pol, filename, eor, oversample):
     lmax = 3 * nside
     npol = 4 if pol == "full" else 1
 
-    cv_fg = np.zeros((lmax+1, npol, nfreq, npol, nfreq))
+    cv_fg = np.zeros((lmax + 1, npol, nfreq, npol, nfreq))
 
-    cv_fg[:, 0, :, 0, :] = skysim.clarray(fsyn.angular_powerspectrum, lmax, fsyn.nu_pixels)
+    cv_fg[:, 0, :, 0, :] = skysim.clarray(
+        fsyn.angular_powerspectrum, lmax, fsyn.nu_pixels
+    )
 
     if ctx.obj.full_pol:
-        cv_fg[:, 1, :, 1, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, fsyn.nu_pixels)
-        cv_fg[:, 2, :, 2, :] = skysim.clarray(fpol.angular_powerspectrum, lmax, fsyn.nu_pixels)
+        cv_fg[:, 1, :, 1, :] = skysim.clarray(
+            fpol.angular_powerspectrum, lmax, fsyn.nu_pixels
+        )
+        cv_fg[:, 2, :, 2, :] = skysim.clarray(
+            fpol.angular_powerspectrum, lmax, fsyn.nu_pixels
+        )
 
-    cv_fg = cv_fg.reshape(lmax+1, npol*nfreq, npol*nfreq)
+    cv_fg = cv_fg.reshape(lmax + 1, npol * nfreq, npol * nfreq)
 
-    alms = skysim.mkfullsky(cv_fg, nside, alms=True).reshape(npol, nfreq, lmax+1, lmax+1)
+    alms = skysim.mkfullsky(cv_fg, nside, alms=True).reshape(
+        npol, nfreq, lmax + 1, lmax + 1
+    )
     alms = alms.transpose((1, 0, 2, 3))
 
     maps = hputil.sphtrans_inv_sky(alms, nside)
@@ -267,8 +342,8 @@ def gaussianfg(fstate, nside, pol, filename, eor, oversample):
 
 @cli.command()
 @map_options
-@click.option('--ra', type=float, help='RA (in degrees) for source to add.', default=0)
-@click.option('--dec', type=float, help="DEC (in degrees) of source to add.", default=0)
+@click.option("--ra", type=float, help="RA (in degrees) for source to add.", default=0)
+@click.option("--dec", type=float, help="DEC (in degrees) of source to add.", default=0)
 def singlesource(fstate, nside, pol, filename, ra, dec):
     """Generate a test map with a single source (amplitude I=1) at the given position.
     """
@@ -277,7 +352,7 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
     nfreq = len(fstate.frequencies)
     npol = 4 if pol == "full" else 1
 
-    map_ = np.zeros((nfreq, npol, 12 * nside**2), dtype=np.float64)
+    map_ = np.zeros((nfreq, npol, 12 * nside ** 2), dtype=np.float64)
 
     map_[:, 0, healpy.ang2pix(nside, ra, dec, lonlat=True)] = 1.0
 
@@ -294,34 +369,34 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
 
     # Make into 3D array
     if data.ndim == 3:
-        polmap = np.array(['I', 'Q', 'U', 'V'])
+        polmap = np.array(["I", "Q", "U", "V"])
     else:
         if include_pol:
             data2 = np.zeros((data.shape[0], 4, data.shape[1]), dtype=data.dtype)
             data2[:, 0] = data
             data = data2
-            polmap = np.array(['I', 'Q', 'U', 'V'])
+            polmap = np.array(["I", "Q", "U", "V"])
         else:
             data = data[:, np.newaxis, :]
-            polmap = np.array(['I'])
+            polmap = np.array(["I"])
 
     # Construct frequency index map
-    freqmap = np.zeros(len(freq), dtype=[('centre', np.float64), ('width', np.float64)])
-    freqmap['centre'][:] = freq
-    freqmap['width'][:] = fwidth if fwidth is not None else np.abs(np.diff(freq)[0])
+    freqmap = np.zeros(len(freq), dtype=[("centre", np.float64), ("width", np.float64)])
+    freqmap["centre"][:] = freq
+    freqmap["width"][:] = fwidth if fwidth is not None else np.abs(np.diff(freq)[0])
 
     # Open up file for writing
     with h5py.File(filename, "w") as f:
-        f.attrs['__memh5_distributed_file'] = True
+        f.attrs["__memh5_distributed_file"] = True
 
-        dset = f.create_dataset('map', data=data)
+        dset = f.create_dataset("map", data=data)
         dt = h5py.special_dtype(vlen=text_type)
-        dset.attrs['axis'] = np.array(['freq', 'pol', 'pixel']).astype(dt)
-        dset.attrs['__memh5_distributed_dset'] = True
+        dset.attrs["axis"] = np.array(["freq", "pol", "pixel"]).astype(dt)
+        dset.attrs["__memh5_distributed_dset"] = True
 
-        dset = f.create_dataset('index_map/freq', data=freqmap)
-        dset.attrs['__memh5_distributed_dset'] = False
-        dset = f.create_dataset('index_map/pol', data=polmap.astype(dt))
-        dset.attrs['__memh5_distributed_dset'] = False
-        dset = f.create_dataset('index_map/pixel', data=np.arange(data.shape[2]))
-        dset.attrs['__memh5_distributed_dset'] = False
+        dset = f.create_dataset("index_map/freq", data=freqmap)
+        dset.attrs["__memh5_distributed_dset"] = False
+        dset = f.create_dataset("index_map/pol", data=polmap.astype(dt))
+        dset.attrs["__memh5_distributed_dset"] = False
+        dset = f.create_dataset("index_map/pixel", data=np.arange(data.shape[2]))
+        dset.attrs["__memh5_distributed_dset"] = False
