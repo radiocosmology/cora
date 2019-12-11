@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import numpy as np
@@ -11,8 +11,6 @@ import scipy.integrate as si
 import healpy
 
 from cora.util import hputil, nputil
-
-
 
 
 def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
@@ -39,32 +37,40 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
     """
 
     if zromb == 0:
-        return aps(np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
-                   zarray[np.newaxis, :, np.newaxis], zarray[np.newaxis, np.newaxis, :])
+        return aps(
+            np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
+            zarray[np.newaxis, :, np.newaxis],
+            zarray[np.newaxis, np.newaxis, :],
+        )
 
     else:
         zsort = np.sort(zarray)
         zhalf = np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
         zlen = zarray.size
-        zint = 2**zromb + 1
-        zspace = 2.0 * zhalf / 2**zromb
+        zint = 2 ** zromb + 1
+        zspace = 2.0 * zhalf / 2 ** zromb
 
-        za = (zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]).flatten()
+        za = (
+            zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]
+        ).flatten()
 
         lsections = np.array_split(np.arange(lmax + 1), lmax // 5)
 
         cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
         for lsec in lsections:
-            clt = aps(lsec[:, np.newaxis, np.newaxis],
-                      za[np.newaxis, :, np.newaxis], za[np.newaxis, np.newaxis, :])
+            clt = aps(
+                lsec[:, np.newaxis, np.newaxis],
+                za[np.newaxis, :, np.newaxis],
+                za[np.newaxis, np.newaxis, :],
+            )
 
             clt = clt.reshape(-1, zlen, zint, zlen, zint)
 
             clt = si.romb(clt, dx=zspace, axis=4)
             clt = si.romb(clt, dx=zspace, axis=2)
 
-            cla[lsec] = clt / (2 * zhalf)**2  # Normalise
+            cla[lsec] = clt / (2 * zhalf) ** 2  # Normalise
 
         return cla
 
@@ -107,7 +113,7 @@ def mkfullsky(corr, nside, alms=False):
 
         trans = nputil.matrix_root_manynull(corrm, truncate=False)
         gaussvars = nputil.complex_std_normal((numz, l + 1))
-        alm_array[:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
+        alm_array[:, 0, l, : (l + 1)] = np.dot(trans, gaussvars)
 
     if alms:
         return alm_array
@@ -139,7 +145,7 @@ def mkconstrained(corr, constraints, nside):
     """
 
     numz = corr.shape[1]
-    maxl = corr.shape[0]-1
+    maxl = corr.shape[0] - 1
     larr, marr = healpy.Alm.getlm(maxl)
     matshape = larr.shape + (numz,)
 
@@ -152,16 +158,15 @@ def mkconstrained(corr, constraints, nside):
     if corr.shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-
     trans = np.zeros((corr.shape[0], nmodes, corr.shape[2]))
     tmat = np.zeros((corr.shape[0], nmodes, nmodes))
-    cmap = np.zeros(larr.shape + (nmodes, ), dtype=np.complex128)
+    cmap = np.zeros(larr.shape + (nmodes,), dtype=np.complex128)
     cv = np.zeros((numz,) + larr.shape, dtype=np.complex128)
 
     # Find eigenmodes, extract the largest nmodes (enough to satisfy
     # constraints), and then pull out coefficients for each constrained
     # frequency.
-    for i in range(maxl+1):
+    for i in range(maxl + 1):
         trans[i] = la.eigh(corr[i])[1][:, -nmodes:].T
         tmat[i] = trans[i][:, f_ind]
 

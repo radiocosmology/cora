@@ -17,10 +17,10 @@ Classes
     ConstrainedGalaxy
 """
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 from future.utils import native_str
@@ -40,6 +40,7 @@ _datadir = join(dirname(__file__), "data")
 class FullSkySynchrotron(gaussianfg.Synchrotron):
     """Match up Synchrotron amplitudes to those found in La Porta et al. 2008,
     for galactic latitudes abs(b) > 5 degrees"""
+
     A = 6.6e-3
     beta = 2.8
     nu_0 = 408.0
@@ -66,7 +67,7 @@ def map_variance(input_map, nside):
     # Convert to NESTED and then take advantage of this to group into lower
     # resolution pixels
     map_nest = healpy.reorder(input_map, r2n=True)
-    map_nest = map_nest.reshape(-1, (inp_nside // nside)**2)
+    map_nest = map_nest.reshape(-1, (inp_nside // nside) ** 2)
 
     # Calculate the variance in each low resolution pixel
     var_map = map_nest.var(axis=1)
@@ -97,7 +98,7 @@ def chunk_var(a):
     t = 0.0
     for sec in splits:
         x = sec - mean
-        x2 = np.sum(np.abs(x)**2)
+        x2 = np.sum(np.abs(x) ** 2)
         t += x2
 
     return t / a.size
@@ -123,7 +124,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
     # Spectral index map to use. Values are:
     # gsm (the old method)
-    spectral_map = 'md'
+    spectral_map = "md"
 
     _dphi = 1.0
     _maxphi = 500.0
@@ -132,8 +133,12 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         self._load_data()
 
-        vm = map_variance(healpy.smoothing(self._haslam, sigma=np.radians(0.5), verbose=False), 16)
-        self._amp_map = healpy.smoothing(healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0), verbose=False)
+        vm = map_variance(
+            healpy.smoothing(self._haslam, sigma=np.radians(0.5), verbose=False), 16
+        )
+        self._amp_map = healpy.smoothing(
+            healpy.ud_grade(vm ** 0.5, 512), sigma=np.radians(2.0), verbose=False
+        )
 
     def _load_data(self):
         print("Loading data for galaxy simulation.")
@@ -142,16 +147,18 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         # TODO: Python 3 workaround numpy issue
         f = np.load(native_str(_data_file))
-        self._haslam = f['haslam']
+        self._haslam = f["haslam"]
 
-        self._sp_ind = {'gsm': f['spectral_gsm'],
-                        'md': f['spectral_md'],
-                        'gd': f['spectral_gd'] }
+        self._sp_ind = {
+            "gsm": f["spectral_gsm"],
+            "md": f["spectral_md"],
+            "gd": f["spectral_gd"],
+        }
 
-        self._faraday = f['faraday']
+        self._faraday = f["faraday"]
 
         # Upgrade the map resolution to the same as the Healpix map (nside=512).
-        #self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
+        # self._sp_ind = healpy.smoothing(healpy.ud_grade(self._sp_ind, 512), sigma=np.radians(1.0))
 
     def getsky(self, debug=False, celestial=True):
         """Create a realisation of the *unpolarised* sky.
@@ -186,7 +193,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         # Make a multifrequency map constrained to look like the smoothed maps
         # depending on the spectral_map apply constraints at upper and lower
         # frequency (GSM), or just at Haslam map frequency
-        if self.spectral_map == 'gsm':
+        if self.spectral_map == "gsm":
             fgs = skysim.mkconstrained(cla, [(0, sub408), (1, sub1420)], self.nside)
         else:
             fgs = skysim.mkconstrained(cla, [(0, sub408)], self.nside)
@@ -197,7 +204,9 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         # Bump up the variance of the fluctuations according to the variance map
         vm = healpy.smoothing(fg[0], sigma=np.radians(0.5), verbose=False)
-        vm = healpy.smoothing(map_variance(vm, 16)**0.5, sigma=np.radians(2.0), verbose=False)
+        vm = healpy.smoothing(
+            map_variance(vm, 16) ** 0.5, sigma=np.radians(2.0), verbose=False
+        )
         mv = vm.mean()
 
         # Construct the fluctuations map
@@ -207,7 +216,7 @@ class ConstrainedGalaxy(maps.Sky3d):
             del fg, fgs
 
         # Get the smooth, large scale emission from Haslam+spectralmap
-        fgsmooth = haslam[np.newaxis, :] * ((efreq / 408.0)[:, np.newaxis]**sc)
+        fgsmooth = haslam[np.newaxis, :] * ((efreq / 408.0)[:, np.newaxis] ** sc)
 
         # Rescale to ensure output is always positive, do this inplace where
         # possible to save memory
@@ -228,8 +237,6 @@ class ConstrainedGalaxy(maps.Sky3d):
             return fgt, fg, fgs, fgsmooth, am, mv
 
         return fgt
-
-
 
     def getpolsky(self, debug=False, celestial=True):
         """Create a realisation of the *polarised* sky.
@@ -253,7 +260,12 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         # Load and smooth the Faraday rotation map to get an estimate for the
         # width of the distribution
-        sigma_phi = healpy.ud_grade(healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0), verbose=False), self.nside)
+        sigma_phi = healpy.ud_grade(
+            healpy.smoothing(
+                np.abs(self._faraday), fwhm=np.radians(10.0), verbose=False
+            ),
+            self.nside,
+        )
 
         # Set the correlation length in phi
         xiphi = 1.0
@@ -265,7 +277,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         # this to generate the base fluctuations
         def angular(l):
             l[np.where(l == 0)] = 1.0e16
-            return (l / 100.0)**-2.8
+            return (l / 100.0) ** -2.8
 
         # Define a grid in phi that we will use to model the Faraday emission.
         dphi = self._dphi
@@ -274,25 +286,27 @@ class ConstrainedGalaxy(maps.Sky3d):
         phifreq = np.fft.fftfreq(nphi, d=(1.0 / (dphi * nphi)))
 
         # Create the weights required to turn random variables into alms
-        ps_weight = (angular(la[:, np.newaxis]) / 2.0)**0.5
+        ps_weight = (angular(la[:, np.newaxis]) / 2.0) ** 0.5
 
         # Generate random maps in the Fourier conjugate of phi. This is
         # equivalent to generating random uncorrelated phi maps and FFting
         # into the conjugate.
-        map2 = np.zeros((12 * self.nside**2, nphi), dtype=np.complex128)
+        map2 = np.zeros((12 * self.nside ** 2, nphi), dtype=np.complex128)
         print("SHTing to give random maps")
         for i in range(nphi):
-            w = np.random.standard_normal((lmax + 1, 2 * lmax + 1, 2)).view(np.complex128)[..., 0]
+            w = np.random.standard_normal((lmax + 1, 2 * lmax + 1, 2)).view(
+                np.complex128
+            )[..., 0]
             w *= ps_weight
             map2[:, i] = hputil.sphtrans_inv_complex(w, self.nside)
 
         # Weight the conj-phi direction to give the phi correlation structure.
         pcfreq = np.fft.fftfreq(nphi, d=dphi)
-        map2 *= np.exp(-2 * (np.pi * xiphi * pcfreq[np.newaxis, :])**2)
+        map2 *= np.exp(-2 * (np.pi * xiphi * pcfreq[np.newaxis, :]) ** 2)
 
         # We need to FFT back into phi, but as scipy does not have an inplace
         # transform, we can do this in blocks, replacing as we go.
-        chunksize = self.nside**2
+        chunksize = self.nside ** 2
         nchunk = 12
 
         for ci in range(nchunk):
@@ -303,9 +317,9 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         # numpy's var routine is extremely memory inefficient. Use a crappy
         # chunking one.
-        map2 /= (2.0 * chunk_var(map2)**0.5)
+        map2 /= 2.0 * chunk_var(map2) ** 0.5
 
-        w = np.exp(-0.25 * (phifreq[np.newaxis, :] / sigma_phi[:, np.newaxis])**2)
+        w = np.exp(-0.25 * (phifreq[np.newaxis, :] / sigma_phi[:, np.newaxis]) ** 2)
 
         # Calculate the normalisation explicitly (required when Faraday depth
         # is small, as grid is too large).
@@ -321,9 +335,9 @@ class ConstrainedGalaxy(maps.Sky3d):
 
             dx = dfreq / freq
 
-            alpha = 2.0 * phi * 3e2**2 / freq**2
+            alpha = 2.0 * phi * 3e2 ** 2 / freq ** 2
 
-            return (np.exp(1.0J * alpha) * np.sinc(alpha * dx / np.pi))
+            return np.exp(1.0j * alpha) * np.sinc(alpha * dx / np.pi)
 
         fa = self.nu_pixels
         df = np.median(np.diff(fa))
@@ -342,7 +356,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         del map4a
 
-        map5 = np.zeros((self.nu_num, 4, 12 * self.nside**2), dtype=np.float64)
+        map5 = np.zeros((self.nu_num, 4, 12 * self.nside ** 2), dtype=np.float64)
 
         print("Scaling by T")
         # Unflatten the intensity by multiplying by the unpolarised realisation

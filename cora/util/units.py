@@ -1,10 +1,9 @@
-
 """ A set of useful constants and conversions in Astronomy and Cosmology. """
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 
@@ -26,7 +25,7 @@ giga = 1e9
 parsec = 3.08568025e16
 kilo_parsec = kilo * parsec
 mega_parsec = mega * parsec
-giga_parsec = giga * parsec 
+giga_parsec = giga * parsec
 
 # Time lengths in seconds.
 second = 1.0
@@ -38,7 +37,7 @@ kilo_year = kilo * year
 mega_year = mega * year
 giga_year = giga * year
 
-t_sidereal = 23.9344696 * hour # Sidereal day
+t_sidereal = 23.9344696 * hour  # Sidereal day
 
 #### Physical constants (in SI) ####
 # Gravitational constant G kg^-1 m^3 s^-2
@@ -55,7 +54,7 @@ c_sl = c
 stefan_boltzmann = 5.6705e-8
 
 # Radiation constant (in J m^{-3} K^{-4})
-a_rad = 4*stefan_boltzmann / c
+a_rad = 4 * stefan_boltzmann / c
 
 # 21cm transition frequency (in MHz)
 nu21 = 1420.40575177
@@ -65,10 +64,6 @@ k_B = 1.3806503e-23
 
 
 #### Angular units (in radians) ####
-degree     = 2 * math.pi / 360
+degree = 2 * math.pi / 360
 arc_minute = 2 * math.pi / (60 * 360)
 arc_second = 2 * math.pi / (60 * 60 * 360)
-
-
-
-

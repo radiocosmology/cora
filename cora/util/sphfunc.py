@@ -4,10 +4,10 @@ These routines require `pygsl` to be installed. Although these functions are
 available in `scipy` they tend to be inaccurate at large values of `l`.
 """
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 
@@ -38,7 +38,9 @@ def jl(l, z):
 
     zca = np.logical_and(z == 0.0, l > 0)
     zza = np.where(zca)
-    lca = np.logical_and(np.logical_or(np.logical_and(l > 20, z < (l / 5.0)), z < (l * 1e-6)), z > 0.0)
+    lca = np.logical_and(
+        np.logical_or(np.logical_and(l > 20, z < (l / 5.0)), z < (l * 1e-6)), z > 0.0
+    )
     lza = np.where(lca)
     hca = np.logical_and(l > 20, z > 10.0 * l)
     hza = np.where(hca)
@@ -92,7 +94,7 @@ def jl_d2(l, z):
     jl0 = jl(l, z)
     jl1 = jl(l + 1, z)
     jl2 = jl(l + 2, z)
-    return jl2 - (2 * l / z) * jl1 + ((l**2 - 1) / z**2) * jl0
+    return jl2 - (2 * l / z) * jl1 + ((l ** 2 - 1) / z ** 2) * jl0
 
 
 def Ylm(l, m, theta, phi):
@@ -114,7 +116,7 @@ def Ylm(l, m, theta, phi):
     m = np.array(m).astype(np.int32)
     x = np.array(np.cos(theta)).astype(np.float64)
 
-    return sf.legendre_sphPlm(l, m, x) * np.exp(1.0J * m * phi)
+    return sf.legendre_sphPlm(l, m, x) * np.exp(1.0j * m * phi)
 
 
 def Ylm_array(lmax, theta, phi):
@@ -160,24 +162,30 @@ def Ylm_spin2(l, m, theta, phi):
 
     def alpha(sign, l, m, theta):
 
-        t = (2 * m**2 - l * (l + 1.0) -
-             sign * 2 * m * (l - 1.0) * np.cos(theta) +
-             l * (l - 1) * np.cos(theta)**2)
+        t = (
+            2 * m ** 2
+            - l * (l + 1.0)
+            - sign * 2 * m * (l - 1.0) * np.cos(theta)
+            + l * (l - 1) * np.cos(theta) ** 2
+        )
 
-        return t / np.sin(theta)**2
+        return t / np.sin(theta) ** 2
 
     def beta(sign, l, m, theta):
 
-        t = (2 * ((2.0 * l + 1.0) / (2.0 * l - 1.0) * (l**2 - m**2))**0.5 *
-             (sign * m + np.cos(theta)))
+        t = (
+            2
+            * ((2.0 * l + 1.0) / (2.0 * l - 1.0) * (l ** 2 - m ** 2)) ** 0.5
+            * (sign * m + np.cos(theta))
+        )
 
-        return t / np.sin(theta)**2
+        return t / np.sin(theta) ** 2
 
     y0 = Ylm(l, m, theta, phi)
     y1 = np.where(l <= m, 0.0, Ylm(l - 1, m, theta, phi))
 
     fac = (l - 1) * l * (l + 1) * (l + 2)
-    fac = np.where(l < 2, 0.0, fac**-0.5)
+    fac = np.where(l < 2, 0.0, fac ** -0.5)
 
     y2plus = fac * (alpha(1, l, m, theta) * y0 + beta(1, l, m, theta) * y1)
     y2minus = fac * (alpha(-1, l, m, theta) * y0 + beta(-1, l, m, theta) * y1)
@@ -204,7 +212,9 @@ def Ylm_spin2_array(lmax, theta, phi):
     """
     m, l = np.triu_indices(lmax + 1)
 
-    return Ylm_spin2(l, m, np.array(theta)[..., np.newaxis], np.array(phi)[..., np.newaxis])
+    return Ylm_spin2(
+        l, m, np.array(theta)[..., np.newaxis], np.array(phi)[..., np.newaxis]
+    )
 
 
 def _jl_approx_lowz(l, z):
@@ -214,12 +224,20 @@ def _jl_approx_lowz(l, z):
     """
 
     nu = l + 0.5
-    nutanha = (nu * nu - z * z)**0.5
+    nutanha = (nu * nu - z * z) ** 0.5
     arg = nutanha - nu * np.arccosh(nu / z)
 
-    return (np.exp(arg) * (1 + 1.0 / (8 * nutanha) - 5.0 * nu**2 / (24 * nutanha**3) +
-                           9.0 / (128 * nutanha**2) - 231.0 * nu**2 / (576 * nutanha**4)) /
-            (2 * (z * nutanha)**0.5))
+    return (
+        np.exp(arg)
+        * (
+            1
+            + 1.0 / (8 * nutanha)
+            - 5.0 * nu ** 2 / (24 * nutanha ** 3)
+            + 9.0 / (128 * nutanha ** 2)
+            - 231.0 * nu ** 2 / (576 * nutanha ** 4)
+        )
+        / (2 * (z * nutanha) ** 0.5)
+    )
 
 
 def _jl_approx_highz(l, z):
@@ -229,12 +247,14 @@ def _jl_approx_highz(l, z):
     """
 
     nu = l + 0.5
-    sinb = (1 - nu * nu / (z * z))**0.5
+    sinb = (1 - nu * nu / (z * z)) ** 0.5
     cotb = nu / (z * sinb)
     arg = z * sinb - nu * (np.pi / 2 - np.arcsin(nu / z)) - np.pi / 4
 
-    return (np.cos(arg) * (1 - 9.0 * cotb**2 / (128.0 * nu**2)) +
-            np.sin(arg) * (cotb / (8 * nu))) / (z * sinb**0.5)
+    return (
+        np.cos(arg) * (1 - 9.0 * cotb ** 2 / (128.0 * nu ** 2))
+        + np.sin(arg) * (cotb / (8 * nu))
+    ) / (z * sinb ** 0.5)
 
 
 def _jl_gsl(l, z):

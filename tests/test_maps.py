@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import numpy as np
@@ -21,10 +21,10 @@ def test_galaxy():
     cr.frequencies = fa
 
     unpol = cr.getsky()
-    assert unpol.shape == (32, 12 * nside**2)
+    assert unpol.shape == (32, 12 * nside ** 2)
 
     pol = cr.getpolsky()
-    assert pol.shape == (32, 4, 12 * nside**2)
+    assert pol.shape == (32, 4, 12 * nside ** 2)
 
     # Check fluctuation amplitude for unpol
     ustd = unpol.std(axis=-1)
@@ -39,6 +39,7 @@ def test_galaxy():
     assert (pol.std(axis=-1)[:, 1:3] < 3.0).all()
     assert (pol.std(axis=-1)[:, 3] == 0.0).all()
 
+
 def test_pointsource():
 
     cr = pointsource.CombinedPointSources()
@@ -46,10 +47,10 @@ def test_pointsource():
     cr.frequencies = fa
 
     unpol = cr.getsky()
-    assert unpol.shape == (32, 12 * nside**2)
+    assert unpol.shape == (32, 12 * nside ** 2)
 
     pol = cr.getpolsky()
-    assert pol.shape == (32, 4, 12 * nside**2)
+    assert pol.shape == (32, 4, 12 * nside ** 2)
 
     # Check fluctuation amplitude for unpol
     ustd = unpol.std(axis=-1)
