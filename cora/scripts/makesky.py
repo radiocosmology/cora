@@ -14,6 +14,40 @@ import click
 import numpy as np
 
 
+class ListOfType(click.ParamType):
+    """Click option type that accepts a list of objects of a given type.
+
+    Must be a type accepted by a Python literal eval.
+
+    Parameters
+    ----------
+    name : str
+        Name of click type.
+    type_ : type object
+        Type to accept.
+    """
+
+    def __init__(self, name, type_):
+        self.name = name
+        self.type = type_
+
+    def convert(self, value, param, ctx):
+        import ast
+
+        try:
+            l = ast.literal_eval(value)
+        except (SyntaxError, ValueError):
+            self.fail('Could not parse "%s" into list.' % value)
+
+        if not isinstance(l, list):
+            self.fail('Could not parse "%s" into list.' % value)
+
+        if not all([isinstance(x, self.type) for x in l]):
+            self.fail('Not all values were of type "%s"' % repr(self.type))
+
+        return l
+
+
 class FreqState(object):
     """Process and store the frequency spec from the command line."""
 
@@ -22,7 +56,8 @@ class FreqState(object):
         # Set the CHIME band as the internal default
         self.freq = (800.0, 400.0, 1025)
 
-        self.channels = None
+        self.channel_range = None
+        self.channel_list = None
         self.channel_bin = 1
         self.freq_mode = "centre"
 
@@ -49,8 +84,10 @@ class FreqState(object):
             frequencies = sf + df * (np.arange(nf) + 0.5)
 
         # Select a subset of channels if required
-        if self.channels is not None:
-            frequencies = frequencies[self.channels[0] : self.channels[1]]
+        if self.channel_list is not None:
+            frequencies = frequencies[self.channel_list]
+        elif self.channel_range is not None:
+            frequencies = frequencies[self.channel_range[0] : self.channel_range[1]]
 
         # Rebin frequencies if needed
         if self.channel_bin > 1:
@@ -67,11 +104,15 @@ class FreqState(object):
 
     @classmethod
     def options(cls, f):
+
+        FREQ = ListOfType("frequency list", int)
+
         options = [
             click.option(
                 "--freq",
                 help=(
-                    "Define the frequency channels (in MHz). "
+                    "Define the frequency channelisation, give the start and stop "
+                    "frequencies (in MHz) and the effective number of channels. "
                     "Default is for CHIME: FSTART=800.0, FSTOP=400.0, FNUM=1025"
                 ),
                 metavar="FSTART FSTOP FNUM",
@@ -81,8 +122,8 @@ class FreqState(object):
                 callback=cls._set_attr,
             ),
             click.option(
-                "--channels",
-                help="Select a range of frequency channels",
+                "--channel-range",
+                help="Select a range of frequency channels. Overriden by channel range.",
                 type=(int, int),
                 metavar="CSTART CSTOP",
                 default=(None, None),
@@ -90,17 +131,17 @@ class FreqState(object):
                 callback=cls._set_attr,
             ),
             click.option(
-                "--channel-bin",
-                help="If set, average over BIN channels",
-                metavar="BIN",
-                type=int,
-                default=1,
+                "--channel-list",
+                help="Select a list of frequency channels. Takes priority over channel range.",
+                type=FREQ,
+                metavar="CHANNEL LIST",
+                default=None,
                 expose_value=False,
                 callback=cls._set_attr,
             ),
             click.option(
-                "--freq-mode",
-                help="If set, average over BIN channels",
+                "--channel-bin",
+                help="If set, average over BIN channels. The binning is done after channel selection.",
                 metavar="BIN",
                 type=int,
                 default=1,
@@ -113,7 +154,8 @@ class FreqState(object):
                 default="centre",
                 help=(
                     "Choose whether FSTART and FSTOP are the very edges of the band, "
-                    "or whether they are the centre frequencies (default: centre)."
+                    "or whether they are the central frequencies of the first and "
+                    "last channel (default: centre)."
                 ),
                 expose_value=False,
                 callback=cls._set_attr,
