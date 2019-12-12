@@ -310,7 +310,7 @@ def pointsource(fstate, nside, pol, filename, maxflux):
 @click.option(
     "--oversample",
     type=int,
-    help="Oversample in redshift by 2**oversample_z + 1 to capute finite width bins.",
+    help="Oversample in redshift by 2**oversample_z + 1 to approximate finite width bins.",
 )
 def _21cm(fstate, nside, pol, filename, eor, oversample):
     """Generate a Gaussian simulation of the unresolved 21cm background.
