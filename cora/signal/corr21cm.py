@@ -321,6 +321,8 @@ class EoR21cm(Corr21cm):
     def T_b(self, z):
         
         r"""Mean 21cm brightness temperature at a given redshift.
+        
+        According to Eq.(4) of M. G. Santos, L. Ferramacho and M. B. Silva, 2009, Fast Large Volume Simulations of the Epoch of Reionization.
 
         Temperature is in K.
 
@@ -334,7 +336,7 @@ class EoR21cm(Corr21cm):
         T_b : array_like
         """
 
-        return (23e-3 * (self.cosmology.omega_b * (self.cosmology.H0 / 100.0)**2 / 0.02) * ((0.15 / self.cosmology.omega_m * (self.cosmology.H0 / 100.0)**2) * ((1.0 + z)/10))**0.5 * ((self.cosmology.H0 / 100.0) / 0.7)**-1)
+        return (23e-3 * (self.cosmology.omega_b * (self.cosmology.H0 / 100.0)**2 / 0.02) * (0.15 / (self.cosmology.omega_m * (self.cosmology.H0 / 100.0)**2) * ((1.0 + z)/10))**0.5 * ((self.cosmology.H0 / 100.0) / 0.7)**-1)
 
 
     def omega_HI(self, z):
