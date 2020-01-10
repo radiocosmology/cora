@@ -222,7 +222,14 @@ def cli():
     help="Maximum flux of point included point source (in Jy). Default is 1 MJy.",
 )
 def foreground(fstate, nside, pol, filename, maxflux):
-    """Generate a full foreground sky map."""
+    """Generate a full foreground sky map.
+
+    The requested map must have more than two frequencies for this type.
+    """
+
+    if fstate.frequencies.shape[0] < 2:
+        print("Number of frequencies must be more than two.")
+        return
 
     from cora.foreground import galaxy, pointsource
 
@@ -253,7 +260,13 @@ def galaxy(fstate, nside, pol, filename, spectral_index):
     Use Haslam (extrapolated with a spatially varying spectral index) as a base,
     and then generate random spatial, spectral and polarisation fluctuations for
     unconstrained modes.
+
+    The requested map must have more than two frequencies for this type.
     """
+
+    if fstate.frequencies.shape[0] < 2:
+        print("Number of frequencies must be more than two.")
+        return
 
     from cora.foreground import galaxy
 
