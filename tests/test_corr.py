@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import numpy as np
@@ -21,11 +21,13 @@ def test_corr_signal():
 
     aps1 = cr.angular_powerspectrum(np.arange(1000), 800.0, 800.0)
     assert len(aps1) == 1000
-    assert np.allclose(aps1.sum(), 1.5963772205823096e-09, rtol=1e-7)  # Calculated for commit 02f4d1cd3f402d
+    assert np.allclose(
+        aps1.sum(), 1.5963772205823096e-09, rtol=1e-7
+    )  # Calculated for commit 02f4d1cd3f402d
 
     fa = np.linspace(400.0, 800.0, 64)
     aps2 = cr.angular_powerspectrum(
-        np.arange(1000)[:, None, None], fa[None, :,None], fa[None, None, :]
+        np.arange(1000)[:, None, None], fa[None, :, None], fa[None, None, :]
     )
     assert aps2.shape == (1000, 64, 64)
 
@@ -45,11 +47,13 @@ def test_corr_foreground():
 
     aps1 = cr.angular_powerspectrum(np.arange(1000), 800.0, 800.0)
     assert len(aps1) == 1000
-    assert np.allclose(aps1.sum(), 75.47681191093129, rtol=1e-7)  # Calculated for commit 02f4d1cd3f402d
+    assert np.allclose(
+        aps1.sum(), 75.47681191093129, rtol=1e-7
+    )  # Calculated for commit 02f4d1cd3f402d
 
     fa = np.linspace(400.0, 800.0, 64)
     aps2 = cr.angular_powerspectrum(
-        np.arange(1000)[:, None, None], fa[None, :,None], fa[None, None, :]
+        np.arange(1000)[:, None, None], fa[None, :, None], fa[None, None, :]
     )
     assert aps2.shape == (1000, 64, 64)
 
@@ -58,4 +62,3 @@ def test_corr_foreground():
     v2 = 0.00017630767166797886  # l=200, fi=10, fj=40
     assert np.allclose(aps2[400, 40, 40], v1, rtol=1e-7)
     assert np.allclose(aps2[200, 10, 40], v2, rtol=1e-7)
-

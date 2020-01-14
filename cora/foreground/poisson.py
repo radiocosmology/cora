@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import numpy as np
@@ -34,20 +34,19 @@ def homogeneous_process(t, rate):
     # distribution (until total is time is greater than t) and then
     # perform cumulative sum to find event times. Generates in blocks
     # for efficiency.
-    n = int(1.2*rate*t + 1)
+    n = int(1.2 * rate * t + 1)
 
-    iv = rnd.exponential(1.0/rate, n)
+    iv = rnd.exponential(1.0 / rate, n)
 
-    n = int(0.4*rate*t + 1)
-    while (iv.sum() < t):
-        ivt = rnd.exponential(1.0/rate, n)
-        iv = np.concatenate((iv,ivt))
+    n = int(0.4 * rate * t + 1)
+    while iv.sum() < t:
+        ivt = rnd.exponential(1.0 / rate, n)
+        iv = np.concatenate((iv, ivt))
 
     ts = np.cumsum(iv)
     maxi = np.searchsorted(ts, [t])
     return ts[:maxi]
 
-    
 
 def test_hpp():
     r"""Test the homogenous Poisson process.
@@ -72,15 +71,13 @@ def test_hpp():
 
     pp = homogeneous_process(5000.0, 1.0)
 
-    h1 = np.histogram(pp, bins=5000, range=(0,5000))[0]
-    h2 = np.histogram(h1, bins=10, range=(0,10))[0]
+    h1 = np.histogram(pp, bins=5000, range=(0, 5000))[0]
+    h2 = np.histogram(h1, bins=10, range=(0, 10))[0]
 
-    r1 = np.arange(0,11)
+    r1 = np.arange(0, 11)
     p2 = 5000.0 / factorial(r1) * np.exp(-1.0)
 
     return (r1, h2, p2)
-
-
 
 
 def inhomogeneous_process(t, rate):
@@ -116,26 +113,26 @@ def inhomogeneous_process(t, rate):
         # the blocking.
         t_rmax = fminbound(lambda x: -rate(x), 0.0, t)
         rmax = rate(t_rmax)
-        
+
         ut = homogeneous_process(t, rmax)
 
-        if(ut.shape[0] == 0):
+        if ut.shape[0] == 0:
             return ut
-        
+
         da = rnd.rand(ut.shape[0])
-        
+
         ra = np.vectorize(rate)(ut)
-        
+
         return ut[np.where(da < ra / rmax)]
-    
+
     # For the moment simply split into intervals equal in time.
     nbin = 500
     iv = np.array([], dtype=np.float64)
     for i in range(nbin):
-        tmin = i*t/(1.0*nbin)
-        dt = t/(1.0*nbin)
-        
-        drate = lambda tr: rate(tr+tmin)
+        tmin = i * t / (1.0 * nbin)
+        dt = t / (1.0 * nbin)
+
+        drate = lambda tr: rate(tr + tmin)
 
         ut = tmin + _inhomogeneous_process_wk(dt, drate)
         iv = np.concatenate((iv, ut))
@@ -161,17 +158,16 @@ def test_ipp():
     """
 
     def rate(t):
-        return 30.0*(t / 2500.0 - 1.0)**2 + 100.0
+        return 30.0 * (t / 2500.0 - 1.0) ** 2 + 100.0
+
     pp = inhomogeneous_process(5000.0, rate)
 
-    h1 = np.histogram(pp, bins=50, range=(0,5000))[0] / 100.0
+    h1 = np.histogram(pp, bins=50, range=(0, 5000))[0] / 100.0
 
-    r1 = np.arange(0,50)*100.0 + 50.0
+    r1 = np.arange(0, 50) * 100.0 + 50.0
     p2 = np.vectorize(rate)(r1)
 
     return (r1, h1, p2)
-
-
 
 
 def inhomogeneous_process_approx(t, rate):
