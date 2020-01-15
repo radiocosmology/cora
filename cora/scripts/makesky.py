@@ -156,11 +156,11 @@ class FreqState(object):
                 type=click.Choice(["centre", "centre_nyquist", "edge"]),
                 default="centre",
                 help=(
-                    "Choose if FSTART and FSTOP are the edges of the band (\"edge\"), "
+                    'Choose if FSTART and FSTOP are the edges of the band ("edge"), '
                     "or whether they are the central frequencies of the first and "
                     "last channel, in this case the last (nyquist) frequency can "
-                    "either be skipped (\"centre\", default) or included "
-                    "(\"centre_nyquist\"). The behaviour of the \"centre\" mode "
+                    'either be skipped ("centre", default) or included '
+                    '("centre_nyquist"). The behaviour of the "centre" mode '
                     "matches the output of the CASPER PFB-FIR block."
                 ),
                 expose_value=False,
