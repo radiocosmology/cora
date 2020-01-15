@@ -77,22 +77,25 @@ class FreqState(object):
 
         sf, ef, nf = self.freq
         if self.freq_mode == "centre":
+            df = abs(ef - sf) / nf
+            frequencies = np.linspace(sf, ef, nf, endpoint=False)
+        elif self.freq_mode == "centre_nyquist":
             df = abs((ef - sf) / (nf - 1))
             frequencies = np.linspace(sf, ef, nf, endpoint=True)
         else:
             df = (ef - sf) / nf
             frequencies = sf + df * (np.arange(nf) + 0.5)
 
+        # Rebin frequencies if needed
+        if self.channel_bin > 1:
+            frequencies = frequencies.reshape(-1, self.channel_bin).mean(axis=1)
+            df = df * self.channel_bin
+
         # Select a subset of channels if required
         if self.channel_list is not None:
             frequencies = frequencies[self.channel_list]
         elif self.channel_range is not None:
             frequencies = frequencies[self.channel_range[0] : self.channel_range[1]]
-
-        # Rebin frequencies if needed
-        if self.channel_bin > 1:
-            frequencies = frequencies.reshape(-1, self.channel_bin).mean(axis=1)
-            df = df * self.channel_bin
 
         return frequencies, df
 
@@ -117,7 +120,7 @@ class FreqState(object):
                 ),
                 metavar="FSTART FSTOP FNUM",
                 type=(float, float, int),
-                default=(800.0, 400.0, 1025),
+                default=(800.0, 400.0, 1024),
                 expose_value=False,
                 callback=cls._set_attr,
             ),
@@ -141,7 +144,7 @@ class FreqState(object):
             ),
             click.option(
                 "--channel-bin",
-                help="If set, average over BIN channels. The binning is done after channel selection.",
+                help="If set, average over BIN channels. The binning is done before channel selection.",
                 metavar="BIN",
                 type=int,
                 default=1,
@@ -150,12 +153,15 @@ class FreqState(object):
             ),
             click.option(
                 "--freq-mode",
-                type=click.Choice(["centre", "edge"]),
+                type=click.Choice(["centre", "centre_nyquist", "edge"]),
                 default="centre",
                 help=(
-                    "Choose whether FSTART and FSTOP are the very edges of the band, "
+                    "Choose if FSTART and FSTOP are the edges of the band (\"edge\"), "
                     "or whether they are the central frequencies of the first and "
-                    "last channel (default: centre)."
+                    "last channel, in this case the last (nyquist) frequency can "
+                    "either be skipped (\"centre\", default) or included "
+                    "(\"centre_nyquist\"). The behaviour of the \"centre\" mode "
+                    "matches the output of the CASPER PFB-FIR block."
                 ),
                 expose_value=False,
                 callback=cls._set_attr,
