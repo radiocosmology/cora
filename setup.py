@@ -15,7 +15,7 @@ import re
 
 import numpy as np
 
-import cora
+import versioneer
 
 
 # TODO: Python 3 - can remove when moved entirely
@@ -99,7 +99,8 @@ with open("README.rst", "r") as fh:
 
 setup(
     name="cora",
-    version=cora.__version__,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass({"build_ext": build_ext}),
     packages=find_packages(),
     ext_modules=[cs_ext, bm_ext],
     install_requires=requires,
@@ -120,6 +121,5 @@ setup(
     description="Simulation and modelling of low frequency radio skies.",
     long_description=long_description,
     license="MIT",
-    url="http://github.com/jrs65/cora",
-    cmdclass={"build_ext": build_ext},
+    url="http://github.com/radiocosmology/cora",
 )
