@@ -357,22 +357,12 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
 @cli.command()
 @map_options
 @click.option(
-        "--eor",
-        type=bool,
-        help="Use parameters more suitable for reionisation epoch (rather than intensity mapping).",
-    )
-@click.option(
-        "--oversample",
-        type=int,
-        help="Oversample in redshift by 2**oversample_z + 1 to approximate finite width bins.",
-    )
-@click.option(
         "--no_corr_reg",
         is_flag=True,
         type=bool,
         help="Add a small diagonal to the input correlation matrix",
     )
-def gaussianfg(fstate, nside, pol, filename, eor, oversample, no_corr_reg):
+def gaussianfg(fstate, nside, pol, filename, no_corr_reg):
     """Generate a full-sky Gaussian random field for synchrotron emission.
     """
 
