@@ -362,7 +362,13 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
         type=bool,
         help="Add a small diagonal to the input correlation matrix",
     )
-def gaussianfg(fstate, nside, pol, filename, no_corr_reg):
+@click.option(
+        "--alm_only",
+        is_flag=True,
+        type=bool,
+        help="Output simulated a_lm coefficients instead of map",
+    )
+def gaussianfg(fstate, nside, pol, filename, no_corr_reg, alm_only):
     """Generate a full-sky Gaussian random field for synchrotron emission.
     """
 
@@ -402,9 +408,12 @@ def gaussianfg(fstate, nside, pol, filename, no_corr_reg):
         npol, nfreq, lmax + 1, lmax + 1
     )
     alms = alms.transpose((1, 0, 2, 3))
-
-    maps = hputil.sphtrans_inv_sky(alms, nside)
-    write_map(filename, maps, fsyn.frequencies, fstate.freq_width, pol != "none")
+    
+    if alm_only:
+        write_alms(filename, alms, fsyn.frequencies, fstate.freq_width, pol != "none")
+    else:
+        maps = hputil.sphtrans_inv_sky(alms, nside)
+        write_map(filename, maps, fsyn.frequencies, fstate.freq_width, pol != "none")
 
 
 @cli.command()
@@ -427,6 +436,44 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
     write_map(filename, map_, fstate.frequencies, fstate.freq_width, pol != "none")
 
 
+def write_alms(filename, data, freq, fwidth=None, include_pol=True):
+    # Write out spherical harmonic coefficients into an HDF5 file.
+
+    import h5py
+    import numpy as np
+    from future.utils import text_type
+
+    # Construct the polarization map
+    if include_pol:
+        polmap = np.array(["I", "Q", "U", "V"])
+    else:
+        polmap = np.array(["I"])
+    
+    # Construct frequency index map
+    freqmap = np.zeros(len(freq), dtype=[("centre", np.float64), ("width", np.float64)])
+    freqmap["centre"][:] = freq
+    freqmap["width"][:] = fwidth if fwidth is not None else np.abs(np.diff(freq)[0])
+
+    # Open up file for writing
+    with h5py.File(filename, "w") as f:
+        f.attrs["__memh5_distributed_file"] = True
+
+        dset = f.create_dataset("alms", data=data)
+        dt = h5py.special_dtype(vlen=text_type)
+        dset.attrs["axis"] = np.array(["freq", "pol", "l", "m"]).astype(dt)
+        dset.attrs["__memh5_distributed_dset"] = True
+
+        dset = f.create_dataset("index_map/freq", data=freqmap)
+        dset.attrs["__memh5_distributed_dset"] = False
+        dset = f.create_dataset("index_map/pol", data=polmap.astype(dt))
+        dset.attrs["__memh5_distributed_dset"] = False
+        dset = f.create_dataset("index_map/l", data=np.arange(data.shape[2]))
+        dset.attrs["__memh5_distributed_dset"] = False
+        dset = f.create_dataset("index_map/m", data=np.arange(data.shape[3]))
+        dset.attrs["__memh5_distributed_dset"] = False
+
+    
+    
 def write_map(filename, data, freq, fwidth=None, include_pol=True):
     # Write out the map into an HDF5 file.
 
