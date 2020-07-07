@@ -403,7 +403,6 @@ def gaussianfg(fstate, nside, pol, filename, no_corr_reg):
     )
     alms = alms.transpose((1, 0, 2, 3))
 
-    print(no_corr_reg, not no_corr_reg)
     maps = hputil.sphtrans_inv_sky(alms, nside)
     write_map(filename, maps, fsyn.frequencies, fstate.freq_width, pol != "none")
 
