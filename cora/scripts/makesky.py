@@ -368,6 +368,7 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
     )
 @click.option(
         "--no_corr_reg",
+        is_flag=True,
         type=bool,
         help="Add a small diagonal to the input correlation matrix",
     )
