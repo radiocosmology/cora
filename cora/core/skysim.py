@@ -75,7 +75,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
         return cla
 
 
-def mkfullsky(corr, nside, alms=False):
+def mkfullsky(corr, nside, alms=False, regularize_corr=True):
     """Construct a set of correlated Healpix maps.
 
     Make a set of full sky gaussian random fields, given the correlation
@@ -89,6 +89,9 @@ def mkfullsky(corr, nside, alms=False):
         The resolution of the Healpix maps.
     alms : boolean, optional
         If True return the alms instead of the sky maps.
+    regularize_corr: boolean, optional
+        Add a small diagonal to the input correlation matrix.
+        Default: True
 
     Returns
     -------
@@ -107,9 +110,11 @@ def mkfullsky(corr, nside, alms=False):
     # Generate gaussian deviates and transform to have correct correlation
     # structure
     for l in range(maxl + 1):
-        # Add in a small diagonal to try and ensure positive definiteness
-        cmax = corr[l].diagonal().max() * 1e-14
-        corrm = corr[l] + np.identity(numz) * cmax
+        corrm = corr[l]
+        if regularize_corr:
+            # Add in a small diagonal to try and ensure positive definiteness
+            cmax = corrm.diagonal().max() * 1e-14
+            corrm += np.identity(numz) * cmax
 
         trans = nputil.matrix_root_manynull(corrm, truncate=False)
         gaussvars = nputil.complex_std_normal((numz, l + 1))

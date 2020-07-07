@@ -366,7 +366,12 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
         type=int,
         help="Oversample in redshift by 2**oversample_z + 1 to approximate finite width bins.",
     )
-def gaussianfg(fstate, nside, pol, filename, eor, oversample):
+@click.option(
+        "--no_corr_reg",
+        type=bool,
+        help="Add a small diagonal to the input correlation matrix",
+    )
+def gaussianfg(fstate, nside, pol, filename, eor, oversample, no_corr_reg):
     """Generate a full-sky Gaussian random field for synchrotron emission.
     """
 
@@ -402,11 +407,12 @@ def gaussianfg(fstate, nside, pol, filename, eor, oversample):
 
     cv_fg = cv_fg.reshape(lmax + 1, npol * nfreq, npol * nfreq)
 
-    alms = skysim.mkfullsky(cv_fg, nside, alms=True).reshape(
+    alms = skysim.mkfullsky(cv_fg, nside, alms=True, regularize_corr=not no_corr_reg).reshape(
         npol, nfreq, lmax + 1, lmax + 1
     )
     alms = alms.transpose((1, 0, 2, 3))
 
+    print(no_corr_reg, not no_corr_reg)
     maps = hputil.sphtrans_inv_sky(alms, nside)
     write_map(filename, maps, fsyn.frequencies, fstate.freq_width, pol != "none")
 
