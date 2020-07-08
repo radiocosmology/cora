@@ -363,12 +363,18 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
         help="Add a small diagonal to the input correlation matrix",
     )
 @click.option(
+        "--save_alm",
+        is_flag=True,
+        type=bool,
+        help="Write simulated a_lm coefficients to disk",
+    )
+@click.option(
         "--alm_only",
         is_flag=True,
         type=bool,
-        help="Output simulated a_lm coefficients instead of map",
+        help="Write simulated a_lm coefficients to disk, without saving map",
     )
-def gaussianfg(fstate, nside, pol, filename, no_corr_reg, alm_only):
+def gaussianfg(fstate, nside, pol, filename, no_corr_reg, save_alm, alm_only):
     """Generate a full-sky Gaussian random field for synchrotron emission.
     """
 
@@ -409,9 +415,17 @@ def gaussianfg(fstate, nside, pol, filename, no_corr_reg, alm_only):
     )
     alms = alms.transpose((1, 0, 2, 3))
     
-    if alm_only:
-        write_alms(filename, alms, fsyn.frequencies, fstate.freq_width, pol != "none")
-    else:
+    if save_alm or alm_only:
+        file, file_ext = os.path.splitext(filename)
+        write_alms(
+            file + '_alm' + file_ext, 
+            alms, 
+            fsyn.frequencies, 
+            fstate.freq_width, 
+            pol != "none"
+        )
+    
+    if not alm_only:
         maps = hputil.sphtrans_inv_sky(alms, nside)
         write_map(filename, maps, fsyn.frequencies, fstate.freq_width, pol != "none")
 
