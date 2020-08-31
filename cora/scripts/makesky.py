@@ -360,7 +360,7 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
         "--no_corr_reg",
         is_flag=True,
         type=bool,
-        help="Add a small diagonal to the input correlation matrix",
+        help="Don't add a small diagonal to the input correlation matrix",
     )
 @click.option(
         "--save_alm",
