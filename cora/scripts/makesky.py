@@ -382,7 +382,7 @@ def gaussianfg(fstate, nside, pol, filename):
         fsyn.angular_powerspectrum, lmax, fsyn.nu_pixels
     )
 
-    if ctx.obj.full_pol:
+    if pol == "full":
         cv_fg[:, 1, :, 1, :] = skysim.clarray(
             fpol.angular_powerspectrum, lmax, fsyn.nu_pixels
         )
