@@ -356,7 +356,7 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
 
 @cli.command()
 @map_options
-def gaussianfg(fstate, nside, pol, filename, eor, oversample):
+def gaussianfg(fstate, nside, pol, filename):
     """Generate a full-sky Gaussian random field for synchrotron emission.
     """
 
