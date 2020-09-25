@@ -356,7 +356,7 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
 
 @cli.command()
 @map_options
-def gaussianfg(fstate, nside, pol, filename, eor, oversample):
+def gaussianfg(fstate, nside, pol, filename):
     """Generate a full-sky Gaussian random field for synchrotron emission.
     """
 
@@ -382,7 +382,7 @@ def gaussianfg(fstate, nside, pol, filename, eor, oversample):
         fsyn.angular_powerspectrum, lmax, fsyn.nu_pixels
     )
 
-    if ctx.obj.full_pol:
+    if pol == "full":
         cv_fg[:, 1, :, 1, :] = skysim.clarray(
             fpol.angular_powerspectrum, lmax, fsyn.nu_pixels
         )
