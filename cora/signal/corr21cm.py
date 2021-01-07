@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from cora.core import maps
@@ -188,7 +187,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         nu1, nu2 : np.ndarray
             Frequencies/redshifts to calculate at.
         redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
             otherwise they are redshifts (relative to the 21cm line).
 
         Returns
@@ -216,7 +215,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         nu1, nu2 : np.ndarray
             Frequencies/redshifts to calculate at.
         redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
             otherwise they are redshifts (relative to the 21cm line).
 
         Returns
@@ -238,8 +237,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return self.mean(units.nu21 / freq - 1.0)
 
     def getfield(self):
-        r"""Fetch a realisation of the 21cm signal.
-        """
+        r"""Fetch a realisation of the 21cm signal."""
         z1 = units.nu21 / self.nu_upper - 1.0
         z2 = units.nu21 / self.nu_lower - 1.0
 
@@ -257,8 +255,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return cube
 
     def get_kiyo_field(self, refinement=1):
-        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
-        """
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)"""
         z1 = units.nu21 / self.nu_upper - 1.0
         z2 = units.nu21 / self.nu_lower - 1.0
 
@@ -288,8 +285,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
     def get_kiyo_field_physical(
         self, refinement=1, density_only=False, no_mean=False, no_evolution=False
     ):
-        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
-        """
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)"""
         z1 = units.nu21 / self.nu_upper - 1.0
         z2 = units.nu21 / self.nu_lower - 1.0
 
@@ -336,7 +332,7 @@ class EoR21cm(Corr21cm):
     def T_b(self, z):
 
         r"""Mean 21cm brightness temperature at a given redshift.
-        
+
         According to Eq.(4) of M. G. Santos, L. Ferramacho and M. B. Silva, 2009, Fast Large Volume Simulations of the Epoch of Reionization.
 
         Temperature is in K.

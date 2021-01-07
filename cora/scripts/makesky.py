@@ -326,8 +326,7 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     help="Oversample in redshift by 2**oversample_z + 1 to approximate finite width bins.",
 )
 def _21cm(fstate, nside, pol, filename, eor, oversample):
-    """Generate a Gaussian simulation of the unresolved 21cm background.
-    """
+    """Generate a Gaussian simulation of the unresolved 21cm background."""
 
     from cora.signal import corr21cm
 
@@ -351,8 +350,7 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
 @cli.command()
 @map_options
 def gaussianfg(fstate, nside, pol, filename):
-    """Generate a full-sky Gaussian random field for synchrotron emission.
-    """
+    """Generate a full-sky Gaussian random field for synchrotron emission."""
 
     import numpy as np
 
@@ -400,8 +398,7 @@ def gaussianfg(fstate, nside, pol, filename):
 @click.option("--ra", type=float, help="RA (in degrees) for source to add.", default=0)
 @click.option("--dec", type=float, help="DEC (in degrees) of source to add.", default=0)
 def singlesource(fstate, nside, pol, filename, ra, dec):
-    """Generate a test map with a single source (amplitude I=1) at the given position.
-    """
+    """Generate a test map with a single source (amplitude I=1) at the given position."""
     import healpy
 
     nfreq = len(fstate.frequencies)

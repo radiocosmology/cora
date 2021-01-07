@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from cora.signal import corr21cm

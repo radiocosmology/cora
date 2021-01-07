@@ -556,8 +556,7 @@ class RedshiftCorrelation(object):
         return np.ones_like(z) * sigma_v_hinvMpc
 
     def velocity_damping(self, kpar):
-        """The velocity damping term for the non-linear power spectrum.
-        """
+        """The velocity damping term for the non-linear power spectrum."""
         return (1.0 + (kpar * self.sigma_v(self.ps_redshift)) ** 2.0) ** -1.0
 
     def _realisation_dv(self, d, n):
@@ -876,8 +875,7 @@ class RedshiftCorrelation(object):
         np.savez(fname, dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
 
     def load_fft_cache(self, fname):
-        """Load FFT angular powerspectrum cache.
-        """
+        """Load FFT angular powerspectrum cache."""
         a = np.load(fname)
 
         self._aps_dd = a["dd"]

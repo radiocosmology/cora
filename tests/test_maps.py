@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from cora.foreground import galaxy, pointsource

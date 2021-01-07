@@ -1,4 +1,3 @@
-
 import numpy as np
 import numpy.random as rnd
 from scipy.optimize import fminbound
@@ -82,10 +81,10 @@ def inhomogeneous_process(t, rate):
     ----------
     t : scalar
         The time length to realise. The events generated are between time 0 and `t`.
-        
+
     rate : function
         A function which returns the event rate at a given time.
- 
+
     Returns
     -------
     events : ndarry
@@ -177,10 +176,10 @@ def inhomogeneous_process_approx(t, rate):
     ----------
     t : scalar
         The time length to realise. The events generated are between time 0 and `t`.
-        
+
     rate : function
         A function which returns the event rate at a given time.
- 
+
     Returns
     -------
     events : ndarry
