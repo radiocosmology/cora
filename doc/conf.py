@@ -30,9 +30,8 @@ import cora
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.pngmath",
     "sphinx.ext.mathjax",
-    "numpydoc",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
 ]
 
