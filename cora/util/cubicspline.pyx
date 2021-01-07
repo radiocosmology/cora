@@ -3,8 +3,6 @@
 
 import numpy as np
 
-from future.utils import native_str
-
 # Cython import
 cimport numpy as np
 cimport cython
@@ -36,8 +34,7 @@ def _int_fromfile(cls, file, colspec=None):
             print cls, file, colspec
             raise InterpolationException("Can only use two columns.")
 
-        # TODO: Python 3 workaround numpy requiring a native string
-        d1 = np.loadtxt(native_str(file), usecols = colspec)
+        d1 = np.loadtxt(file, usecols = colspec)
         return cls(d1)
 
 class InterpolationException(Exception):
