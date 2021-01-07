@@ -1,11 +1,5 @@
 """Command line script for making sky maps.
 """
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
 
 import os
 
@@ -426,7 +420,6 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
 
     import h5py
     import numpy as np
-    from future.utils import text_type
 
     # Make into 3D array
     if data.ndim == 3:
@@ -451,7 +444,7 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
         f.attrs["__memh5_distributed_file"] = True
 
         dset = f.create_dataset("map", data=data)
-        dt = h5py.special_dtype(vlen=text_type)
+        dt = h5py.special_dtype(vlen=str)
         dset.attrs["axis"] = np.array(["freq", "pol", "pixel"]).astype(dt)
         dset.attrs["__memh5_distributed_dset"] = True
 
