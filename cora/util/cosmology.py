@@ -254,7 +254,7 @@ class Cosmology(object):
         return self.proper_distance(z) / (1 + z)
 
     def luminosity_distance(self, z):
-        r""" The luminosity distance to redshift z. This
+        r"""The luminosity distance to redshift z. This
         routine is vectorized.
 
         Parameters
@@ -270,7 +270,7 @@ class Cosmology(object):
         return self.proper_distance(z) * (1 + z)
 
     def lookback_time(self, z):
-        r""" The lookback time out to redshift z.
+        r"""The lookback time out to redshift z.
 
         Parameters
         ----------
