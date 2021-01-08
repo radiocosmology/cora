@@ -1,13 +1,24 @@
 """Simulating extra-galactic point sources."""
+# === Start Python 2/3 compatibility
+from __future__ import absolute_import, division, print_function, unicode_literals
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
+# === End Python 2/3 compatibility
+
+from future.utils import native_str
 
 from os.path import join, dirname
 
 import numpy as np
 import numpy.random as rnd
 
-from scipy.optimize import newton
-
+# There's a very strange issue here, importing the following two lines in the
+# (original) reverse order causes a segfault. It's maybe related to:
+# https://github.com/Alwnikrotikz/healpy/issues/58 This was in 10/2019 running
+# on macOS 10.15. I imagine other OSs are not affected.
 import healpy
+from scipy.optimize import newton
 
 from cora.core import maps
 from cora.util import units
@@ -35,11 +46,11 @@ def faraday_rotate(polmap, rm_map, frequencies):
 
     # Apply frequency by frequency to reduce memory consumption
     for ii, freq in enumerate(frequencies):
-        qu_complex = polmap[ii, 1] + 1.0J * polmap[ii, 2]
+        qu_complex = polmap[ii, 1] + 1.0j * polmap[ii, 2]
 
         wv = 1e-6 * units.c / freq
 
-        faraday = np.exp(-2.0J * wv * rm_map)
+        faraday = np.exp(-2.0j * wv * rm_map)
         qu_complex = qu_complex * faraday
 
         polmap[ii, 1] = qu_complex.real
@@ -78,14 +89,13 @@ class PointSourceModel(maps.Map3d):
 
     sigma_pol_frac = 0.03
 
-
     def __init__(self):
 
-        _data_file = join(dirname(__file__), 'data', "skydata.npz")
+        _data_file = join(dirname(__file__), "data", "skydata.npz")
 
-        f = np.load(_data_file)
-        self._faraday = f['faraday']
-
+        # TODO: Python 3 workaround numpy issue
+        f = np.load(native_str(_data_file))
+        self._faraday = f["faraday"]
 
     def source_count(self, flux):
         r"""The expected number of sources per unit flux (Jy) per steradian.
@@ -142,7 +152,6 @@ class PointSourceModel(maps.Map3d):
             The fluxes of the sources in the population.
         """
 
-
         flux_max = self.flux_max
 
         # If we don't have a maximum flux set, set one by calculating
@@ -152,22 +161,28 @@ class PointSourceModel(maps.Map3d):
         # For a power law with dN/dS \propto S^(1-\beta), this is the
         # flux at which the probability of a source P(>S_max) < 0.05/
         # \beta
-        if(flux_max == None):
-            ratelog = lambda s: (s*area*self.source_count(s) - 5e-2)
+        if flux_max == None:
+            ratelog = lambda s: (s * area * self.source_count(s) - 5e-2)
             flux_max = newton(ratelog, self.flux_min)
-            print "Using maximum flux: %e Jy" % flux_max
+            print("Using maximum flux: %e Jy" % flux_max)
 
         # Generate realisation by creating a rate and treating like an
         # inhomogenous Poisson process.
-        #rate = lambda s: area*self.source_count(self.flux_min+s)
-        #fluxes = self.flux_min + ps.inhomogeneous_process_approx(flux_max-self.flux_min, rate)
-        rate = lambda s: self.flux_min*np.exp(s)*area*self.source_count(self.flux_min*np.exp(s))
-        fluxes = self.flux_min * np.exp(ps.inhomogeneous_process_approx(np.log(flux_max/self.flux_min), rate))
+        # rate = lambda s: area*self.source_count(self.flux_min+s)
+        # fluxes = self.flux_min + ps.inhomogeneous_process_approx(flux_max-self.flux_min, rate)
+        rate = (
+            lambda s: self.flux_min
+            * np.exp(s)
+            * area
+            * self.source_count(self.flux_min * np.exp(s))
+        )
+        fluxes = self.flux_min * np.exp(
+            ps.inhomogeneous_process_approx(np.log(flux_max / self.flux_min), rate)
+        )
 
         return fluxes
 
-
-    def getfield(self, catalogue = False):
+    def getfield(self, catalogue=False):
         r"""Create a simulated cube of point sources.
 
         Create a pixelised realisation of the sources.
@@ -185,24 +200,25 @@ class PointSourceModel(maps.Map3d):
 
         c = np.zeros(self._num_array())
 
-        fluxes = self.generate_population(np.radians(self.x_width) * np.radians(self.y_width))
+        fluxes = self.generate_population(
+            np.radians(self.x_width) * np.radians(self.y_width)
+        )
 
         freq = self.nu_pixels
 
-        sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
+        sr = self.spectral_realisation(fluxes[:, np.newaxis], freq[np.newaxis, :])
 
-        for i in xrange(sr.shape[0]):
+        for i in range(sr.shape[0]):
             # Pick random pixel
             x = int(rnd.rand() * self.x_num)
             y = int(rnd.rand() * self.y_num)
 
-            c[:,x,y] += sr[i,:]
+            c[:, x, y] += sr[i, :]
 
         if not catalogue:
             return c
         else:
             return c, fluxes
-
 
     def getsky(self):
         """Simulate a map of point sources.
@@ -214,31 +230,35 @@ class PointSourceModel(maps.Map3d):
         """
 
         if self.flux_min < 0.1:
-            print "This is going to take a long time. Try raising the flux limit."
+            print("This is going to take a long time. Try raising the flux limit.")
 
-        npix = 12*self.nside**2
+        npix = 12 * self.nside ** 2
 
         freq = self.nu_pixels
         nfreq = len(freq)
 
         sky = np.zeros((nfreq, npix), dtype=np.float64)
 
-        pxarea = 4*np.pi / npix
+        pxarea = 4 * np.pi / npix
 
-        fluxes = self.generate_population(4*np.pi)
+        fluxes = self.generate_population(4 * np.pi)
 
-        sr = self.spectral_realisation(fluxes[:,np.newaxis], freq[np.newaxis,:])
+        sr = self.spectral_realisation(fluxes[:, np.newaxis], freq[np.newaxis, :])
 
-        for i in xrange(sr.shape[0]):
+        for i in range(sr.shape[0]):
             # Pick random pixel
             ix = int(rnd.rand() * npix)
 
-            sky[:, ix] += sr[i,:]
+            sky[:, ix] += sr[i, :]
 
         # Convert flux map in Jy to brightness temperature map in K.
-        sky = sky * 1e-26 * units.c**2 / (2 * units.k_B * self.nu_pixels[:, np.newaxis]**2 * 1e12 * pxarea)
+        sky = (
+            sky
+            * 1e-26
+            * units.c ** 2
+            / (2 * units.k_B * self.nu_pixels[:, np.newaxis] ** 2 * 1e12 * pxarea)
+        )
         return sky
-
 
     def getpolsky(self):
         """Simulate polarised point sources.
@@ -248,18 +268,25 @@ class PointSourceModel(maps.Map3d):
 
         sky_pol = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)
 
-        q_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
-        u_frac = self.sigma_pol_frac * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
+        q_frac = (
+            self.sigma_pol_frac
+            * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
+        )
+        u_frac = (
+            self.sigma_pol_frac
+            * np.random.standard_normal(sky_I.shape[1])[np.newaxis, :]
+        )
 
         sky_pol[:, 0] = sky_I
         sky_pol[:, 1] = sky_I * q_frac
         sky_pol[:, 2] = sky_I * u_frac
 
         if self.faraday:
-            faraday_rotate(sky_pol, healpy.ud_grade(self._faraday, self.nside), self.nu_pixels)
+            faraday_rotate(
+                sky_pol, healpy.ud_grade(self._faraday, self.nside), self.nu_pixels
+            )
 
         return sky_pol
-
 
 
 class PowerLawModel(PointSourceModel):
@@ -307,14 +334,16 @@ class PowerLawModel(PointSourceModel):
     def source_count(self, flux):
         r"""Power law luminosity function."""
 
-        return self.source_amplitude * (flux / self.source_pivot)**(-self.source_index)
+        return self.source_amplitude * (flux / self.source_pivot) ** (
+            -self.source_index
+        )
 
     def spectral_realisation(self, flux, freq):
         r"""Power-law spectral function with Gaussian distributed index."""
 
         ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
 
-        return flux * (freq / self.spectral_pivot)**ind
+        return flux * (freq / self.spectral_pivot) ** ind
 
 
 class DiMatteo(PointSourceModel):
@@ -366,17 +395,14 @@ class DiMatteo(PointSourceModel):
 
         s = flux / self.S_0
 
-        return self.k1 / (s**self.gamma1 + s**self.gamma2)
+        return self.k1 / (s ** self.gamma1 + s ** self.gamma2)
 
     def spectral_realisation(self, flux, freq):
         r"""Power-law spectral function with Gaussian distributed index."""
 
         ind = self.spectral_mean + self.spectral_width * rnd.standard_normal(flux.shape)
 
-        return flux * (freq / self.spectral_pivot)**ind
-
-
-
+        return flux * (freq / self.spectral_pivot) ** ind
 
 
 class RealPointSources(maps.Map3d):
@@ -406,30 +432,38 @@ class RealPointSources(maps.Map3d):
 
     faraday = True
 
-
     def __init__(self):
 
-        _data_file = join(dirname(__file__), 'data', "skydata.npz")
-        _catalogue_file = join(dirname(__file__), 'data', "combinedps.dat")
+        _data_file = join(dirname(__file__), "data", "skydata.npz")
+        _catalogue_file = join(dirname(__file__), "data", "combinedps.dat")
 
-        f = np.load(_data_file)
-        self._faraday = f['faraday']
+        _data_file = native_str(_data_file)
 
-        with open(_catalogue_file, 'r') as f:
+        # TODO: Python 3 workaround numpy issue
+        f = np.load(native_str(_data_file))
+        self._faraday = f["faraday"]
+
+        with open(_catalogue_file, "r") as f:
             self._catalogue = np.genfromtxt(f, names=True)
-
 
     def _generate_catalogue(self):
 
-        flux = self._catalogue['S600']
+        flux = self._catalogue["S600"]
 
-        mask_max = (flux < self.flux_max) if self.flux_max is not None else np.ones_like(flux, dtype=np.bool)
-        mask_min = (flux > self.flux_min) if self.flux_min is not None else np.ones_like(flux, dtype=np.bool)
+        mask_max = (
+            (flux < self.flux_max)
+            if self.flux_max is not None
+            else np.ones_like(flux, dtype=np.bool)
+        )
+        mask_min = (
+            (flux > self.flux_min)
+            if self.flux_min is not None
+            else np.ones_like(flux, dtype=np.bool)
+        )
 
         flux_mask = np.where(np.logical_and(mask_max, mask_min))
 
         self._masked_catalogue = self._catalogue[flux_mask]
-
 
     def getsky(self):
         """Simulate a map of point sources.
@@ -443,7 +477,6 @@ class RealPointSources(maps.Map3d):
         # Just pull out Stokes I part of polarised map
         return self.getpolsky()[:, 0]
 
-
     def getpolsky(self):
         """Simulate polarised point sources by taking real sources and giving
         them a random polarisation."""
@@ -451,29 +484,31 @@ class RealPointSources(maps.Map3d):
         self._generate_catalogue()
 
         if self.flux_min < 2.0:
-            print "Flux limit probably too low for reliable catalogue."
+            print("Flux limit probably too low for reliable catalogue.")
 
         freq = self.nu_pixels
         nfreq = len(freq)
 
-        sky = np.zeros((nfreq, 4, 12 * self.nside**2), dtype=np.float64)
+        sky = np.zeros((nfreq, 4, 12 * self.nside ** 2), dtype=np.float64)
 
         for source in self._masked_catalogue:
-            theta = np.pi / 2.0 - np.radians(source['DEC'])
-            phi = np.radians(source['RA'])
+            theta = np.pi / 2.0 - np.radians(source["DEC"])
+            phi = np.radians(source["RA"])
 
-            flux = source['S600']
-            beta = source['BETA']
-            gamma = source['GAMMA']
+            flux = source["S600"]
+            beta = source["BETA"]
+            gamma = source["GAMMA"]
 
-            polflux = source['P600']
-            polang = np.radians(source['POLANG'])   # NVSS gives polarisation angles from North to East (so do not need to transform relative to HEALPIX)
+            polflux = source["P600"]
+            polang = np.radians(
+                source["POLANG"]
+            )  # NVSS gives polarisation angles from North to East (so do not need to transform relative to HEALPIX)
 
             ix = healpy.ang2pix(self.nside, theta, phi)
 
             x = np.log(freq / self.spectral_pivot)
 
-            flux_I = flux * np.exp(beta * x + gamma * x**2)
+            flux_I = flux * np.exp(beta * x + gamma * x ** 2)
             sky[:, 0, ix] += flux_I
 
             if not (np.isnan(polflux) or np.isnan(polang)):
@@ -483,10 +518,23 @@ class RealPointSources(maps.Map3d):
                 sky[:, 2, ix] += flux_U
 
         # Convert flux map in Jy to brightness temperature map in K.
-        sky = sky * 1e-26 * units.c**2 / (2 * units.k_B * self.nu_pixels[:, np.newaxis, np.newaxis]**2 * 1e12 * healpy.nside2pixarea(self.nside))
+        sky = (
+            sky
+            * 1e-26
+            * units.c ** 2
+            / (
+                2
+                * units.k_B
+                * self.nu_pixels[:, np.newaxis, np.newaxis] ** 2
+                * 1e12
+                * healpy.nside2pixarea(self.nside)
+            )
+        )
 
         if self.faraday:
-            faraday_rotate(sky, healpy.ud_grade(self._faraday, self.nside), self.nu_pixels)
+            faraday_rotate(
+                sky, healpy.ud_grade(self._faraday, self.nside), self.nu_pixels
+            )
 
         return sky
 
@@ -515,7 +563,9 @@ class CombinedPointSources(maps.Map3d):
 
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
-        flux_max = 4.0 * (151.0 / 600.0)**DiMatteo.spectral_mean # Convert to a flux cut at 151 MHz
+        flux_max = (
+            4.0 * (151.0 / 600.0) ** DiMatteo.spectral_mean
+        )  # Convert to a flux cut at 151 MHz
 
     class _RealResolved(RealPointSources):
         flux_min = 4.0

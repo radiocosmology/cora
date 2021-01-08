@@ -1,7 +1,16 @@
 """Utility functions to help with pure numpy stuff."""
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
+from future.utils import native_str
 
 import numpy as np
 import scipy.linalg as la
+
 
 def save_ndarray_list(fname, la):
     """Save a list of numpy arrays to disk.
@@ -16,9 +25,10 @@ def save_ndarray_list(fname, la):
     la : list of np.ndarrays
         list of arrays to save.
     """
-    d1 = { repr(i) : v for i, v in enumerate(la)}
+    d1 = {repr(i): v for i, v in enumerate(la)}
 
-    np.savez(fname, **d1)
+    np.savez(native_str(fname), **d1)
+
 
 def load_ndarray_list(fname):
     """Load a list of arrays saved by `save_ndarray_list`.
@@ -35,8 +45,8 @@ def load_ndarray_list(fname):
         what was saved by `save_ndarray_list`.
     """
 
-    d1 = np.load(fname)
-    la = [ v for i, v in sorted(d1.iteritems(), key=lambda kv: int(kv[0]))]
+    d1 = np.load(native_str(fname))
+    la = [v for i, v in sorted(iter(list(d1.items())), key=lambda kv: int(kv[0]))]
 
     return la
 
@@ -71,8 +81,10 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
     """
 
     # Try to perform a Cholesky first as it's much faster (8x)
+# TODO: I think the Cholesky was failing and I disabled it.
+# Then the 'lower=True' argument was added, maybe that fixed it? Should try.
 #    try:
-#        root = la.cholesky(mat)
+#        root = la.cholesky(mat, lower=True)
 #        num_pos = mat.shape[0]
 #
 #    # If that doesn't work do an eigenvalue and throw out any tiny modes
@@ -86,7 +98,7 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
         evals = evals[np.newaxis, -num_pos:]
         evecs = evecs[:, -num_pos:]
 
-    root = (evecs * evals[np.newaxis, :]**0.5)
+    root = evecs * evals[np.newaxis, :] ** 0.5
 
     if truncate:
         return root, num_pos
@@ -108,4 +120,6 @@ def complex_std_normal(shape):
         Complex gaussian variates.
     """
 
-    return (np.random.standard_normal(shape) + 1.0J * np.random.standard_normal(shape)) / 2**0.5
+    return (
+        np.random.standard_normal(shape) + 1.0j * np.random.standard_normal(shape)
+    ) / 2 ** 0.5

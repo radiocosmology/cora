@@ -1,3 +1,10 @@
+# === Start Python 2/3 compatibility
+from __future__ import absolute_import, division, print_function, unicode_literals
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
+# === End Python 2/3 compatibility
+
 import numpy as np
 
 from cora.util import units
@@ -40,18 +47,18 @@ class Map2d(object):
         return c
 
     def _width_array(self):
-        return np.array([self.x_width, self.y_width], dtype=np.float64)*units.degree
+        return np.array([self.x_width, self.y_width], dtype=np.float64) * units.degree
 
     def _num_array(self):
         return np.array([self.x_num, self.y_num], dtype=np.int)
 
     @property
     def x_pixels(self):
-        return ((np.arange(self.x_num) + 0.5) * (self.x_width / self.x_num))
+        return (np.arange(self.x_num) + 0.5) * (self.x_width / self.x_num)
 
     @property
     def y_pixels(self):
-        return ((np.arange(self.y_num) + 0.5) * (self.y_width / self.y_num))
+        return (np.arange(self.y_num) + 0.5) * (self.y_width / self.y_num)
 
     @property
     def nside(self):
@@ -67,8 +74,6 @@ class Map2d(object):
             raise Exception("Not a valid value of nside.")
 
         self._nside = ns
-
-
 
 
 class Map3d(Map2d):
@@ -109,7 +114,7 @@ class Map3d(Map2d):
     def like_map(cls, mapobj, *args, **kwargs):
         r"""Create a Map3d (or subclassed) object the same shape as a given object.
         """
-        #c = Map2d.like_map(cls, mapobj, *args, **kwargs)
+        # c = Map2d.like_map(cls, mapobj, *args, **kwargs)
 
         c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
@@ -127,11 +132,17 @@ class Map3d(Map2d):
         return c
 
     def _width_array(self):
-        return np.array([self.nu_upper - self.nu_lower, self.x_width*units.degree, self.y_width*units.degree], dtype=np.float64)
+        return np.array(
+            [
+                self.nu_upper - self.nu_lower,
+                self.x_width * units.degree,
+                self.y_width * units.degree,
+            ],
+            dtype=np.float64,
+        )
 
     def _num_array(self):
         return np.array([self.nu_num, self.x_num, self.y_num], dtype=np.int)
-
 
     _frequencies = None
 
@@ -153,7 +164,9 @@ class Map3d(Map2d):
         if self._frequencies is not None:
             return self._frequencies
         else:
-            return (self.nu_lower + (np.arange(self._nu_num) + 0.5) * ((self.nu_upper - self.nu_lower) / self._nu_num))
+            return self.nu_lower + (np.arange(self._nu_num) + 0.5) * (
+                (self.nu_upper - self.nu_lower) / self._nu_num
+            )
 
     @frequencies.setter
     def frequencies(self, freq):
@@ -171,22 +184,23 @@ class Map3d(Map2d):
         """
         c = cls(*args, **kwargs)
 
-        freq_axis = mapobj.get_axis('freq')
-        ra_axis = mapobj.get_axis('ra')
-        dec_axis = mapobj.get_axis('dec')
+        freq_axis = mapobj.get_axis("freq")
+        ra_axis = mapobj.get_axis("ra")
+        dec_axis = mapobj.get_axis("dec")
 
-        ra_fact = np.cos(np.pi * mapobj.info['dec_centre'] / 180.0)
+        ra_fact = np.cos(np.pi * mapobj.info["dec_centre"] / 180.0)
         c.x_width = (max(ra_axis) - min(ra_axis)) * ra_fact
         c.y_width = max(dec_axis) - min(dec_axis)
         (c.x_num, c.y_num) = (len(ra_axis), len(dec_axis))
 
-        c.nu_lower = min(freq_axis)/1.e6
-        c.nu_upper = max(freq_axis)/1.e6
+        c.nu_lower = min(freq_axis) / 1.0e6
+        c.nu_upper = max(freq_axis) / 1.0e6
         c.nu_num = len(freq_axis)
 
-        print "Map3D: %dx%d field (%fx%f deg) from nu=%f to nu=%f (%d bins)" % \
-                 (c.x_num, c.y_num, c.x_width, c.y_width,
-                  c.nu_lower, c.nu_upper, c.nu_num)
+        print(
+            "Map3D: %dx%d field (%fx%f deg) from nu=%f to nu=%f (%d bins)"
+            % (c.x_num, c.y_num, c.x_width, c.y_width, c.nu_lower, c.nu_upper, c.nu_num)
+        )
 
         return c
 
@@ -220,11 +234,13 @@ class Sky3d(Map3d):
         """
 
         lmax = 3 * self.nside - 1
-        cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels,
-                             zromb=self.oversample)
+        cla = skysim.clarray(
+            self.angular_powerspectrum, lmax, self.nu_pixels, zromb=self.oversample
+        )
 
-        return (self.mean_nu(self.nu_pixels)[:, np.newaxis] +
-                skysim.mkfullsky(cla, self.nside))
+        return self.mean_nu(self.nu_pixels)[:, np.newaxis] + skysim.mkfullsky(
+            cla, self.nside
+        )
 
     def getpolsky(self):
         """Create a map of the fully polarised sky (Stokes, I, Q, U and V).

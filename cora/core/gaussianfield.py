@@ -1,11 +1,17 @@
+# === Start Python 2/3 compatibility
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+# === End Python 2/3 compatibility
+
+from future.utils import native_str
 
 import numpy as np
 import math
 
 from cora.core import maps
 from cora.util import fftutil, units
-
-
 
 
 class RandomField(object):
@@ -22,14 +28,13 @@ class RandomField(object):
         Width along each axis (in arbitrary units). If not given, each
         pixel has length one (i.e. wsize = npix).
     """
-    
-    
+
     ## Internal attributes
-    _kweightgen = False 
+    _kweightgen = False
     _n = None
     _w = None
     
-    def __init__(self, npix = None, wsize = None):
+    def __init__(self, npix=None, wsize=None):
         
         self._n = np.array(npix) if npix is not None else npix
         self._w = np.array(wsize) if wsize is not None else self._n
@@ -41,11 +46,9 @@ class RandomField(object):
 
         if len(self._n) != len(self._w):
             raise Exception("Width array must be the same length as number of pixels.")
-        
-        if not ( (self._n > 0).all() and (self._w > 0).all() ):
-            raise Exception("Array elements must be positive.")
-        
 
+        if not ((self._n > 0).all() and (self._w > 0).all()):
+            raise Exception("Array elements must be positive.")
 
     def powerspectrum(self, karray):
         r"""Get the power spectrum value at each wavevector.
@@ -74,8 +77,7 @@ class RandomField(object):
         """
         raise Exception("Abstract method: need to override.")
 
-
-    def generate_kweight(self, regen = False):
+    def generate_kweight(self, regen=False):
         r"""Pregenerate the k weights array.
 
         Parameters
@@ -89,20 +91,23 @@ class RandomField(object):
         self._check_input()
 
         # If already generated return array now.
-        if(self._kweightgen == True and not regen):
+        if self._kweightgen == True and not regen:
             return
-        
+
         spacing = self._w / self._n
-        
-        kvec = fftutil.rfftfreqn(self._n, spacing / (2*math.pi))
-        
-        self._kweight = self.powerspectrum(kvec)**0.5 * self._n.prod() / (2.0 * self._w.prod() )**0.5
+
+        kvec = fftutil.rfftfreqn(self._n, spacing / (2 * math.pi))
+
+        self._kweight = (
+            self.powerspectrum(kvec) ** 0.5
+            * self._n.prod()
+            / (2.0 * self._w.prod()) ** 0.5
+        )
 
         if not np.isfinite(self._kweight.flat[0]):
             self._kweight.flat[0] = 0.0
 
         self._kweightgen = True
-        
 
     def getfield(self):
         r"""Generate a new realisation of the 3d field.
@@ -115,17 +120,15 @@ class RandomField(object):
 
         self.generate_kweight()
         s = self._kweight.shape
-        
+
         # Fill array
-        f = np.random.standard_normal(s) + 1.0J * np.random.standard_normal(s)
+        f = np.random.standard_normal(s) + 1.0j * np.random.standard_normal(s)
         f *= self._kweight
-        
+
         # TODO: is self._n argument here correct?
         r = fftutil.irfftn(f)
         return r
-           
 
-    
 
 class RandomFieldA2F(RandomField, maps.Map3d):
     r"""Generate a realisation of a 3d gaussian field.
@@ -136,15 +139,13 @@ class RandomFieldA2F(RandomField, maps.Map3d):
     implemented to use this class.
     """
 
-
     def generate_kweight(self, *args):
         r"""Pregenerate the power spectrum values."""
 
         self._n = self._num_array()
         self._w = self._width_array()
-                
-        RandomField.generate_kweight(self, *args)
 
+        RandomField.generate_kweight(self, *args)
 
 
 class RandomFieldA2(RandomField, maps.Map2d):
@@ -161,41 +162,42 @@ class RandomFieldA2(RandomField, maps.Map2d):
 
         self._n = self._num_array()
         self._w = self._width_array()
-        
-        RandomField.generate_kweight(self, *args)
 
+        RandomField.generate_kweight(self, *args)
 
 
 class Cmb(RandomFieldA2):
     r"""Simulate a patch of the CMB."""
 
-    def __init__(self, psfile = None, cambnorm = True):
+    def __init__(self, psfile=None, cambnorm=True):
         """ Initialise the CMB field class. """
 
         from cora.util.cubicspline import LogInterpolater
                 
         if(psfile is None):
             from os.path import dirname, join
-            psfile = join(dirname(__file__), 'ps_cmb2.dat')
-        if(cambnorm):
-            a = np.loadtxt(psfile)
-            l = a[:,0]
-            tt = (2*math.pi) *a[:,1] / (l*(l+1.0))
-            self._powerspectrum_int = LogInterpolater(np.vstack((l,tt)).T)
+
+            psfile = join(dirname(__file__), "ps_cmb2.dat")
+        if cambnorm:
+            # TODO: Python 3 workaround numpy requiring a native string
+            a = np.loadtxt(native_str(psfile))
+            l = a[:, 0]
+            tt = (2 * math.pi) * a[:, 1] / (l * (l + 1.0))
+            self._powerspectrum_int = LogInterpolater(np.vstack((l, tt)).T)
         else:
             self._powerspectrum_int = LogInterpolater.fromfile(psfile)
 
-            
-
     def powerspectrum(self, karray):
-        return np.vectorize(self._powerspectrum_int.value)((karray**2).sum(axis=2)**0.5)
-
+        return np.vectorize(self._powerspectrum_int.value)(
+            (karray ** 2).sum(axis=2) ** 0.5
+        )
 
 
 class TestF(RandomFieldA2F):
-    
     def powerspectrum(self, karray):
 
-        return (np.exp(-0.5*(karray[...,0] / (2*math.pi / 250.0))**2) * 
-                np.exp(-0.5*(karray[...,1:3]**2).sum(axis=3) / (2*math.pi / (1.0*units.degree))**2))
-
+        return np.exp(-0.5 * (karray[..., 0] / (2 * math.pi / 250.0)) ** 2) * np.exp(
+            -0.5
+            * (karray[..., 1:3] ** 2).sum(axis=3)
+            / (2 * math.pi / (1.0 * units.degree)) ** 2
+        )

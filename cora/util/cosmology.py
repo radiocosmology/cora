@@ -16,8 +16,13 @@ calculate quantities like distance measures.
 
     Cosmology
 """
+# === Start Python 2/3 compatibility
+from __future__ import absolute_import, division, print_function, unicode_literals
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
 
-# Global imports
+# === End Python 2/3 compatibility
+
 import math
 import numpy as np
 
@@ -67,7 +72,7 @@ class Cosmology(object):
 
     """
 
-    units = 'cosmo'
+    units = "cosmo"
 
     omega_b = 0.0483
     omega_c = 0.2589
@@ -93,11 +98,14 @@ class Cosmology(object):
 
     @property
     def omega_k(self):
-        return 1.0 - (self.omega_l + self.omega_b + self.omega_c + self.omega_g + self.omega_n)
+        return 1.0 - (
+            self.omega_l + self.omega_b + self.omega_c + self.omega_g + self.omega_n
+        )
 
     @staticmethod
-    def init_physical(ombh2=0.022161, omch2=0.11889,
-                      H0=67.77, omkh2=0.0, t0=2.726, nnu=3.046):
+    def init_physical(
+        ombh2=0.022161, omch2=0.11889, H0=67.77, omkh2=0.0, t0=2.726, nnu=3.046
+    ):
         r"""Initialise a new cosmology from the physical parameters.
 
         This uses the CMB relevant parameterisation that is commonly
@@ -127,18 +135,18 @@ class Cosmology(object):
 
         c = Cosmology()
 
-        c.omega_b = ombh2 / h**2
-        c.omega_c = omch2 / h**2
+        c.omega_b = ombh2 / h ** 2
+        c.omega_c = omch2 / h ** 2
         c.H0 = H0
 
-        rhoc = 3.0 * c.H()**2 * c_sl**2 / (8.0 * math.pi * G_n)
-        rhorad = a_rad * t0**4
+        rhoc = 3.0 * c.H() ** 2 * c_sl ** 2 / (8.0 * math.pi * G_n)
+        rhorad = a_rad * t0 ** 4
         c.omega_g = rhorad / rhoc
 
-        rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0)**(4.0 / 3.0)
+        rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
         c.omega_n = rhonu / rhoc
 
-        c.omega_l = 1.0 - (omkh2 + ombh2 + omch2) / h**2 - (c.omega_g + c.omega_n)
+        c.omega_l = 1.0 - (omkh2 + ombh2 + omch2) / h ** 2 - (c.omega_g + c.omega_n)
 
         return c
 
@@ -160,10 +168,18 @@ class Cosmology(object):
             The Hubble parameter.
         """
 
-        H = self.H0 * (self.omega_r * (1 + z)**4 + self.omega_m * (1 + z)**3 +
-                       self.omega_k * (1 + z)**2 +
-                       self.omega_l * (1 + z)**(3 * (1 + self.w_0 + self.w_a)) *
-                       np.exp(-3 * self.w_a * z / (1 + z)))**0.5
+        H = (
+            self.H0
+            * (
+                self.omega_r * (1 + z) ** 4
+                + self.omega_m * (1 + z) ** 3
+                + self.omega_k * (1 + z) ** 2
+                + self.omega_l
+                * (1 + z) ** (3 * (1 + self.w_0 + self.w_a))
+                * np.exp(-3 * self.w_a * z / (1 + z))
+            )
+            ** 0.5
+        )
 
         # Convert to SI
         return H * 1000.0 / mega_parsec
@@ -215,9 +231,9 @@ class Cosmology(object):
 
         dhi = math.sqrt(math.fabs(om_k)) * self.H() / c_sl * self._unit_distance
 
-        if(om_k < 0.0):
+        if om_k < 0.0:
             x = np.sin(x * dhi) / dhi
-        elif(om_k > 0.0):
+        elif om_k > 0.0:
             x = np.sinh(x * dhi) / dhi
 
         return x
@@ -282,11 +298,11 @@ class Cosmology(object):
     @property
     def _unit_distance(self):
         # Select the appropriate distance unit
-        if self.units == 'astro':
+        if self.units == "astro":
             return mega_parsec
-        elif self.units == 'cosmo':
+        elif self.units == "cosmo":
             return mega_parsec / (self.H0 / 100.0)
-        elif self.units == 'si':
+        elif self.units == "si":
             return 1.0
 
         raise Exception("Units not known")
@@ -294,11 +310,11 @@ class Cosmology(object):
     @property
     def _unit_time(self):
         # Select the appropriate time unit
-        if self.units == 'astro':
+        if self.units == "astro":
             return mega_year
-        elif self.units == 'cosmo':
+        elif self.units == "cosmo":
             return mega_year
-        elif self.units == 'si':
+        elif self.units == "si":
             return 1.0
 
         raise Exception("Units not known")
@@ -357,12 +373,12 @@ def growth_factor(z, c=None):
     if c is None:
         c = Cosmology()
 
-    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z)**3
+    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z) ** 3
 
-    num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
-    den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
+    num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
+    den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
 
-    d = (1.0 + x)**0.5 / (1.0 + z) * num / den
+    d = (1.0 + x) ** 0.5 / (1.0 + z) * num / den
 
     return d
 
@@ -392,13 +408,13 @@ def growth_rate(z, c):
     if c is None:
         c = Cosmology()
 
-    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z)**3
+    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z) ** 3
 
-    dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x**2)
-    dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x**2)
+    dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x ** 2)
+    dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x ** 2)
 
-    num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
-    den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
+    num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
+    den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
 
     f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
 
@@ -412,7 +428,11 @@ def sound_horizon(c=None):
     h = c.H0 / 100.0
 
     # Calculate the sound horizon in Mpc
-    s = 44.5 * np.log(9.83 / (c.omega_m * h**2)) / (1.0 + 10.0 * (c.omega_b * h**2)**0.75)**0.5
+    s = (
+        44.5
+        * np.log(9.83 / (c.omega_m * h ** 2))
+        / (1.0 + 10.0 * (c.omega_b * h ** 2) ** 0.75) ** 0.5
+    )
 
     return s
 
@@ -427,36 +447,46 @@ def ps_nowiggle(kh, z=0.0, c=None):
     # Change units in Mpc^{-1} not h Mpc^{-1}
     k = kh * h
 
-    omh2 = c.omega_m * h**2
+    omh2 = c.omega_m * h ** 2
     rb = c.omega_b / c.omega_m
-    alpha = 1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb**2
+    alpha = (
+        1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb ** 2
+    )
 
     s = sound_horizon(c)
 
-    gamma = c.omega_m * h * (alpha + (1 - alpha) / (1 + (0.43 * k * s)**4))
+    gamma = c.omega_m * h * (alpha + (1 - alpha) / (1 + (0.43 * k * s) ** 4))
 
     tcmb_27 = 2.726 / 2.7
 
-    q = k * tcmb_27**2 / (gamma * h)
+    q = k * tcmb_27 ** 2 / (gamma * h)
 
     l0 = np.log(2 * np.exp(1.0) + 1.8 * q)
     c0 = 14.2 + 731.0 / (1.0 + 62.5 * q)
 
-    t = l0 / (l0 + c0 * q**2)
+    t = l0 / (l0 + c0 * q ** 2)
 
     ns = 0.9611
     nbar = ns - 1.0
 
     A_s = 2.214e-9
     k0 = 0.05
-    pkp = A_s * (k / k0)**nbar
+    pkp = A_s * (k / k0) ** nbar
 
-    #deltah = 1.94e-5 * c.omega_m**(-0.785 - 0.05 * np.log(c.omega_m)) * np.exp(-0.95 * nbar - 0.169 * nbar**2)
+    # deltah = 1.94e-5 * c.omega_m**(-0.785 - 0.05 * np.log(c.omega_m)) * np.exp(-0.95 * nbar - 0.169 * nbar**2)
 
-    d2k = 4.0 / 25 * (c_sl * k / (1000.0 * c.H0))**4 * t**2 * pkp / c.omega_m**2 * growth_factor(z, c)**2
+    d2k = (
+        4.0
+        / 25
+        * (c_sl * k / (1000.0 * c.H0)) ** 4
+        * t ** 2
+        * pkp
+        / c.omega_m ** 2
+        * growth_factor(z, c) ** 2
+    )
 
-    #d2k = deltah**2 * (c_sl * k / (1000.0 * c.H0))**(3 + ns) * t**2
+    # d2k = deltah**2 * (c_sl * k / (1000.0 * c.H0))**(3 + ns) * t**2
 
-    pk = d2k * 2 * np.pi**2 / kh**3 # Change to normal PS
+    pk = d2k * 2 * np.pi ** 2 / kh ** 3  # Change to normal PS
 
     return pk

@@ -41,6 +41,13 @@ Miscellaneous
     great_circle_points
 
 """
+# === Start Python 2/3 compatibility
+from __future__ import absolute_import, division, print_function, unicode_literals
+from future.builtins import *  # noqa  pylint: disable=W0401, W0614
+from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
+# === End Python 2/3 compatibility
+
 
 import numpy as np
 
@@ -76,7 +83,7 @@ def sph_to_cart(sph_arr):
 
     cart_arr[..., 0] = radius * sintheta * np.cos(sph_arr[..., -1])  # x-axis
     cart_arr[..., 1] = radius * sintheta * np.sin(sph_arr[..., -1])  # y-axis
-    cart_arr[..., 2] = radius * np.cos(sph_arr[..., -2])       # z-axis
+    cart_arr[..., 2] = radius * np.cos(sph_arr[..., -2])  # z-axis
 
     return cart_arr
 
@@ -98,10 +105,10 @@ def cart_to_sph(cart_arr):
         phi2], ...]
     """
     sph_arr = np.empty_like(cart_arr)
-    
+
     sph_arr[..., 2] = np.arctan2(cart_arr[..., 1], cart_arr[..., 0])
 
-    sph_arr[..., 0] = np.sum(cart_arr**2, axis=-1)**0.5
+    sph_arr[..., 0] = np.sum(cart_arr ** 2, axis=-1) ** 0.5
 
     sph_arr[..., 1] = np.arccos(cart_arr[..., 2] / sph_arr[..., 0])
 
@@ -185,8 +192,11 @@ def groundsph_to_cart(gsph, zenith):
 
     cart_arr = np.empty(ta.shape + (3,), dtype=ta.dtype)
 
-    cart_arr = (ta[..., np.newaxis] * that + pa[..., np.newaxis] * phat
-                + ((1.0 - ta**2 - pa**2)**0.5)[..., np.newaxis] * zenc)
+    cart_arr = (
+        ta[..., np.newaxis] * that
+        + pa[..., np.newaxis] * phat
+        + ((1.0 - ta ** 2 - pa ** 2) ** 0.5)[..., np.newaxis] * zenc
+    )
 
     return cart_arr
 
@@ -213,12 +223,12 @@ def great_circle_points(sph1, sph2, npoints):
     c1 = sph_to_cart(sph2)
 
     # Construct the difference vector
-    dc = c2-c1
-    if np.sum(dc**2) == 4.0:
-       raise Exception("Points antipodal, path undefined.")
+    dc = c2 - c1
+    if np.sum(dc ** 2) == 4.0:
+        raise Exception("Points antipodal, path undefined.")
 
     # Create difference unit vector
-    dcn = dc / np.dot(dc, dc)**0.5
+    dcn = dc / np.dot(dc, dc) ** 0.5
 
     # Calculate central angle, and angle on corner O C1 C2
     thc = np.arccos(np.dot(c1, c2))
@@ -234,4 +244,3 @@ def great_circle_points(sph1, sph2, npoints):
 
     # Return the angular poitions of the points
     return cart_to_sph(cv)[:, 1:]
-    
