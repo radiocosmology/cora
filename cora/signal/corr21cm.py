@@ -25,10 +25,10 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
     _kstar = 5.0
 
-    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0, **kwargs):
+    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0, bias=1.0, **kwargs):
         from os.path import join, dirname
 
-        if ps == None:
+        if ps is None:
 
             psfile = join(dirname(__file__), "data/ps_z1.5.dat")
             redshift = 1.5
@@ -36,11 +36,29 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             c1 = cs.LogInterpolater.fromfile(psfile)
             ps = lambda k: np.exp(-0.5 * k ** 2 / self._kstar ** 2) * c1(k)
 
+        else:
+            # Compute the non-smoothed power spectrum from the one given.
+            # Needed for the halo model.
+            c1 = lambda k: ps(k) / np.exp(-0.5 * k ** 2 / self._kstar ** 2)
+
         self._sigma_v = sigma_v
 
         corr.RedshiftCorrelation.__init__(self, ps_vv=ps, redshift=redshift)
         self._load_cache(join(dirname(__file__), "data/corr_z1.5.dat"))
         # self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
+
+        self.bias = bias
+        if self.bias == 0:  # Use Halo Model to compute bias.
+            # Pass the full (not smoothed) Power Spectrum to the halo model
+            # HaloModel uses powerspectrum normalized to z=0
+            def hmps(k):
+                return c1(k) * (self.growth_factor(0.)
+                                / self.growth_factor(self.ps_redshift))**2
+
+            # Initialize HaloModel
+            self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
+            self.hm.check_update()
+            
 
     def T_b(self, z):
         r"""Mean 21cm brightness temperature at a given redshift.
@@ -179,9 +197,17 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return f
 
     def bias_z(self, z):
-        r"""It's unclear what the bias should be. Using 1 for the moment. """
+        r"""Use the halo model to determine the bias.
+        Otherwise use ones. """
 
-        return np.ones_like(z) * 1.0
+        if self.bias == 0:
+            bias = []
+            for zz in z:
+                self.hm.redshift = zz
+                bias.append(self.hm.lbias_h1() + 1)
+            return np.array(bias)
+        else:
+            return np.ones_like(z) * self.bias
 
     # Override angular_power spectrum to switch to allow using frequency
     def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
@@ -614,17 +640,50 @@ def theory_power_spectrum(
     outfile.close()
 
 
-class CorrQuasarZA(CorrZA):
-    r"""Correlation function of the Quasar number density fluctuations
+class CorrBiasedTracerZA(CorrZA):
+    r"""Correlation function of a biased field density fluctuations
     using the Zeldovich approximation.
-
-    Overwrites CorrZA to include the bias taken from arXiv:1705.04718 
-
     """
+    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
+                 ps_redshift=0.0, sigma_v=0.0, tracer_type='none',
+                 **kwargs):
+
+        # Tracer type
+        self.tracer_type = tracer_type
+        super(CorrBiasedTracerZA, self).__init__(ps, nside_factor, ndiv_radial,
+                                         ps_redshift, sigma_v, **kwargs)
 
     def bias_z(self, z):
-        """Linear Eulerian bias taken from arXiv:1705.04718
         """
+        """
+        return _tracer_bias_z(z, self.tracer_type)
+
+
+class CorrBiasedTracer(Corr21cm):
+    r"""Correlation function of a biased field density fluctuations
+    using the Gaussian fields.
+    """
+    def __init__(self, ps=None, ps_redshift=0.0, sigma_v=0.0,
+                 tracer_type='none', **kwargs):
+
+        # Tracer type
+        self.tracer_type = tracer_type
+        super(CorrBiasedTracer, self).__init__(ps, ps_redshift, sigma_v, **kwargs)
+
+    def bias_z(self, z):
+        """
+        """
+        return _tracer_bias_z(z, self.tracer_type)
+
+
+def _tracer_bias_z(z, tracer_type):
+    """
+    """
+    if tracer_type == 'none':
+        return np.ones_like(z)
+
+    if tracer_type == 'qso':
+        # Quasars. Bias taken from arXiv:1705.04718
         alpha, beta = 0.278, 2.393
         return alpha*((1 + z)**2 - 6.565) + beta
 
@@ -638,50 +697,45 @@ class Corr21cmZA(CorrZA):
 
     """
 
-    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
-        """
-        """
+#    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
+#                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
+#        """
+#        """
+#
+#        from os.path import join, dirname
+#        if ps is None:
+#            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
+#            ps_redshift = 1.5
+#            ps_full = cs.LogInterpolater.fromfile(psfile)
+#            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * ps_full(k)
+#        else:
+#            # This might mean passing a smoothed PS to the halo model. 
+#            # TODO: This is probably a bug. Maybe I should not accept ps as
+#            # an input parameter in Corr21cmZA.
+#            ps_full = ps
+#
+#        super(Corr21cmZA, self).__init__(ps, nside_factor, ndiv_radial,
+#                                         ps_redshift, sigma_v, **kwargs)
+#
+#        # Pass the full (not smoothed) Power Spectrum to the halo model
+#        # HaloModel uses powerspectrum normalized to z=0
+#        def hmps(k):
+#            return ps_full(k) * (self.growth_factor(0.)
+#                            / self.growth_factor(self.ps_redshift))**2
+#
+#        # Initialize HaloModel
+#        self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
+#        self.hm.check_update()
 
-        from os.path import join, dirname
-        if ps is None:
-            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
-            ps_redshift = 1.5
-            ps_full = cs.LogInterpolater.fromfile(psfile)
-            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * ps_full(k)
-        else:
-            # This might mean passing a smoothed PS to the halo model. 
-            # TODO: This is probably a bug. Maybe I should not accept ps as
-            # an input parameter in Corr21cmZA.
-            ps_full = ps
-
-        super(Corr21cmZA, self).__init__(ps, nside_factor, ndiv_radial,
-                                         ps_redshift, sigma_v, **kwargs)
-
-        # Pass the full (not smoothed) Power Spectrum to the halo model
-        # HaloModel uses powerspectrum normalized to z=0
-        def hmps(k):
-            return ps_full(k) * (self.growth_factor(0.)
-                            / self.growth_factor(self.ps_redshift))**2
-
-        # Initialize HaloModel
-        self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
-        self.hm.check_update()
-
-    def lagbias_z(self, z):
-        """ Overwrites lagbias_z to use a halo model derived HI bias.
-        """
-        bias = []
-        for zz in z:
-            self.hm.redshift = zz
-            bias.append(self.hm.lbias_h1())
-
-        return np.array(bias)
-
-    def bias_z(self, z):
-        """Linear Eulerian bias from the Lagrangian counterpart
-        """
-        return self.lagbias_z(z) + 1.
+#    def bias_z(self, z):
+#        """ Overwrites lagbias_z to use a halo model derived HI bias.
+#        """
+#        bias = []
+#        for zz in z:
+#            self.hm.redshift = zz
+#            bias.append(self.hm.lbias_h1() + 1)
+#
+#        return np.array(bias)
 
     def getsky(self,gaussvars_list=None):
         """ Overwrites getsky to add correct pre-factors

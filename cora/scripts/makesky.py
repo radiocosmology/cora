@@ -341,7 +341,13 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     type=int,
     help='Set the seed for the matter realization random generator.'
 )
-def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed):
+@click.option(
+    "--bias",
+    type=float,
+    default = 1.0,
+    help="If a number > 0 apply this constant bias (default is 1). If 0 is given, use the halo model to compute a redshift dependent bias."
+)
+def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias):
     """Generate a Gaussian simulation of the unresolved 21cm background.
     """
 
@@ -353,9 +359,9 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed):
         cr = corr21cm.EoR21cm()
     else:
         if za:
-            cr = corr21cm.Corr21cmZA()
+            cr = corr21cm.Corr21cmZA(bias=bias)
         else:
-            cr = corr21cm.Corr21cm()
+            cr = corr21cm.Corr21cm(bias=bias)
 
     cr.nside = nside
     cr.frequencies = fstate.frequencies
@@ -376,13 +382,8 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed):
     write_map(filename, sg_map, cr.frequencies, fstate.freq_width, pol != "none")
 
 
-@cli.command("qso")
+@cli.command("tracer")
 @map_options
-@click.option(
-    "--eor",
-    is_flag=True,
-    help="Use parameters more suitable for reionisation epoch (rather than intensity mapping).",
-)
 @click.option(
     "--oversample",
     type=int,
@@ -398,27 +399,24 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed):
     type=int,
     help='Set the seed for the matter realization random generator.'
 )
-#def biased_tracer(fstate, nside, pol, filename, eor, oversample, za, seed):
-def qso(fstate, nside, pol, filename, eor, oversample, za, seed):
-    """Generate an unresolved Gaussian simulation of the matter distribution with the given bias.
-       This needs to be written properly to accept a constant bias value or a tracer name.
-       Then specific tracers (QSO, LRG, etc) would wrapp around it.
+@click.option(
+    "--ttype",
+    type=str,
+    default='none',
+    help="The type of tracer to use. For now ony accepts 'qso' or 'none'"
+)
+def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype):
+    """Generate an unresolved Gaussian simulation of the distribution of the chosen tracer.
        For now it only does QSOs.
     """
 
     from cora.signal import corr21cm
     from cora.util import nputil
 
-#    # Read in arguments.
-#    if eor:
-#        cr = corr21cm.EoR21cm()
-#    else:
     if za:
-        cr = corr21cm.CorrQuasarZA()
+        cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype)
     else:
-        # TODO: Not implemented
-        #cr = corr21cm.Corr21cm()
-        pass
+        cr = corr21cm.CorrBiasedTracer(tracer_type=ttype)
 
     cr.nside = nside
     cr.frequencies = fstate.frequencies
