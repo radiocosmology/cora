@@ -16,12 +16,6 @@ calculate quantities like distance measures.
 
     Cosmology
 """
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
 
 import math
 import numpy as np
@@ -260,7 +254,7 @@ class Cosmology(object):
         return self.proper_distance(z) / (1 + z)
 
     def luminosity_distance(self, z):
-        r""" The luminosity distance to redshift z. This
+        r"""The luminosity distance to redshift z. This
         routine is vectorized.
 
         Parameters
@@ -276,7 +270,7 @@ class Cosmology(object):
         return self.proper_distance(z) * (1 + z)
 
     def lookback_time(self, z):
-        r""" The lookback time out to redshift z.
+        r"""The lookback time out to redshift z.
 
         Parameters
         ----------

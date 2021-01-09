@@ -41,12 +41,6 @@ Miscellaneous
     great_circle_points
 
 """
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
 
 
 import numpy as np
@@ -90,7 +84,7 @@ def sph_to_cart(sph_arr):
 
 def cart_to_sph(cart_arr):
     """Convert a cartesian vector into Spherical Polars.
-    
+
     Uses the same convention as `sph_to_cart`.
 
     Parameters
@@ -117,7 +111,7 @@ def cart_to_sph(cart_arr):
 
 def sph_dot(arr1, arr2):
     """Take the scalar product in spherical polars.
-    
+
     Parameters
     ----------
     arr1, arr2 : np.ndarray
