@@ -202,10 +202,13 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
         if self.bias == 0:
             bias = []
+            z_shape = z.shape
+            z = z.flatten()
             for zz in z:
                 self.hm.redshift = zz
                 bias.append(self.hm.lbias_h1() + 1)
-            return np.array(bias)
+
+            return np.array(bias).reshape(z_shape)
         else:
             return np.ones_like(z) * self.bias
 
@@ -669,6 +672,12 @@ class CorrBiasedTracer(Corr21cm):
         # Tracer type
         self.tracer_type = tracer_type
         super(CorrBiasedTracer, self).__init__(ps, ps_redshift, sigma_v, **kwargs)
+
+
+    def prefactor(self, z):
+        """ This inherits from Corr21cm, so need to overwrite 
+            prefactor to ones. """
+        return 1.0 * np.ones_like(z)
 
     def bias_z(self, z):
         """
