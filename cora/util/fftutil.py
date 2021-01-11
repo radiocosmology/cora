@@ -1,6 +1,4 @@
 import numpy as np
-
-import numpy as np
 import warnings
 
 _use_anfft = True
