@@ -277,8 +277,6 @@ https://img.shields.io/travis/warner/python-versioneer/master.svg
 
 """
 
-from __future__ import print_function
-
 try:
     import configparser
 except ImportError:
@@ -1221,7 +1219,6 @@ SHORT_VERSION_PY = """
 # unpacked source archive. Distribution tarballs contain a pre-generated copy
 # of this file.
 
-from __future__ import absolute_import
 import json
 
 version_json = '''
