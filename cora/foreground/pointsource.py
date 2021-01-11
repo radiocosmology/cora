@@ -305,11 +305,11 @@ class PowerLawModel(PointSourceModel):
     Notes
     -----
     Default source count parameters based loosely on the results of
-    the 6C survey [1]_
+    the 6C survey [1]_.
 
     References
     ----------
-    .. [1] Hales et al. 1988.
+    .. [1] Hales et al. 1988
     """
 
     source_index = 2.5
@@ -339,7 +339,7 @@ class PowerLawModel(PointSourceModel):
 class DiMatteo(PointSourceModel):
     r"""Double power-law point source model
 
-    Uses the results of Di Mattero et al. [1]_
+    Uses the results of Di Mattero et al. [2]_
 
     Attributes
     ----------
@@ -360,14 +360,14 @@ class DiMatteo(PointSourceModel):
 
     Notes
     -----
-    Based on [1]_ and clarification in [2]_ (footnote 6). In this
-    `S_0` is both the pivot and normalising flux, which means that k1
-    is rescaled by a factor of 0.88**-1.75.i
+    Based on [2]_ and clarification in [3]_ (footnote 6). In this
+    :math:`S_0` is both the pivot and normalising flux, which means that k1
+    is rescaled by a factor of :math:`0.88**-1.75.i`
 
     References
     ----------
-    .. [1] Di Matteo et al. 2002 (http://arxiv.org/abs/astro-ph/0109241)
-    .. [2] Santos et al. 2005 (http://arxiv.org/abs/astro-ph/0408515)
+    .. [2] Di Matteo et al. 2002 (http://arxiv.org/abs/astro-ph/0109241)
+    .. [3] Santos et al. 2005 (http://arxiv.org/abs/astro-ph/0408515)
     """
 
     gamma1 = 1.75

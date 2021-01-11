@@ -1,20 +1,8 @@
 """
-=====================================================
-Galactic Synchrotron (:mod:`~cora.foreground.galaxy`)
-=====================================================
-
-.. currentmodule:: cora.foreground.galaxy
+Galactic Synchrotron
 
 Generate semi-realistic simulations of the full sky synchrotron emission
 from the Milky Way.
-
-Classes
-=======
-
-.. autosummary::
-    :toctree: generated/
-
-    ConstrainedGalaxy
 """
 
 from os.path import join, dirname
@@ -102,16 +90,11 @@ class ConstrainedGalaxy(maps.Sky3d):
     Attributes
     ----------
     spectral_map : one of ['gsm', 'md', 'gd']
-        Specify which spectral index map to use. `gsm' uses a GSM derived map,
-        this was the old behaviour. `md' uses the synchrotron index map
+        Specify which spectral index map to use. `gsm` uses a GSM derived map,
+        this was the old behaviour. `md` uses the synchrotron index map
         derived by Miville-Deschenes et al. 2008, and is  now the default.
-        `gd' uses the map from Giardino et al. 2002.
+        `gd` uses the map from Giardino et al. 2002.
     nside
-
-    Methods
-    -------
-    getsky
-    getpolsky
     """
 
     # Spectral index map to use. Values are:

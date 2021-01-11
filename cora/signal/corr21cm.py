@@ -123,8 +123,10 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
         Notes
         -----
-        See _[1].
+        See [1]_.
 
+        References
+        ----------
         .. [1] http://arxiv.org/abs/1012.2671
         """
 
@@ -154,9 +156,11 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
         Notes
         -----
-        See _[1].
+        See [2]_.
 
-        .. [1] http://arxiv.org/abs/1012.2671
+        References
+        ----------
+        .. [2] http://arxiv.org/abs/1012.2671
         """
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z) ** 3

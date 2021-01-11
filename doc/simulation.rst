@@ -54,13 +54,3 @@ Maps are stored as ``hdf5`` files which can be easily read in Python using
 is a single dataset called ``map`` which contains ``Healpix`` maps of the
 whole sky for each frequency and polarisation. Within this the files are
 packed by frequency, polarisation and Healpix pixel.
-
-
-
-Selected API
-------------
-
-.. automodule:: cora.foreground.galaxy
-
-
-

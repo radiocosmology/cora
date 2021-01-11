@@ -54,16 +54,16 @@ class RandomField(object):
         -------
         psarray : ndarray
             An array containing the power spectrum values for each
-            vector in `karray'. Must be the same shape as `karray'
+            vector in `karray`. Must be the same shape as `karray`
             with its last axis removed.
 
         Notes
         -----
         Frequencies are in terms of wavenumber. That is the positive
         frequencies for one axis are:
-        0, 2*math.pi / self._w[0], 2 * 2*math.pi / self._w[0], 3 * 2*math.pi
-        / self._w[0]....
-
+        ```
+        0, 2*math.pi / self._w[0], 2 * 2*math.pi / self._w[0], 3 * 2*math.pi / self._w[0]....
+        ```
         """
         raise Exception("Abstract method: need to override.")
 

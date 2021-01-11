@@ -1,14 +1,13 @@
-"""Simulate gaussian foregrounds, in particular those in the style of Santos,
-Cooray and Knox [1]_.
+"""
+Gaussian foreground simultaion
 
+Simulate gaussian foregrounds, in particular those in the style of Santos, Cooray and Knox [1]_.
 These are foregrounds that can be represented with a covariance
 function that seperates with angle and frequency.
 
-
 References
 ----------
-.. [1] http://arxiv.org/abs/astro-ph/0408515
-
+ .. [1] http://arxiv.org/abs/astro-ph/0408515
 """
 
 
@@ -20,7 +19,7 @@ from cora.util import cubicspline as cs
 
 
 class ForegroundMap(maps.Sky3d):
-    r"""Simulate foregrounds with a seperable angular and frequency
+    r"""Simulate foregrounds with a separable angular and frequency
     covariance.
 
     Used to simulate foregrounds that can be modeled by angular

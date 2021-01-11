@@ -1,2 +1,0 @@
-.. automodule:: cora.util.cosmology
-
