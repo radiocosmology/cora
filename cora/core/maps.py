@@ -14,8 +14,6 @@ class Map2d(object):
         Angular size along each axis (in degrees).
     x_num, y_num : int
         Number of pixels along each angular axis.
-    nside : int
-        Resolution of Healpix map (must be power of 2).
     """
     x_width = 5.0
     y_width = 5.0
@@ -54,7 +52,13 @@ class Map2d(object):
 
     @property
     def nside(self):
-        """The resolution of the Healpix map."""
+        """
+        The resolution of the Healpix map (must be power of 2).
+
+        Returns
+        -------
+        int
+        """
         return self._nside
 
     @nside.setter

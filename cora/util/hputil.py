@@ -1,66 +1,43 @@
 """
-============================================
-Healpix Utilities (:mod:`~cora.util.hputil`)
-============================================
-
 Convenience functions for dealing with Healpix maps.
 
 Makes heavy use of the `healpy`_ module.
 
 .. _`healpy`: http://github.com/healpy
 
+
 Forward Transform Routines
 ==========================
-
-.. autosummary::
-    :toctree: generated/
-
-    sphtrans_real
-    sphtrans_complex
-    sphtrans_real_pol
-    sphtrans_complex_pol
+- :py:meth:`sphtrans_real`
+- :py:meth:`sphtrans_complex`
+- :py:meth:`sphtrans_real_pol`
+- :py:meth:`sphtrans_complex_pol`
 
 Backward Transforms
 ===================
-
-.. autosummary::
-    :toctree: generated/
-
-    sphtrans_inv_real
-    sphtrans_inv_complex
-    sphtrans_inv_real_pol
+- :py:meth:`sphtrans_inv_real`
+- :py:meth:`sphtrans_inv_complex`
+- :py:meth:`sphtrans_inv_real_pol`
 
 Sky Transforms
 ==============
-
 Transform sets of polarised maps at multiple frequencies.
 
-.. autosummary::
-    :toctree: generated/
-
-    sphtrans_sky
-    sphtrans_inv_sky
+- :py:meth:`sphtrans_sky`
+- :py:meth:`sphtrans_inv_sky`
 
 Miscellaneous
 =============
-
-.. autosummary::
-    :toctree: generated/
-
-    ang_positions
-    nside_for_lmax
-    pack_alm
-    unpack_alm
+- :py:meth:`ang_positions`
+- :py:meth:`nside_for_lmax`
+- :py:meth:`pack_alm`
+- :py:meth:`unpack_alm`
 
 Co-ordinate Transform
 =====================
-.. autosummary::
-    :toctree: generated/
-
-    coord_x2y
-    coord_g2c
-    coord_c2g
-
+- :py:meth:`coord_x2y`
+- :py:meth:`coord_g2c`
+- :py:meth:`coord_c2g`
 """
 
 import healpy

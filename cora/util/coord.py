@@ -1,45 +1,26 @@
 """
-===============================================
-Co-ordinate Utilities (:mod:`~cora.util.coord`)
-===============================================
+Co-ordinate Utilities
 
 A module of useful functions when dealing with Spherical Polar
 co-ordinates.
 
 Transforms
 ==========
-
-.. autosummary::
-    :toctree: generated/
-
-    sph_to_cart
-    cart_to_sph
+- :py:meth:`sph_to_cart`
+- :py:meth:`cart_to_sph`
 
 Vector operations
 =================
-
-.. autosummary::
-    :toctree: generated/
-
-    sph_dot
+- :py:meth:`sph_dot`
 
 Tangent Plane
 =============
-
-.. autosummary::
-    :toctree: generated/
-
-    thetaphi_plane
-    thetaphi_plane_cart
+- :py:meth:`thetaphi_plane`
+- :py:meth:`thetaphi_plane_cart`
 
 Miscellaneous
 =============
-
-.. autosummary::
-    :toctree: generated/
-
-    great_circle_points
-
+- :py:meth:`great_circle_points`
 """
 
 

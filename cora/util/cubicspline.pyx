@@ -1,5 +1,4 @@
-
-""" Module for interpolating sampled functions. """
+"""Module for interpolating sampled functions."""
 
 import numpy as np
 

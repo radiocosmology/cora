@@ -1,4 +1,5 @@
-"""Special functions for calculations on the sphere.
+"""
+Special functions for calculations on the sphere.
 
 These routines require `pygsl` to be installed. Although these functions are
 available in `scipy` they tend to be inaccurate at large values of `l`.

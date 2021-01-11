@@ -1,5 +1,4 @@
-"""Command line script for making sky maps.
-"""
+"""Command line script for making sky maps."""
 
 import os
 
