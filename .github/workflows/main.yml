@@ -77,4 +77,4 @@ jobs:
         pip install --use-deprecated=legacy-resolver -e .
 
     - name: Build sphinx docs
-      run: sphinx-build -b html doc/ doc/_build/html
+      run: sphinx-build -W -b html doc/ doc/_build/html
