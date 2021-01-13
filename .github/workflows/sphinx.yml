@@ -3,7 +3,6 @@ on:
   push:
     branches:
     - master
-    - rn/rtd
 
 jobs:
   build_sphinx_job:
@@ -25,7 +24,7 @@ jobs:
           pip install numpy  # Needed for pygsl installation
           pip install --use-deprecated=legacy-resolver -r requirements.txt
           pip install -r doc/requirements.txt
-          pip install .
+          pip install .[sphfunc]
       - name: Sphinx build
         run: |
           git checkout -b gh-pages
