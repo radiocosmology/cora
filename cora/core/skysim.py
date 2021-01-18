@@ -113,7 +113,7 @@ def mkfullsky(corr, nside, alms=False, gaussvars_list=None):
     if corr[0].shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1), 
+    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1),
                            dtype=np.complex128) for ii in range(ncorr)]
 
     # Generate gaussian deviates and transform to have correct correlation
@@ -127,8 +127,10 @@ def mkfullsky(corr, nside, alms=False, gaussvars_list=None):
             # Add in a small diagonal to try and ensure positive definiteness
             cmax = corr[ii][l].diagonal().max() * 1e-14
             corrm = corr[ii][l] + np.identity(numz) * cmax
-    
-            trans = nputil.matrix_root_manynull(corrm, truncate=False)
+
+            trans = nputil.matrix_root_manynull(
+                corrm, truncate=False, fixed_ev_sign_convention=True
+            )
             alm_list[ii][:, 0, l, : (l + 1)] = np.dot(trans, gaussvars)
 
     if alms:
@@ -176,7 +178,7 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
     Returns
     -------
     resmaps : list [ncorr]
-        The Healpix maps and derivatives. 
+        The Healpix maps and derivatives.
     """
     if not isinstance(corr,list):
         corr = [corr]
@@ -188,7 +190,7 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
     if corr[0].shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1), 
+    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1),
                            dtype=np.complex128) for ii in range(ncorr)]
 
     # Generate gaussian deviates and transform to have correct correlation
@@ -202,7 +204,7 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
             # Add in a small diagonal to try and ensure positive definiteness
             cmax = corr[ii][l].diagonal().max() * 1e-14
             corrm = corr[ii][l] + np.identity(numz) * cmax
-    
+
             trans = nputil.matrix_root_manynull(corrm, truncate=False)
             alm_list[ii][:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
 
@@ -220,11 +222,11 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
         # from numpy 1.12 to 1.13. Now it accepts an array of 'x values' along the axis.
         # Before it wanted a scalar representing the 'x-variation' between points.
         # The problem is that if you give it an array in old versions it doesn't crash!
-        # I guess it silently takes the first value as 'x-variation'...? 
+        # I guess it silently takes the first value as 'x-variation'...?
         #spacing = np.gradient(comovd)
         #d_x = np.gradient(sky[:,0],spacing,axis=0)
         d_x = np.gradient(sky[:,0],comovd,axis=0)
-        resmaps.append(np.array([sky[:,0], d_theta[:,0]/comovd[:,None], 
+        resmaps.append(np.array([sky[:,0], d_theta[:,0]/comovd[:,None],
                                 d_phi[:,0]/comovd[:,None], d_x]))
 
     if ncorr == 1:

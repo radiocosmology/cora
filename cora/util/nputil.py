@@ -51,7 +51,7 @@ def load_ndarray_list(fname):
     return la
 
 
-def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
+def matrix_root_manynull(mat, threshold=1e-16, truncate=True, fixed_ev_sign_convention=True):
     """Square root a matrix.
 
     An inefficient alternative to the Cholesky decomposition for a
@@ -70,6 +70,11 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
     truncate : boolean, optional
         If True (default), truncate the matrix root, to the number of positive
         eigenvalues.
+    fixed_ev_sign_convention : boolean, optional
+        If True (default), implement a specific convention for the signs of
+        the eigenvectors from which the result is constructed, to prevent
+        discrepancies between different evaluations due to arbitrary sign-flips
+        of the eigenvectors.
 
     Returns
     =======
@@ -93,6 +98,13 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
 
     evals[np.where(evals < evals.max() * threshold)] = 0.0
     num_pos = len(np.flatnonzero(evals))
+
+    # If desired, we fix the sign convention for the eigenvectors by
+    # demanding that the first component of each eigenvector is positive
+    if fixed_ev_sign_convention:
+        for i in range(evecs.shape[0]):
+            if evecs[0, i] < 0:
+                evecs[:, i] *= -1
 
     if truncate:
         evals = evals[np.newaxis, -num_pos:]
