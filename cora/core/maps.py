@@ -238,9 +238,15 @@ class Sky3d(Map3d):
             self.angular_powerspectrum, lmax, self.nu_pixels, zromb=self.oversample
         )
 
-        return self.mean_nu(self.nu_pixels)[:, np.newaxis] + skysim.mkfullsky(
-            cla, self.nside
-        )
+        zero_mean_map = skysim.mkfullsky(cla, self.nside)
+        if self.lognorm:
+            # Log-normalization:
+            zero_mean_map = np.exp(zero_mean_map) - 1.0
+            # Apply prefactor, since it was ommited in the C_l's.
+            z_pixels = units.nu21 / self.nu_pixels - 1.0
+            zero_mean_map *= self.postfactor(z_pixels)[:, np.newaxis]
+
+        return self.mean_nu(self.nu_pixels)[:, np.newaxis] + zero_mean_map
 
     def getpolsky(self):
         """Create a map of the fully polarised sky (Stokes, I, Q, U and V).

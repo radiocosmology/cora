@@ -25,7 +25,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
     _kstar = 5.0
 
-    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0, bias=1.0, **kwargs):
+    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0, 
+                 bias=1.0, lognorm=False, **kwargs):
         from os.path import join, dirname
 
         if ps is None:
@@ -47,6 +48,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         self._load_cache(join(dirname(__file__), "data/corr_z1.5.dat"))
         # self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
+        self.lognorm = lognorm
         self.bias = bias
         if self.bias == 0:  # Use Halo Model to compute bias.
             # Pass the full (not smoothed) Power Spectrum to the halo model
@@ -130,7 +132,25 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return 1e-3
 
     def prefactor(self, z):
-        return self.T_b(z)
+        r"""The Brightness prefactors to be applied to C_l's.
+        This is useful when the option --lognorm is given, in which case
+        the prefactors are not applied to the C_l's, but left to be
+        applied in the final maps. See postfactor().
+        """
+        if self.lognorm:
+            return np.ones_like(z)
+        else:
+            return self.T_b(z)
+
+    def postfactor(self, z):
+        r"""The Brightness prefactors to be applied to the final maps.
+        This is useful when the option --lognorm is given, in which case
+        the prefactors are not applied to the C_l's.
+        """
+        if self.lognorm:
+            return self.T_b(z)
+        else:
+            return np.ones_like(z)
 
     def growth_factor(self, z):
         r"""Approximation for the matter growth factor.
@@ -678,6 +698,8 @@ class CorrBiasedTracer(Corr21cm):
         """ This inherits from Corr21cm, so need to overwrite 
             prefactor to ones. """
         return 1.0 * np.ones_like(z)
+
+    postfactor = prefactor
 
     def bias_z(self, z):
         """

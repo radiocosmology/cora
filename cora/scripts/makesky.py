@@ -347,7 +347,12 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     default = 1.0,
     help="If a number > 0 apply this constant bias (default is 1). If 0 is given, use the halo model to compute a redshift dependent bias."
 )
-def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias):
+@click.option(
+    "--lognorm",
+    is_flag=True,
+    help="If set, log-normalize the gaussian field. Ignored if flag --za is given."
+)
+def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, lognorm):
     """Generate a Gaussian simulation of the unresolved 21cm background.
     """
 
@@ -360,6 +365,8 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias):
     else:
         if za:
             cr = corr21cm.Corr21cmZA(bias=bias)
+        elif lognorm:
+            cr = corr21cm.Corr21cm(bias=bias, lognorm=True)
         else:
             cr = corr21cm.Corr21cm(bias=bias)
 
@@ -405,7 +412,12 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias):
     default='none',
     help="The type of tracer to use. For now ony accepts 'qso' or 'none'"
 )
-def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype):
+@click.option(
+    "--lognorm",
+    is_flag=True,
+    help="If set, log-normalize the gaussian field. Ignored if flag --za is given."
+)
+def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, lognorm):
     """Generate an unresolved Gaussian simulation of the distribution of the chosen tracer.
        For now it only does QSOs.
     """
@@ -415,6 +427,8 @@ def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype):
 
     if za:
         cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype)
+    elif lognorm:
+        cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype, lognorm=True)
     else:
         cr = corr21cm.CorrBiasedTracer(tracer_type=ttype)
 
