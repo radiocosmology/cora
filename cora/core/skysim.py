@@ -205,7 +205,8 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
             cmax = corr[ii][l].diagonal().max() * 1e-14
             corrm = corr[ii][l] + np.identity(numz) * cmax
 
-            trans = nputil.matrix_root_manynull(corrm, truncate=False)
+            trans = nputil.matrix_root_manynull(
+                    corrm, truncate=False, fixed_ev_sign_convention=True)
             alm_list[ii][:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
 
     if alms:
