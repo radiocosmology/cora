@@ -6,7 +6,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import healpy as hp
 
-
+# TODO: Apparently unused variable nslices. Delete?
 def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     """
     psi : array-like [3,nz,npix]

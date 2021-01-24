@@ -377,8 +377,10 @@ class CorrZA(Corr21cm):
     """
 
     def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
+                 ps_redshift=0.0, sigma_v=0.0, twostep=False, **kwargs):
 
+        # Wether to compute the ZA field in two steps
+        self.twostep = twostep
         # Factor to increase nside for the particle mesh
         self.nside_factor = nside_factor
         # Factor to increase radial resolution for the particle mesh 
@@ -461,18 +463,18 @@ class CorrZA(Corr21cm):
 
         lmax = 3 * self.nside - 1
 
-        # Add frequency padding for correct particle displacement at edges
-        frequencies, freq_slice = self._pad_freqs(self._frequencies)
+#        # Add frequency padding for correct particle displacement at edges
+#        frequencies, freq_slice = self._pad_freqs(self._frequencies)
 
 #        # Angular power spectrum for the matter field
 #        cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
-#                             frequencies, zromb=self.oversample)
+#                             self.freqs_full, zromb=self.oversample)
 
         # Angular power spectrum for the Newtonian potential
         cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
-                                 frequencies, zromb=self.oversample)
+                                 self.freqs_full, zromb=self.oversample)
 
-        redshift_array = units.nu21 / frequencies - 1.
+        redshift_array = units.nu21 / self.freqs_full - 1.
         comovd = self.cosmology.comoving_distance(redshift_array)
 
 #        # Generate gaussian random numbers for realization
@@ -505,31 +507,24 @@ class CorrZA(Corr21cm):
         disp_rsd[2] = maps_der1[3] * self.growth_rate(redshift_array)[:, np.newaxis]
 
         # Compute density in the Zeldovich approximation:
-        # TODO: Multiply linear density maps_der1[0] by lagrangean bias of
-        # the tracers involved.
-        maps0 = np.zeros(maps_der1[0].shape, dtype=maps_der1.dtype) # TODO: delete
+        maps0 = np.ones(maps_der1[0].shape, dtype=maps_der1.dtype)
 #        delta_za = pm.za_density(maps_der1[1:], maps, self.nside,
         delta_za = pm.za_density(maps_der1[1:], maps0, self.nside,
                                  comovd, self.nside_factor, self.ndiv_radial,
                                  nslices=2)
-        # Apply simple Eulerian bias
-        delta_za = delta_za * 2.
+        # Apply Eulerian bias
+        delta_za *= self.bias_z(redshift_array)[:, np.newaxis]
+        # Add mean (needed for pm.za_density())
+        delta_za += 1.0
         # Displace for RSD:
         delta_za = pm.za_density(disp_rsd, delta_za, self.nside,
                                  comovd, self.nside_factor, self.ndiv_radial,
                                  nslices=2) 
 
         # Recover original frequency range:
-        delta_za = delta_za[freq_slice]
+        delta_za = delta_za[self.freq_slice]
 
-        # Multiply by prefactor (21cm brightness)
-        pref = self.prefactor(redshift_array[freq_slice])[:, np.newaxis]
-#        bias = self.bias_z(redshift_array[freq_slice])[:, np.newaxis]
-
-        # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
-        #return delta_za * pref * bias # TODO: remove. Bias done in Lagrangian space.
-        #return delta_za * pref
-        return delta_za, maps_der1
+        return delta_za
 
     @Corr21cm.frequencies.setter
     def frequencies(self,freq):
@@ -541,7 +536,7 @@ class CorrZA(Corr21cm):
 
     # Overwrite getsky to implement the steps necessary for the
     # Zeldovich approximation case
-    def getsky(self, gaussvars_list=None):
+    def getsky_1s(self, gaussvars_list=None):
         """Create a map of the unpolarised sky using the
         zeldovich approximation.
         """
@@ -597,6 +592,8 @@ class CorrZA(Corr21cm):
         # to get rid of negative densities. Pass filed with mean 1, not 0.
 #        maps = np.exp(maps*self.lagbias_z(redshift_array)[:, np.newaxis])
         maps = maps*self.lagbias_z(redshift_array)[:, np.newaxis] + 1.
+        print("Fraction of pixels croped: {0:0.3e}, shape: {1}".format(
+            np.sum(maps<0.)/np.prod(maps.shape), maps.shape))
         maps = np.where(maps<0.,0.,maps)
 
         # Compute density in the Zeldovich approximation:
@@ -608,9 +605,13 @@ class CorrZA(Corr21cm):
         # Recover original frequency range:
         delta_za = delta_za[self.freq_slice]
 
-        # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
-        #return delta_za, maps, maps_der1
         return delta_za
+
+    def getsky(self):
+        if self.twostep:
+            return self.getsky_2s()
+        else:
+            return self.getsky_1s()
 
     def lagbias_z(self, z):
         """Linear Lagrangian bias from the Eulerian counterpart
@@ -768,11 +769,11 @@ class Corr21cmZA(CorrZA):
 #
 #        return np.array(bias)
 
-    def getsky(self,gaussvars_list=None):
+    def getsky(self):
         """ Overwrites getsky to add correct pre-factors
         """
         # Get sky
-        delta_za = super(Corr21cmZA, self).getsky(gaussvars_list)
+        delta_za = super(Corr21cmZA, self).getsky()
         # Apply prefactor
         redshift_array = units.nu21 / self.frequencies - 1.
         pref = self.prefactor(redshift_array)[:, np.newaxis]

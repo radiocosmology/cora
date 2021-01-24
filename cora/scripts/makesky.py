@@ -352,7 +352,12 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     is_flag=True,
     help="If set, log-normalize the gaussian field. Ignored if flag --za is given."
 )
-def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, lognorm):
+@click.option(
+    "--twostep",
+    is_flag=True,
+    help="If set, perform the Zeldovich Approximation in two steps (recommended, but slower)."
+)
+def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, lognorm, twostep):
     """Generate a Gaussian simulation of the unresolved 21cm background.
     """
 
@@ -364,11 +369,9 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, lognorm
         cr = corr21cm.EoR21cm()
     else:
         if za:
-            cr = corr21cm.Corr21cmZA(bias=bias)
-        elif lognorm:
-            cr = corr21cm.Corr21cm(bias=bias, lognorm=True)
+            cr = corr21cm.Corr21cmZA(bias=bias, twostep=twostep)
         else:
-            cr = corr21cm.Corr21cm(bias=bias)
+            cr = corr21cm.Corr21cm(bias=bias, lognorm=lognorm)
 
     cr.nside = nside
     cr.frequencies = fstate.frequencies
@@ -417,7 +420,12 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, lognorm
     is_flag=True,
     help="If set, log-normalize the gaussian field. Ignored if flag --za is given."
 )
-def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, lognorm):
+@click.option(
+    "--twostep",
+    is_flag=True,
+    help="If set, perform the Zeldovich Approximation in two steps (recommended, but slower)."
+)
+def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, lognorm, twostep):
     """Generate an unresolved Gaussian simulation of the distribution of the chosen tracer.
        For now it only does QSOs.
     """
@@ -426,11 +434,9 @@ def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, lognorm):
     from cora.util import nputil
 
     if za:
-        cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype)
-    elif lognorm:
-        cr = corr21cm.CorrBiasedTracer(tracer_type=ttype, lognorm=True)
+        cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype, twostep=twostep)
     else:
-        cr = corr21cm.CorrBiasedTracer(tracer_type=ttype)
+        cr = corr21cm.CorrBiasedTracer(tracer_type=ttype, lognorm=lognorm)
 
     cr.nside = nside
     cr.frequencies = fstate.frequencies
