@@ -463,26 +463,12 @@ class CorrZA(Corr21cm):
 
         lmax = 3 * self.nside - 1
 
-#        # Add frequency padding for correct particle displacement at edges
-#        frequencies, freq_slice = self._pad_freqs(self._frequencies)
-
-#        # Angular power spectrum for the matter field
-#        cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
-#                             self.freqs_full, zromb=self.oversample)
-
         # Angular power spectrum for the Newtonian potential
         cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
                                  self.freqs_full, zromb=self.oversample)
 
         redshift_array = units.nu21 / self.freqs_full - 1.
         comovd = self.cosmology.comoving_distance(redshift_array)
-
-#        # Generate gaussian random numbers for realization
-#        gaussvars_list = [nputil.complex_std_normal((cla_pot.shape[1], l + 1)) 
-#                          for l in range(cla_pot.shape[0])]
-#        # Generate matter field maps
-#        maps = skysim.mkfullsky(cla, self.nside, 
-#                                gaussvars_list=gaussvars_list)
 
         # Generate potential field maps and their spacial derivatives:
         maps_der1 = skysim.mkfullsky_der1(cla_pot, self.nside, comovd)
@@ -508,7 +494,6 @@ class CorrZA(Corr21cm):
 
         # Compute density in the Zeldovich approximation:
         maps0 = np.ones(maps_der1[0].shape, dtype=maps_der1.dtype)
-#        delta_za = pm.za_density(maps_der1[1:], maps, self.nside,
         delta_za = pm.za_density(maps_der1[1:], maps0, self.nside,
                                  comovd, self.nside_factor, self.ndiv_radial,
                                  nslices=2)
@@ -516,6 +501,11 @@ class CorrZA(Corr21cm):
         delta_za *= self.bias_z(redshift_array)[:, np.newaxis]
         # Add mean (needed for pm.za_density())
         delta_za += 1.0
+        # Crop negative densities
+        print("Fraction of pixels croped: {0:0.3e}, shape: {1}".format(
+              np.sum(delta_za<0.)/np.prod(delta_za.shape), delta_za.shape))
+        delta_za = np.where(delta_za<0., 0., delta_za)
+
         # Displace for RSD:
         delta_za = pm.za_density(disp_rsd, delta_za, self.nside,
                                  comovd, self.nside_factor, self.ndiv_radial,
