@@ -319,7 +319,7 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     write_map(filename, cs, ps.frequencies, fstate.freq_width, pol != "none")
 
 
-@cli.command("21cm")
+@cli.command("tracer")
 @map_options
 @click.option(
     "--eor",
@@ -348,68 +348,6 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     help="If a number > 0 apply this constant bias (default is 1). If 0 is given, use the halo model to compute a redshift dependent bias."
 )
 @click.option(
-    "--lognorm",
-    is_flag=True,
-    help="If set, log-normalize the gaussian field. Ignored if flag --za is given."
-)
-@click.option(
-    "--twostep",
-    is_flag=True,
-    help="If set, perform the Zeldovich Approximation in two steps (recommended, but slower)."
-)
-def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, lognorm, twostep):
-    """Generate a Gaussian simulation of the unresolved 21cm background.
-    """
-
-    from cora.signal import corr21cm
-    from cora.util import nputil
-
-    # Read in arguments.
-    if eor:
-        cr = corr21cm.EoR21cm()
-    else:
-        if za:
-            cr = corr21cm.Corr21cmZA(bias=bias, twostep=twostep)
-        else:
-            cr = corr21cm.Corr21cm(bias=bias, lognorm=lognorm)
-
-    cr.nside = nside
-    cr.frequencies = fstate.frequencies
-    cr.oversample = oversample if oversample is not None else 3
-
-    if ((pol == "full") and za):
-        msg = "Option pol = 'full' is not implemented for ZA case. Please use pol = ['zero', 'none']"
-        raise NotImplementedError(msg)
-
-    # If seed is given, re-seed the numpy random generator.
-    if seed is not None:
-        np.random.seed(seed)
-
-    # Generate signal realisation and save.
-    sg_map = cr.getpolsky() if pol == "full" else cr.getsky()
-
-    # Save map
-    write_map(filename, sg_map, cr.frequencies, fstate.freq_width, pol != "none")
-
-
-@cli.command("tracer")
-@map_options
-@click.option(
-    "--oversample",
-    type=int,
-    help="Oversample in redshift by 2**oversample_z + 1 to approximate finite width bins.",
-)
-@click.option(
-    "--za",
-    is_flag=True,
-    help="Use the Zeldovich approximation (instead of a simple Gaussian field). Ignored if EoR.",
-)
-@click.option(
-    "--seed",
-    type=int,
-    help='Set the seed for the matter realization random generator.'
-)
-@click.option(
     "--ttype",
     type=str,
     default='none',
@@ -425,18 +363,27 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, lognorm
     is_flag=True,
     help="If set, perform the Zeldovich Approximation in two steps (recommended, but slower)."
 )
-def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, lognorm, twostep):
+@click.option(
+    "--no_rsd",
+    is_flag=True,
+    help="If set, do not apply the Kaiser factor for redshift-space distortions.",
+)
+def tracer(fstate, nside, pol, filename, eor, oversample, za, seed, bias, ttype, lognorm, twostep, no_rsd):
     """Generate an unresolved Gaussian simulation of the distribution of the chosen tracer.
-       For now it only does QSOs.
+       For now only does 21cm, QSOs, or a generic tracer with constant bias and no brightness prefactors.
     """
 
     from cora.signal import corr21cm
     from cora.util import nputil
 
-    if za:
-        cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype, twostep=twostep)
+    # Read in arguments.
+    if eor:
+        cr = corr21cm.EoR21cm()
     else:
-        cr = corr21cm.CorrBiasedTracer(tracer_type=ttype, lognorm=lognorm)
+        if za:
+            cr = corr21cm.CorrZA(bias=bias, tracer_type=ttype, twostep=twostep)
+        else:
+            cr = corr21cm.CorrBiasedTracer(bias=bias, tracer_type=ttype, lognorm=lognorm, no_rsd=no_rsd)
 
     cr.nside = nside
     cr.frequencies = fstate.frequencies

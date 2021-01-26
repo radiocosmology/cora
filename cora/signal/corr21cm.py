@@ -7,13 +7,13 @@ from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
 
 import numpy as np
 
-from cora.core import maps
+from cora.core import maps, skysim
 from cora.util import cubicspline as cs
 from cora.util import units, nputil, halomodel
 from cora.signal import corr
 
 
-class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
+class CorrBiasedTracer(corr.RedshiftCorrelation, maps.Sky3d):
     r"""Correlation function of HI brightness temperature fluctuations.
 
     Incorporates reasonable approximations for the growth factor and
@@ -26,7 +26,9 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
     _kstar = 5.0
 
     def __init__(self, ps=None, redshift=0.0, sigma_v=0.0, 
-                 bias=1.0, lognorm=False, **kwargs):
+                 tracer_type='none', bias=1.0, lognorm=False, 
+                 no_rsd=False, **kwargs):
+
         from os.path import join, dirname
 
         if ps is None:
@@ -37,7 +39,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             c1 = cs.LogInterpolater.fromfile(psfile)
             ps = lambda k: np.exp(-0.5 * k ** 2 / self._kstar ** 2) * c1(k)
 
-        else:
+        elif tracer_type == '21cm':
             # Compute the non-smoothed power spectrum from the one given.
             # Needed for the halo model.
             c1 = lambda k: ps(k) / np.exp(-0.5 * k ** 2 / self._kstar ** 2)
@@ -48,9 +50,11 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         self._load_cache(join(dirname(__file__), "data/corr_z1.5.dat"))
         # self.load_fft_cache(join(dirname(__file__),"data/fftcache.npz"))
 
+        self.tracer_type = tracer_type  # Tracer type
+        self.no_rsd = no_rsd
         self.lognorm = lognorm
         self.bias = bias
-        if self.bias == 0:  # Use Halo Model to compute bias.
+        if self.tracer_type == '21cm':  # Use Halo Model to compute bias.
             # Pass the full (not smoothed) Power Spectrum to the halo model
             # HaloModel uses powerspectrum normalized to z=0
             def hmps(k):
@@ -133,21 +137,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
     def prefactor(self, z):
         r"""The Brightness prefactors to be applied to C_l's.
-        This is useful when the option --lognorm is given, in which case
-        the prefactors are not applied to the C_l's, but left to be
-        applied in the final maps. See postfactor().
         """
-        if self.lognorm:
-            return np.ones_like(z)
-        else:
-            return self.T_b(z)
-
-    def postfactor(self, z):
-        r"""The Brightness prefactors to be applied to the final maps.
-        This is useful when the option --lognorm is given, in which case
-        the prefactors are not applied to the C_l's.
-        """
-        if self.lognorm:
+        if self.tracer_type == '21cm':
             return self.T_b(z)
         else:
             return np.ones_like(z)
@@ -220,15 +211,20 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         r"""Use the halo model to determine the bias.
         Otherwise use ones. """
 
-        if self.bias == 0:
+        if self.tracer_type == '21cm':
             bias = []
             z_shape = z.shape
             z = z.flatten()
             for zz in z:
                 self.hm.redshift = zz
                 bias.append(self.hm.lbias_h1() + 1)
-
             return np.array(bias).reshape(z_shape)
+
+        if tracer_type == 'qso':
+            # Quasars. Bias taken from arXiv:1705.04718
+            alpha, beta = 0.278, 2.393
+            return alpha*((1 + z)**2 - 6.565) + beta
+
         else:
             return np.ones_like(z) * self.bias
 
@@ -260,6 +256,40 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
         return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
 
+    # Wrap angular_powerspectrum to switch to allow using frequency
+    # and to remove bias, prefactors, evolution and RSD.
+    def raw_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum of the matter over-density
+        without time evolution, RSD or 21cm normalization.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return corr.RedshiftCorrelation.angular_powerspectrum(
+                            self, l, z1, z2,
+                            include_prefactor=False, 
+                            include_bias=False, include_rsd=False, 
+                            include_evolution=False)
+
     # Override angular_power spectrum to switch to allow using frequency
     def angular_powerspectrum_full(self, l, nu1, nu2, redshift=False):
         """Calculate the angular powerspectrum by explicit integration.
@@ -287,6 +317,36 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             z2 = nu2
 
         return corr.RedshiftCorrelation.angular_powerspectrum_full(self, l, z1, z2)
+
+    # Overwrite getsky() to account for specific options.
+    def getsky(self):
+        """Create a map of the unpolarised sky.
+        """
+
+        if (self.lognorm or self.no_rsd):
+
+            lmax = 3 * self.nside - 1
+            cla = skysim.clarray(
+                self.raw_angular_powerspectrum, lmax, 
+                self.frequencies, zromb=self.oversample
+            )
+            zero_mean_map = skysim.mkfullsky(cla, self.nside)
+
+            if self.lognorm:
+                # Log-normalization:
+                zero_mean_map = np.exp(zero_mean_map) - 1.0
+
+            # Apply prefactor, evolution and bias since 
+            # they were ommited in the C_l's.
+            z_pixels = units.nu21 / self.frequencies - 1.0
+            zero_mean_map *= self.prefactor(z_pixels)[:, np.newaxis]
+            zero_mean_map *= self.bias_z(z_pixels)[:, np.newaxis]
+            zero_mean_map *= self.growth_factor(z_pixels)[:, np.newaxis]
+
+            return self.mean_nu(self.frequencies)[:, np.newaxis] + zero_mean_map
+
+        else:
+            return super(CorrBiasedTracer, self).getsky()
 
     def mean_nu(self, freq):
 
@@ -367,7 +427,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return (cube, rsf, d)
 
 
-class CorrZA(Corr21cm):
+class CorrZA(CorrBiasedTracer):
     r"""Correlation function of (possibly) biased tracer of the
     matter field fluctuations using the Zeldovich approximation.
 
@@ -391,37 +451,7 @@ class CorrZA(Corr21cm):
         # Simpler alias for Power spectrum
         self.ps = self.ps_vv
 
-    # Override raw_angular_powerspectrum to switch to allow using frequency
-    def raw_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
-        """Calculate the angular powerspectrum of the matter over-density
-        without time evolution, RSD or 21cm normalization.
-
-        Parameters
-        ----------
-        l : np.ndarray
-            Multipoles to calculate at.
-        nu1, nu2 : np.ndarray
-            Frequencies/redshifts to calculate at.
-        redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies,
-            otherwise they are redshifts (relative to the 21cm line).
-
-        Returns
-        -------
-        aps : np.ndarray
-        """
-
-        if not redshift:
-            z1 = units.nu21 / nu1 - 1.0
-            z2 = units.nu21 / nu2 - 1.0
-        else:
-            z1 = nu1
-            z2 = nu2
-
-        return corr.RedshiftCorrelation.raw_angular_powerspectrum(
-                                                        self, l, z1, z2)
-
-    # Override raw_angular_powerspectrum to gen the PS of the Newtonian potential
+    # Wrap angular_powerspectrum to gen the PS of the Newtonian potential
     def potential_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
         """Calculate the angular powerspectrum of the inverse Laplacian of delta.
 
@@ -447,9 +477,11 @@ class CorrZA(Corr21cm):
             z1 = nu1
             z2 = nu2
 
-        return corr.RedshiftCorrelation.raw_angular_powerspectrum(
-                                        self, l, z1, z2, potential=True)
-
+        return corr.RedshiftCorrelation.angular_powerspectrum(
+                            self, l, z1, z2,
+                            include_prefactor=False, 
+                            include_bias=False, include_rsd=False, 
+                            include_evolution=False, potential=True)
 
     # Za in two steps: displace - bias - displace RSD
     def getsky_2s(self):
@@ -457,7 +489,6 @@ class CorrZA(Corr21cm):
         zeldovich approximation.
         """
 
-        from cora.core import skysim
         import healpy as hp
         from cora.util import pmesh as pm
 
@@ -475,7 +506,6 @@ class CorrZA(Corr21cm):
 
         # Apply growth factor:
         D = self.growth_factor(redshift_array) / self.growth_factor(self.ps_redshift)
-#        maps *= D[:, np.newaxis]
         maps_der1 *= D[np.newaxis, :, np.newaxis]
 
         npix = hp.pixelfunc.nside2npix(self.nside)
@@ -514,9 +544,13 @@ class CorrZA(Corr21cm):
         # Recover original frequency range:
         delta_za = delta_za[self.freq_slice]
 
-        return delta_za
+        # Apply prefactor
+        redshift_array = units.nu21 / self.frequencies - 1.
+        pref = self.prefactor(redshift_array)[:, np.newaxis]
 
-    @Corr21cm.frequencies.setter
+        return delta_za * pref
+
+    @CorrBiasedTracer.frequencies.setter
     def frequencies(self,freq):
         """Overrides the frequencies setter to also
         define freqs_full and freq_slice.
@@ -531,7 +565,6 @@ class CorrZA(Corr21cm):
         zeldovich approximation.
         """
 
-        from cora.core import skysim
         import healpy as hp
         from cora.util import pmesh as pm
 
@@ -595,7 +628,11 @@ class CorrZA(Corr21cm):
         # Recover original frequency range:
         delta_za = delta_za[self.freq_slice]
 
-        return delta_za
+        # Apply prefactor
+        redshift_array = units.nu21 / self.frequencies - 1.
+        pref = self.prefactor(redshift_array)[:, np.newaxis]
+
+        return delta_za * pref
 
     def getsky(self):
         if self.twostep:
@@ -642,7 +679,7 @@ def theory_power_spectrum(
     zfilename = datapath_db.fetch(redshift_filekey, intend_read=True, pick="1")
 
     zspace_cube = algebra.make_vect(algebra.load(zfilename))
-    simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
+    simobj = corr21cm.CorrBiasedTracer.like_kiyo_map(zspace_cube)
     pwrspec_input = simobj.get_pwrspec(bin_center)
     if unitless:
         pwrspec_input *= bin_center ** 3.0 / 2.0 / math.pi / math.pi
@@ -654,127 +691,7 @@ def theory_power_spectrum(
     outfile.close()
 
 
-class CorrBiasedTracerZA(CorrZA):
-    r"""Correlation function of a biased field density fluctuations
-    using the Zeldovich approximation.
-    """
-    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-                 ps_redshift=0.0, sigma_v=0.0, tracer_type='none',
-                 **kwargs):
-
-        # Tracer type
-        self.tracer_type = tracer_type
-        super(CorrBiasedTracerZA, self).__init__(ps, nside_factor, ndiv_radial,
-                                         ps_redshift, sigma_v, **kwargs)
-
-    def bias_z(self, z):
-        """
-        """
-        return _tracer_bias_z(z, self.tracer_type)
-
-
-class CorrBiasedTracer(Corr21cm):
-    r"""Correlation function of a biased field density fluctuations
-    using the Gaussian fields.
-    """
-    def __init__(self, ps=None, ps_redshift=0.0, sigma_v=0.0,
-                 tracer_type='none', **kwargs):
-
-        # Tracer type
-        self.tracer_type = tracer_type
-        super(CorrBiasedTracer, self).__init__(ps, ps_redshift, sigma_v, **kwargs)
-
-
-    def prefactor(self, z):
-        """ This inherits from Corr21cm, so need to overwrite 
-            prefactor to ones. """
-        return 1.0 * np.ones_like(z)
-
-    postfactor = prefactor
-
-    def bias_z(self, z):
-        """
-        """
-        return _tracer_bias_z(z, self.tracer_type)
-
-
-def _tracer_bias_z(z, tracer_type):
-    """
-    """
-    if tracer_type == 'none':
-        return np.ones_like(z)
-
-    if tracer_type == 'qso':
-        # Quasars. Bias taken from arXiv:1705.04718
-        alpha, beta = 0.278, 2.393
-        return alpha*((1 + z)**2 - 6.565) + beta
-
-
-class Corr21cmZA(CorrZA):
-    r"""Correlation function of HI brightness temperature fluctuations
-    using the Zeldovich approximation.
-
-    Incorporates reasonable approximations for the growth factor and
-    growth rate.
-
-    """
-
-#    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-#                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
-#        """
-#        """
-#
-#        from os.path import join, dirname
-#        if ps is None:
-#            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
-#            ps_redshift = 1.5
-#            ps_full = cs.LogInterpolater.fromfile(psfile)
-#            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * ps_full(k)
-#        else:
-#            # This might mean passing a smoothed PS to the halo model. 
-#            # TODO: This is probably a bug. Maybe I should not accept ps as
-#            # an input parameter in Corr21cmZA.
-#            ps_full = ps
-#
-#        super(Corr21cmZA, self).__init__(ps, nside_factor, ndiv_radial,
-#                                         ps_redshift, sigma_v, **kwargs)
-#
-#        # Pass the full (not smoothed) Power Spectrum to the halo model
-#        # HaloModel uses powerspectrum normalized to z=0
-#        def hmps(k):
-#            return ps_full(k) * (self.growth_factor(0.)
-#                            / self.growth_factor(self.ps_redshift))**2
-#
-#        # Initialize HaloModel
-#        self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
-#        self.hm.check_update()
-
-#    def bias_z(self, z):
-#        """ Overwrites lagbias_z to use a halo model derived HI bias.
-#        """
-#        bias = []
-#        for zz in z:
-#            self.hm.redshift = zz
-#            bias.append(self.hm.lbias_h1() + 1)
-#
-#        return np.array(bias)
-
-    def getsky(self):
-        """ Overwrites getsky to add correct pre-factors
-        """
-        # Get sky
-        delta_za = super(Corr21cmZA, self).getsky()
-        # Apply prefactor
-        redshift_array = units.nu21 / self.frequencies - 1.
-        pref = self.prefactor(redshift_array)[:, np.newaxis]
-
-        # TODO: add prefactor
-        #print pref
-        return delta_za * pref
-        #return delta_za
-
-
-class EoR21cm(Corr21cm):
+class EoR21cm(CorrBiasedTracer):
     def T_b(self, z):
 
         r"""Mean 21cm brightness temperature at a given redshift.
