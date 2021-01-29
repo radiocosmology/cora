@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import numpy as np
@@ -52,13 +52,15 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             # Pass the full (not smoothed) Power Spectrum to the halo model
             # HaloModel uses powerspectrum normalized to z=0
             def hmps(k):
-                return c1(k) * (self.growth_factor(0.)
-                                / self.growth_factor(self.ps_redshift))**2
+                return (
+                    c1(k)
+                    * (self.growth_factor(0.0) / self.growth_factor(self.ps_redshift))
+                    ** 2
+                )
 
             # Initialize HaloModel
             self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
             self.hm.check_update()
-            
 
     def T_b(self, z):
         r"""Mean 21cm brightness temperature at a given redshift.
@@ -198,7 +200,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
     def bias_z(self, z):
         r"""Use the halo model to determine the bias.
-        Otherwise use ones. """
+        Otherwise use ones."""
 
         if self.bias == 0:
             bias = []
@@ -223,7 +225,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         nu1, nu2 : np.ndarray
             Frequencies/redshifts to calculate at.
         redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
             otherwise they are redshifts (relative to the 21cm line).
 
         Returns
@@ -251,7 +253,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         nu1, nu2 : np.ndarray
             Frequencies/redshifts to calculate at.
         redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies, 
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
             otherwise they are redshifts (relative to the 21cm line).
 
         Returns
@@ -273,8 +275,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return self.mean(units.nu21 / freq - 1.0)
 
     def getfield(self):
-        r"""Fetch a realisation of the 21cm signal.
-        """
+        r"""Fetch a realisation of the 21cm signal."""
         z1 = units.nu21 / self.nu_upper - 1.0
         z2 = units.nu21 / self.nu_lower - 1.0
 
@@ -292,8 +293,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return cube
 
     def get_kiyo_field(self, refinement=1):
-        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
-        """
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)"""
         z1 = units.nu21 / self.nu_upper - 1.0
         z2 = units.nu21 / self.nu_lower - 1.0
 
@@ -323,8 +323,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
     def get_kiyo_field_physical(
         self, refinement=1, density_only=False, no_mean=False, no_evolution=False
     ):
-        r"""Fetch a realisation of the 21cm signal (NOTE: in K)
-        """
+        r"""Fetch a realisation of the 21cm signal (NOTE: in K)"""
         z1 = units.nu21 / self.nu_upper - 1.0
         z2 = units.nu21 / self.nu_lower - 1.0
 
@@ -356,12 +355,19 @@ class CorrZA(Corr21cm):
 
     """
 
-    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
+    def __init__(
+        self,
+        ps=None,
+        nside_factor=4,
+        ndiv_radial=4,
+        ps_redshift=0.0,
+        sigma_v=0.0,
+        **kwargs
+    ):
 
         # Factor to increase nside for the particle mesh
         self.nside_factor = nside_factor
-        # Factor to increase radial resolution for the particle mesh 
+        # Factor to increase radial resolution for the particle mesh
         self.ndiv_radial = ndiv_radial
 
         super(CorrZA, self).__init__(ps, ps_redshift, sigma_v, **kwargs)
@@ -396,8 +402,7 @@ class CorrZA(Corr21cm):
             z1 = nu1
             z2 = nu2
 
-        return corr.RedshiftCorrelation.raw_angular_powerspectrum(
-                                                        self, l, z1, z2)
+        return corr.RedshiftCorrelation.raw_angular_powerspectrum(self, l, z1, z2)
 
     # Override raw_angular_powerspectrum to gen the PS of the Newtonian potential
     def potential_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
@@ -426,8 +431,8 @@ class CorrZA(Corr21cm):
             z2 = nu2
 
         return corr.RedshiftCorrelation.raw_angular_powerspectrum(
-                                        self, l, z1, z2, potential=True)
-
+            self, l, z1, z2, potential=True
+        )
 
     # Za in two steps: displace - bias - displace RSD
     def getsky_2s(self):
@@ -444,39 +449,42 @@ class CorrZA(Corr21cm):
         # Add frequency padding for correct particle displacement at edges
         frequencies, freq_slice = self._pad_freqs(self._frequencies)
 
-#        # Angular power spectrum for the matter field
-#        cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
-#                             frequencies, zromb=self.oversample)
+        #        # Angular power spectrum for the matter field
+        #        cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
+        #                             frequencies, zromb=self.oversample)
 
         # Angular power spectrum for the Newtonian potential
-        cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
-                                 frequencies, zromb=self.oversample)
+        cla_pot = skysim.clarray(
+            self.potential_angular_powerspectrum,
+            lmax,
+            frequencies,
+            zromb=self.oversample,
+        )
 
-        redshift_array = units.nu21 / frequencies - 1.
+        redshift_array = units.nu21 / frequencies - 1.0
         comovd = self.cosmology.comoving_distance(redshift_array)
 
-#        # Generate gaussian random numbers for realization
-#        gaussvars_list = [nputil.complex_std_normal((cla_pot.shape[1], l + 1)) 
-#                          for l in range(cla_pot.shape[0])]
-#        # Generate matter field maps
-#        maps = skysim.mkfullsky(cla, self.nside, 
-#                                gaussvars_list=gaussvars_list)
+        #        # Generate gaussian random numbers for realization
+        #        gaussvars_list = [nputil.complex_std_normal((cla_pot.shape[1], l + 1))
+        #                          for l in range(cla_pot.shape[0])]
+        #        # Generate matter field maps
+        #        maps = skysim.mkfullsky(cla, self.nside,
+        #                                gaussvars_list=gaussvars_list)
 
         # Generate potential field maps and their spacial derivatives:
         maps_der1 = skysim.mkfullsky_der1(cla_pot, self.nside, comovd)
 
         # Apply growth factor:
         D = self.growth_factor(redshift_array) / self.growth_factor(self.ps_redshift)
-#        maps *= D[:, np.newaxis]
+        #        maps *= D[:, np.newaxis]
         maps_der1 *= D[np.newaxis, :, np.newaxis]
 
         npix = hp.pixelfunc.nside2npix(self.nside)
-        base_coordinates = np.array(hp.pixelfunc.pix2ang(
-                                        self.nside, np.arange(npix)))
+        base_coordinates = np.array(hp.pixelfunc.pix2ang(self.nside, np.arange(npix)))
 
         # Divide by comoving distance to get angular displacements:
         maps_der1[1:3] /= comovd[np.newaxis, :, np.newaxis]
-        # Divide by sin(theta) to get phi displacements, 
+        # Divide by sin(theta) to get phi displacements,
         # not angular displacements:
         maps_der1[2] /= np.sin(base_coordinates[0][np.newaxis, :])
 
@@ -487,32 +495,44 @@ class CorrZA(Corr21cm):
         # Compute density in the Zeldovich approximation:
         # TODO: Multiply linear density maps_der1[0] by lagrangean bias of
         # the tracers involved.
-        maps0 = np.zeros(maps_der1[0].shape, dtype=maps_der1.dtype) # TODO: delete
-#        delta_za = pm.za_density(maps_der1[1:], maps, self.nside,
-        delta_za = pm.za_density(maps_der1[1:], maps0, self.nside,
-                                 comovd, self.nside_factor, self.ndiv_radial,
-                                 nslices=2)
+        maps0 = np.zeros(maps_der1[0].shape, dtype=maps_der1.dtype)  # TODO: delete
+        #        delta_za = pm.za_density(maps_der1[1:], maps, self.nside,
+        delta_za = pm.za_density(
+            maps_der1[1:],
+            maps0,
+            self.nside,
+            comovd,
+            self.nside_factor,
+            self.ndiv_radial,
+            nslices=2,
+        )
         # Apply simple Eulerian bias
-        delta_za = delta_za * 2.
+        delta_za = delta_za * 2.0
         # Displace for RSD:
-        delta_za = pm.za_density(disp_rsd, delta_za, self.nside,
-                                 comovd, self.nside_factor, self.ndiv_radial,
-                                 nslices=2) 
+        delta_za = pm.za_density(
+            disp_rsd,
+            delta_za,
+            self.nside,
+            comovd,
+            self.nside_factor,
+            self.ndiv_radial,
+            nslices=2,
+        )
 
         # Recover original frequency range:
         delta_za = delta_za[freq_slice]
 
         # Multiply by prefactor (21cm brightness)
         pref = self.prefactor(redshift_array[freq_slice])[:, np.newaxis]
-#        bias = self.bias_z(redshift_array[freq_slice])[:, np.newaxis]
+        #        bias = self.bias_z(redshift_array[freq_slice])[:, np.newaxis]
 
         # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
-        #return delta_za * pref * bias # TODO: remove. Bias done in Lagrangian space.
-        #return delta_za * pref
+        # return delta_za * pref * bias # TODO: remove. Bias done in Lagrangian space.
+        # return delta_za * pref
         return delta_za, maps_der1
 
     @Corr21cm.frequencies.setter
-    def frequencies(self,freq):
+    def frequencies(self, freq):
         """Overrides the frequencies setter to also
         define freqs_full and freq_slice.
         """
@@ -535,70 +555,79 @@ class CorrZA(Corr21cm):
 
         if gaussvars_list is None:
             # Generate gaussian random numbers for realization
-            gaussvars_list = [nputil.complex_std_normal((nz_full, l + 1))
-                              for l in range(lmax+1)]
+            gaussvars_list = [
+                nputil.complex_std_normal((nz_full, l + 1)) for l in range(lmax + 1)
+            ]
 
         # Angular power spectrum for the matter field
-        cla = skysim.clarray(self.raw_angular_powerspectrum, lmax,
-                             self.freqs_full, zromb=self.oversample)
+        cla = skysim.clarray(
+            self.raw_angular_powerspectrum, lmax, self.freqs_full, zromb=self.oversample
+        )
         # Angular power spectrum for the Newtonian potential
-        cla_pot = skysim.clarray(self.potential_angular_powerspectrum, lmax,
-                                 self.freqs_full, zromb=self.oversample)
+        cla_pot = skysim.clarray(
+            self.potential_angular_powerspectrum,
+            lmax,
+            self.freqs_full,
+            zromb=self.oversample,
+        )
 
-        redshift_array = units.nu21 / self.freqs_full - 1.
+        redshift_array = units.nu21 / self.freqs_full - 1.0
         comovd = self.cosmology.comoving_distance(redshift_array)
 
         # Generate matter field maps
-        maps = skysim.mkfullsky(cla, self.nside, 
-                                gaussvars_list=gaussvars_list)
+        maps = skysim.mkfullsky(cla, self.nside, gaussvars_list=gaussvars_list)
         # Generate potential field maps and their spacial derivatives:
-        maps_der1 = skysim.mkfullsky_der1(cla_pot, self.nside, comovd, 
-                                          gaussvars_list=gaussvars_list)
+        maps_der1 = skysim.mkfullsky_der1(
+            cla_pot, self.nside, comovd, gaussvars_list=gaussvars_list
+        )
 
         # Apply growth factor:
-        D = (self.growth_factor(redshift_array) 
-             / self.growth_factor(self.ps_redshift))
+        D = self.growth_factor(redshift_array) / self.growth_factor(self.ps_redshift)
         maps *= D[:, np.newaxis]
         maps_der1 *= D[np.newaxis, :, np.newaxis]
 
         npix = hp.pixelfunc.nside2npix(self.nside)
-        base_coordinates = np.array(hp.pixelfunc.pix2ang(
-                                        self.nside, np.arange(npix)))
+        base_coordinates = np.array(hp.pixelfunc.pix2ang(self.nside, np.arange(npix)))
 
         # Divide by comoving distance to get angular displacements:
         maps_der1[1:3] /= comovd[np.newaxis, :, np.newaxis]
-        # Divide by sin(theta) to get phi displacements, 
+        # Divide by sin(theta) to get phi displacements,
         # not angular displacements:
         maps_der1[2] /= np.sin(base_coordinates[0][np.newaxis, :])
         # Add extra displacement due to redshift space distortions.
-        maps_der1[3] *= (1. + self.growth_rate(redshift_array))[:, np.newaxis]
+        maps_der1[3] *= (1.0 + self.growth_rate(redshift_array))[:, np.newaxis]
 
         # Apply a lognormal transformation on the biased Lagrangian field
         # to get rid of negative densities. Pass filed with mean 1, not 0.
-#        maps = np.exp(maps*self.lagbias_z(redshift_array)[:, np.newaxis])
-        maps = maps*self.lagbias_z(redshift_array)[:, np.newaxis] + 1.
-        maps = np.where(maps<0.,0.,maps)
+        #        maps = np.exp(maps*self.lagbias_z(redshift_array)[:, np.newaxis])
+        maps = maps * self.lagbias_z(redshift_array)[:, np.newaxis] + 1.0
+        maps = np.where(maps < 0.0, 0.0, maps)
 
         # Compute density in the Zeldovich approximation:
         # Multiply linear density maps by lagrangian bias of the tracer.
         delta_za = pm.za_density(
-                        maps_der1[1:], maps, self.nside, comovd,
-                        self.nside_factor, self.ndiv_radial, nslices=2)
+            maps_der1[1:],
+            maps,
+            self.nside,
+            comovd,
+            self.nside_factor,
+            self.ndiv_radial,
+            nslices=2,
+        )
 
         # Recover original frequency range:
         delta_za = delta_za[self.freq_slice]
 
         # TODO: Add mean value: self.mean_nu(self.nu_pixels) ?
-        #return delta_za, maps, maps_der1
+        # return delta_za, maps, maps_der1
         return delta_za
 
     def lagbias_z(self, z):
-        """Linear Lagrangian bias from the Eulerian counterpart
-        """
-        return self.bias_z(z) - 1.
+        """Linear Lagrangian bias from the Eulerian counterpart"""
+        return self.bias_z(z) - 1.0
 
     def _pad_freqs(self, freqs):
-        """ Add frequency padding for correct particle displacement at
+        """Add frequency padding for correct particle displacement at
         the edges.
         """
 
@@ -606,19 +635,19 @@ class CorrZA(Corr21cm):
             # Pad with 3 bins at 400MHz and 6 bins ad 800MHz.
             # Linear (integer) fill in between. Ensures maps average is
             # less than 1% of RMS at all frequencies at frequency edge bins.
-            return int(np.around(3./400.*(ff-400.)+3.))
+            return int(np.around(3.0 / 400.0 * (ff - 400.0) + 3.0))
 
         zpad = (get_zpad(freqs[0]), get_zpad(freqs[1]))
         # Assume constant linear spacing in freqsuency:
-        df = freqs[1]-freqs[0]
+        df = freqs[1] - freqs[0]
         # Overwrite frequency axis with padded one:
-        lower_freq_pad = freqs[0]+np.arange(-zpad[0], 0)*df
-        upper_freq_pad = freqs[-1]+np.arange(1, 1+zpad[1])*df
+        lower_freq_pad = freqs[0] + np.arange(-zpad[0], 0) * df
+        upper_freq_pad = freqs[-1] + np.arange(1, 1 + zpad[1]) * df
         freqs = np.concatenate((lower_freq_pad, freqs, upper_freq_pad))
         # Frequency slice to recover original axis:
         frq_slc = np.ones(freqs.shape, dtype=bool)
-        frq_slc[:zpad[0]] = False
-        frq_slc[-zpad[1]:] = False
+        frq_slc[: zpad[0]] = False
+        frq_slc[-zpad[1] :] = False
 
         return freqs, frq_slc
 
@@ -647,18 +676,26 @@ class CorrBiasedTracerZA(CorrZA):
     r"""Correlation function of a biased field density fluctuations
     using the Zeldovich approximation.
     """
-    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-                 ps_redshift=0.0, sigma_v=0.0, tracer_type='none',
-                 **kwargs):
+
+    def __init__(
+        self,
+        ps=None,
+        nside_factor=4,
+        ndiv_radial=4,
+        ps_redshift=0.0,
+        sigma_v=0.0,
+        tracer_type="none",
+        **kwargs
+    ):
 
         # Tracer type
         self.tracer_type = tracer_type
-        super(CorrBiasedTracerZA, self).__init__(ps, nside_factor, ndiv_radial,
-                                         ps_redshift, sigma_v, **kwargs)
+        super(CorrBiasedTracerZA, self).__init__(
+            ps, nside_factor, ndiv_radial, ps_redshift, sigma_v, **kwargs
+        )
 
     def bias_z(self, z):
-        """
-        """
+        """"""
         return _tracer_bias_z(z, self.tracer_type)
 
 
@@ -666,35 +703,34 @@ class CorrBiasedTracer(Corr21cm):
     r"""Correlation function of a biased field density fluctuations
     using the Gaussian fields.
     """
-    def __init__(self, ps=None, ps_redshift=0.0, sigma_v=0.0,
-                 tracer_type='none', **kwargs):
+
+    def __init__(
+        self, ps=None, ps_redshift=0.0, sigma_v=0.0, tracer_type="none", **kwargs
+    ):
 
         # Tracer type
         self.tracer_type = tracer_type
         super(CorrBiasedTracer, self).__init__(ps, ps_redshift, sigma_v, **kwargs)
 
-
     def prefactor(self, z):
-        """ This inherits from Corr21cm, so need to overwrite 
-            prefactor to ones. """
+        """This inherits from Corr21cm, so need to overwrite
+        prefactor to ones."""
         return 1.0 * np.ones_like(z)
 
     def bias_z(self, z):
-        """
-        """
+        """"""
         return _tracer_bias_z(z, self.tracer_type)
 
 
 def _tracer_bias_z(z, tracer_type):
-    """
-    """
-    if tracer_type == 'none':
+    """"""
+    if tracer_type == "none":
         return np.ones_like(z)
 
-    if tracer_type == 'qso':
+    if tracer_type == "qso":
         # Quasars. Bias taken from arXiv:1705.04718
         alpha, beta = 0.278, 2.393
-        return alpha*((1 + z)**2 - 6.565) + beta
+        return alpha * ((1 + z) ** 2 - 6.565) + beta
 
 
 class Corr21cmZA(CorrZA):
@@ -706,66 +742,65 @@ class Corr21cmZA(CorrZA):
 
     """
 
-#    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-#                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
-#        """
-#        """
-#
-#        from os.path import join, dirname
-#        if ps is None:
-#            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
-#            ps_redshift = 1.5
-#            ps_full = cs.LogInterpolater.fromfile(psfile)
-#            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * ps_full(k)
-#        else:
-#            # This might mean passing a smoothed PS to the halo model. 
-#            # TODO: This is probably a bug. Maybe I should not accept ps as
-#            # an input parameter in Corr21cmZA.
-#            ps_full = ps
-#
-#        super(Corr21cmZA, self).__init__(ps, nside_factor, ndiv_radial,
-#                                         ps_redshift, sigma_v, **kwargs)
-#
-#        # Pass the full (not smoothed) Power Spectrum to the halo model
-#        # HaloModel uses powerspectrum normalized to z=0
-#        def hmps(k):
-#            return ps_full(k) * (self.growth_factor(0.)
-#                            / self.growth_factor(self.ps_redshift))**2
-#
-#        # Initialize HaloModel
-#        self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
-#        self.hm.check_update()
+    #    def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
+    #                 ps_redshift=0.0, sigma_v=0.0, **kwargs):
+    #        """
+    #        """
+    #
+    #        from os.path import join, dirname
+    #        if ps is None:
+    #            psfile = join(dirname(__file__),"data/ps_z1.5.dat")
+    #            ps_redshift = 1.5
+    #            ps_full = cs.LogInterpolater.fromfile(psfile)
+    #            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * ps_full(k)
+    #        else:
+    #            # This might mean passing a smoothed PS to the halo model.
+    #            # TODO: This is probably a bug. Maybe I should not accept ps as
+    #            # an input parameter in Corr21cmZA.
+    #            ps_full = ps
+    #
+    #        super(Corr21cmZA, self).__init__(ps, nside_factor, ndiv_radial,
+    #                                         ps_redshift, sigma_v, **kwargs)
+    #
+    #        # Pass the full (not smoothed) Power Spectrum to the halo model
+    #        # HaloModel uses powerspectrum normalized to z=0
+    #        def hmps(k):
+    #            return ps_full(k) * (self.growth_factor(0.)
+    #                            / self.growth_factor(self.ps_redshift))**2
+    #
+    #        # Initialize HaloModel
+    #        self.hm = halomodel.HaloModel(gf=self.growth_factor, ps=hmps)
+    #        self.hm.check_update()
 
-#    def bias_z(self, z):
-#        """ Overwrites lagbias_z to use a halo model derived HI bias.
-#        """
-#        bias = []
-#        for zz in z:
-#            self.hm.redshift = zz
-#            bias.append(self.hm.lbias_h1() + 1)
-#
-#        return np.array(bias)
+    #    def bias_z(self, z):
+    #        """ Overwrites lagbias_z to use a halo model derived HI bias.
+    #        """
+    #        bias = []
+    #        for zz in z:
+    #            self.hm.redshift = zz
+    #            bias.append(self.hm.lbias_h1() + 1)
+    #
+    #        return np.array(bias)
 
-    def getsky(self,gaussvars_list=None):
-        """ Overwrites getsky to add correct pre-factors
-        """
+    def getsky(self, gaussvars_list=None):
+        """Overwrites getsky to add correct pre-factors"""
         # Get sky
         delta_za = super(Corr21cmZA, self).getsky(gaussvars_list)
         # Apply prefactor
-        redshift_array = units.nu21 / self.frequencies - 1.
+        redshift_array = units.nu21 / self.frequencies - 1.0
         pref = self.prefactor(redshift_array)[:, np.newaxis]
 
         # TODO: add prefactor
-        #print pref
+        # print pref
         return delta_za * pref
-        #return delta_za
+        # return delta_za
 
 
 class EoR21cm(Corr21cm):
     def T_b(self, z):
 
         r"""Mean 21cm brightness temperature at a given redshift.
-        
+
         According to Eq.(4) of M. G. Santos, L. Ferramacho and M. B. Silva, 2009, Fast Large Volume Simulations of the Epoch of Reionization.
 
         Temperature is in K.
