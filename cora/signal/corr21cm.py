@@ -796,6 +796,93 @@ class Corr21cmZA(CorrZA):
         # return delta_za
 
 
+class Corr21cmNoRSD(Corr21cm):
+    r"""Correlation function of HI brightness temperature fluctuations.
+
+    Incorporates reasonable approximations for the growth factor and
+    growth rate.
+    """
+
+    # Override angular_power spectrum to switch to allow using frequency
+    def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return corr.RedshiftCorrelation.norsd_angular_powerspectrum(
+            self, l, z1, z2
+        )
+
+    # Override angular_power spectrum to switch to allow using frequency
+    def angular_powerspectrum_full(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum by explicit integration.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        raise NotImplementedError(
+            "angular_powerspectrum_full not implemented in Corr21cmNoRSD!"
+        )
+
+
+class CorrBiasedTracerNoRSD(Corr21cmNoRSD):
+    r"""Correlation function of a biased field density fluctuations
+    using the Gaussian fields.
+    """
+
+    def __init__(
+        self, ps=None, ps_redshift=0.0, sigma_v=0.0, tracer_type="none", **kwargs
+    ):
+
+        # Tracer type
+        self.tracer_type = tracer_type
+        super(CorrBiasedTracerNoRSD, self).__init__(
+            ps, ps_redshift, sigma_v, **kwargs
+        )
+
+    def prefactor(self, z):
+        """This inherits from Corr21cm, so need to overwrite
+        prefactor to ones."""
+        return 1.0 * np.ones_like(z)
+
+    def bias_z(self, z):
+        """"""
+        return _tracer_bias_z(z, self.tracer_type)
+
+
+
 class EoR21cm(Corr21cm):
     def T_b(self, z):
 
