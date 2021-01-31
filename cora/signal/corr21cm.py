@@ -220,7 +220,7 @@ class CorrBiasedTracer(corr.RedshiftCorrelation, maps.Sky3d):
                 bias.append(self.hm.lbias_h1() + 1)
             return np.array(bias).reshape(z_shape)
 
-        if tracer_type == 'qso':
+        if self.tracer_type == 'qso':
             # Quasars. Bias taken from arXiv:1705.04718
             alpha, beta = 0.278, 2.393
             return alpha*((1 + z)**2 - 6.565) + beta
@@ -334,7 +334,8 @@ class CorrBiasedTracer(corr.RedshiftCorrelation, maps.Sky3d):
 
             if self.lognorm:
                 # Log-normalization:
-                zero_mean_map = np.exp(zero_mean_map) - 1.0
+                map_var = np.var(zero_mean_map, axis=1)
+                zero_mean_map = np.exp(zero_mean_map - map_var[:, np.newaxis]) - 1.0
 
             # Apply prefactor, evolution and bias since 
             # they were ommited in the C_l's.
