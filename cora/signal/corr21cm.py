@@ -937,3 +937,55 @@ class EoR21cm(Corr21cm):
         r"""Changing the bias from 1 to 3, based on EoR bias estimates in Santos 2004 (arXiv: 0408515)"""
 
         return np.ones_like(z) * 3.0
+
+
+class Corr21cmTestZCorr(Corr21cm):
+    r"""Correlation function of HI brightness temperature fluctuations.
+
+    This modifies C_ell(z,z') to have customized redshift correlations,
+    for testing of other pieces of code.
+    """
+
+    def getsky(self):
+        """Create a map of the unpolarised sky.
+        """
+
+        lmax = 3 * self.nside - 1
+
+        # Get standard C_l(z,z')
+        cla = skysim.clarray(
+            self.angular_powerspectrum, lmax, self.nu_pixels, zromb=self.oversample
+        )
+
+        # Modify to have 50% correlation between non-identical redshifts
+        for zi in range(cla.shape[1]):
+            for zj in range(cla.shape[1]):
+                cla[:, zi, zj] = 0.5 * np.sqrt(cla[:, zi, zi] * cla[:, zj, zj])
+
+        return self.mean_nu(self.nu_pixels)[:, np.newaxis] + skysim.mkfullsky(
+            cla, self.nside
+        )
+
+class CorrBiasedTracerTestZCorr(Corr21cmTestZCorr):
+    r"""Correlation function of a biased field density fluctuations
+    using the Gaussian fields.
+    """
+
+    def __init__(
+        self, ps=None, ps_redshift=0.0, sigma_v=0.0, tracer_type="none", **kwargs
+    ):
+
+        # Tracer type
+        self.tracer_type = tracer_type
+        super(CorrBiasedTracerTestZCorr, self).__init__(
+            ps, ps_redshift, sigma_v, **kwargs
+        )
+
+    def prefactor(self, z):
+        """This inherits from Corr21cm, so need to overwrite
+        prefactor to ones."""
+        return 1.0 * np.ones_like(z)
+
+    def bias_z(self, z):
+        """"""
+        return _tracer_bias_z(z, self.tracer_type)
