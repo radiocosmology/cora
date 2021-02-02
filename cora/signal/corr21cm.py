@@ -962,7 +962,7 @@ class Corr21cmTestZCorr(Corr21cm):
         for zi in range(cla.shape[1]):
             for zj in range(cla.shape[1]):
                 if zi != zj:
-                    cla[:, zi, zj] = 0.5 * np.sqrt(cla[:, zi, zi] * cla[:, zj, zj])
+                    cla[:, zi, zj] = (1 - 0.05 * np.abs(zi-zj)) *  np.sqrt(cla[:, zi, zi] * cla[:, zj, zj])
                 
         return self.mean_nu(self.nu_pixels)[:, np.newaxis] + skysim.mkfullsky(
             cla, self.nside
