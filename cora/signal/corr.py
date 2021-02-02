@@ -1243,7 +1243,7 @@ class RedshiftCorrelation(object):
             (b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv
         )
 
-    def norsd_angular_powerspectrum(self, la, za1, za2):
+    def norsd_angular_powerspectrum(self, la, za1, za2, pk_powerlaw=None):
         """The angular powerspectrum C_l(z1, z2) in a flat-sky limit,
         without redshift-space distortions.
 
@@ -1283,9 +1283,16 @@ class RedshiftCorrelation(object):
                     * np.sinc(kpar * self._freq_window / (2 * np.pi)) ** 2
                 )
             else:
-                self._dd = (
-                    self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi)) ** 2
-                )
+                if pk_powerlaw is not None:
+                    pk = np.zeros_like(k, dtype=np.float64)
+                    pk[k > 0.01] = k**-2
+                    self._dd = (
+                        pk * np.sinc(kpar * self._freq_window / (2 * np.pi)) ** 2
+                    )
+                else:
+                    self._dd = (
+                        self.ps_vv(k) * np.sinc(kpar * self._freq_window / (2 * np.pi)) ** 2
+                    )
 
             self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2 * nkpar)
 

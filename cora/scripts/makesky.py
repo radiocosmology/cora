@@ -357,7 +357,13 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     is_flag=True,
     help="Generate maps with customized z-z' correlations.",
 )
-def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, testzcorr):
+@click.option(
+    "--pk_powerlaw",
+    type=float,
+    default=None,
+    help='Sets P(k) to a power law in k with this tilt.'
+)
+def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, testzcorr, pk_powrlaw):
     """Generate a Gaussian simulation of the unresolved 21cm background.
     """
 
@@ -372,7 +378,7 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, 
             cr = corr21cm.Corr21cmZA(bias=bias)
         else:
             if norsd:
-                cr = corr21cm.Corr21cmNoRSD(bias=bias)
+                cr = corr21cm.Corr21cmNoRSD(bias=bias, pk_powerlaw=pk_powerlaw)
             elif testzcorr:
                 cr = corr21cm.Corr21cmTestZCorr(bias=bias)
             else:
@@ -430,7 +436,13 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, 
     is_flag=True,
     help="Generate maps with customized z-z' correlations.",
 )
-def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, norsd, testzcorr):
+@click.option(
+    "--pk_powerlaw",
+    type=float,
+    default=None,
+    help='Sets P(k) to a power law in k with this tilt.'
+)
+def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, norsd, testzcorr, pk_powerlaw):
     """Generate an unresolved Gaussian simulation of the distribution of the chosen tracer.
        For now it only does QSOs.
     """
@@ -442,7 +454,7 @@ def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, norsd, tes
         cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype)
     else:
         if norsd:
-            cr = corr21cm.CorrBiasedTracerNoRSD(tracer_type=ttype)
+            cr = corr21cm.CorrBiasedTracerNoRSD(tracer_type=ttype, pk_powerlaw=pk_powerlaw)
         elif testzcorr:
             cr = corr21cm.CorrBiasedTracerTestZCorr(tracer_type=ttype)
         else:

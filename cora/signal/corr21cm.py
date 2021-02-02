@@ -803,6 +803,12 @@ class Corr21cmNoRSD(Corr21cm):
     growth rate.
     """
 
+    def __init__(self, pk_powerlaw=None, **kwargs):
+
+        self.pk_powerlaw = pk_powerlaw
+
+        super(Corr21cmNoRSD, self).__init__(**kwargs)
+
     # Override angular_power spectrum to switch to allow using frequency
     def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
         """Calculate the angular powerspectrum.
@@ -830,7 +836,7 @@ class Corr21cmNoRSD(Corr21cm):
             z2 = nu2
 
         return corr.RedshiftCorrelation.norsd_angular_powerspectrum(
-            self, l, z1, z2
+            self, l, z1, z2, pk_powerlaw=self.pk_powerlaw
         )
 
     # Override angular_power spectrum to switch to allow using frequency
@@ -863,7 +869,8 @@ class CorrBiasedTracerNoRSD(Corr21cmNoRSD):
     """
 
     def __init__(
-        self, ps=None, ps_redshift=0.0, sigma_v=0.0, tracer_type="none", **kwargs
+        self, ps=None, ps_redshift=0.0, sigma_v=0.0, tracer_type="none",
+        pk_powerlaw=None, **kwargs
     ):
 
         # Tracer type
@@ -963,7 +970,7 @@ class Corr21cmTestZCorr(Corr21cm):
             for zj in range(cla.shape[1]):
                 if zi != zj:
                     cla[:, zi, zj] = (1 - 0.05 * np.abs(zi-zj)) *  np.sqrt(cla[:, zi, zi] * cla[:, zj, zj])
-                
+
         return self.mean_nu(self.nu_pixels)[:, np.newaxis] + skysim.mkfullsky(
             cla, self.nside
         )
