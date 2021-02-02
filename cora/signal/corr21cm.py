@@ -803,7 +803,8 @@ class Corr21cmNoRSD(Corr21cm):
     growth rate.
     """
 
-    def __init__(self, pk_powerlaw=None, **kwargs):
+    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0,
+        pk_powerlaw=None, **kwargs):
 
         self.pk_powerlaw = pk_powerlaw
 
@@ -869,14 +870,13 @@ class CorrBiasedTracerNoRSD(Corr21cmNoRSD):
     """
 
     def __init__(
-        self, ps=None, ps_redshift=0.0, sigma_v=0.0, tracer_type="none",
-        pk_powerlaw=None, **kwargs
+        self, ps=None, ps_redshift=0.0, sigma_v=0.0,
+        tracer_type="none", pk_powerlaw=None, **kwargs
     ):
-
         # Tracer type
         self.tracer_type = tracer_type
         super(CorrBiasedTracerNoRSD, self).__init__(
-            ps, ps_redshift, sigma_v, **kwargs
+            ps, ps_redshift, sigma_v, pk_powerlaw, **kwargs
         )
 
     def prefactor(self, z):
