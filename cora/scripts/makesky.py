@@ -363,7 +363,7 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     default=None,
     help='Sets P(k) to a power law in k with this tilt.'
 )
-def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, testzcorr, pk_powrlaw):
+def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, testzcorr, pk_powerlaw):
     """Generate a Gaussian simulation of the unresolved 21cm background.
     """
 
