@@ -961,8 +961,9 @@ class Corr21cmTestZCorr(Corr21cm):
         # Modify to have 50% correlation between non-identical redshifts
         for zi in range(cla.shape[1]):
             for zj in range(cla.shape[1]):
-                cla[:, zi, zj] = 0.5 * np.sqrt(cla[:, zi, zi] * cla[:, zj, zj])
-
+                if zi != zj:
+                    cla[:, zi, zj] = 0.5 * np.sqrt(cla[:, zi, zi] * cla[:, zj, zj])
+                
         return self.mean_nu(self.nu_pixels)[:, np.newaxis] + skysim.mkfullsky(
             cla, self.nside
         )
