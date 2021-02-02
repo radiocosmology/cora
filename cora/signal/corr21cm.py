@@ -949,6 +949,7 @@ class Corr21cmTestZCorr(Corr21cm):
     def getsky(self):
         """Create a map of the unpolarised sky.
         """
+        from cora.core import skysim
 
         lmax = 3 * self.nside - 1
 
