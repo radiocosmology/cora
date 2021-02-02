@@ -1,9 +1,9 @@
 """Utility functions to help with pure numpy stuff."""
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 from future.utils import native_str
@@ -51,7 +51,9 @@ def load_ndarray_list(fname):
     return la
 
 
-def matrix_root_manynull(mat, threshold=1e-16, truncate=True, fixed_ev_sign_convention=True):
+def matrix_root_manynull(
+    mat, threshold=1e-16, truncate=True, fixed_ev_sign_convention=True
+):
     """Square root a matrix.
 
     An inefficient alternative to the Cholesky decomposition for a
@@ -86,14 +88,14 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True, fixed_ev_sign_conv
     """
 
     # Try to perform a Cholesky first as it's much faster (8x)
-# TODO: I think the Cholesky was failing and I disabled it.
-# Then the 'lower=True' argument was added, maybe that fixed it? Should try.
-#    try:
-#        root = la.cholesky(mat, lower=True)
-#        num_pos = mat.shape[0]
-#
-#    # If that doesn't work do an eigenvalue and throw out any tiny modes
-#    except la.LinAlgError:
+    # TODO: I think the Cholesky was failing and I disabled it.
+    # Then the 'lower=True' argument was added, maybe that fixed it? Should try.
+    #    try:
+    #        root = la.cholesky(mat, lower=True)
+    #        num_pos = mat.shape[0]
+    #
+    #    # If that doesn't work do an eigenvalue and throw out any tiny modes
+    #    except la.LinAlgError:
     evals, evecs = la.eigh(mat)
 
     evals[np.where(evals < evals.max() * threshold)] = 0.0

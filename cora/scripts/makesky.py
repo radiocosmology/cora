@@ -1,10 +1,10 @@
 """Command line script for making sky maps.
 """
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import os
@@ -337,15 +337,13 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     help="Use the Zeldovich approximation (instead of a simple Gaussian field). Ignored if EoR.",
 )
 @click.option(
-    "--seed",
-    type=int,
-    help='Set the seed for the matter realization random generator.'
+    "--seed", type=int, help="Set the seed for the matter realization random generator."
 )
 @click.option(
     "--bias",
     type=float,
-    default = 1.0,
-    help="If a number > 0 apply this constant bias (default is 1). If 0 is given, use the halo model to compute a redshift dependent bias."
+    default=1.0,
+    help="If a number > 0 apply this constant bias (default is 1). If 0 is given, use the halo model to compute a redshift dependent bias.",
 )
 @click.option(
     "--norsd",
@@ -361,11 +359,23 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     "--pk_powerlaw",
     type=float,
     default=None,
-    help='Sets P(k) to a power law in k with this tilt.'
+    help="Sets P(k) to a power law in k with this tilt.",
 )
-def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, testzcorr, pk_powerlaw):
-    """Generate a Gaussian simulation of the unresolved 21cm background.
-    """
+def _21cm(
+    fstate,
+    nside,
+    pol,
+    filename,
+    eor,
+    oversample,
+    za,
+    seed,
+    bias,
+    norsd,
+    testzcorr,
+    pk_powerlaw,
+):
+    """Generate a Gaussian simulation of the unresolved 21cm background."""
 
     from cora.signal import corr21cm
     from cora.util import nputil
@@ -388,7 +398,7 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, 
     cr.frequencies = fstate.frequencies
     cr.oversample = oversample if oversample is not None else 3
 
-    if ((pol == "full") and za):
+    if (pol == "full") and za:
         msg = "Option pol = 'full' is not implemented for ZA case. Please use pol = ['zero', 'none']"
         raise NotImplementedError(msg)
 
@@ -416,15 +426,13 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, 
     help="Use the Zeldovich approximation (instead of a simple Gaussian field). Ignored if EoR.",
 )
 @click.option(
-    "--seed",
-    type=int,
-    help='Set the seed for the matter realization random generator.'
+    "--seed", type=int, help="Set the seed for the matter realization random generator."
 )
 @click.option(
     "--ttype",
     type=str,
-    default='none',
-    help="The type of tracer to use. For now ony accepts 'qso' or 'none'"
+    default="none",
+    help="The type of tracer to use. For now ony accepts 'qso' or 'none'",
 )
 @click.option(
     "--norsd",
@@ -440,11 +448,23 @@ def _21cm(fstate, nside, pol, filename, eor, oversample, za, seed, bias, norsd, 
     "--pk_powerlaw",
     type=float,
     default=None,
-    help='Sets P(k) to a power law in k with this tilt.'
+    help="Sets P(k) to a power law in k with this tilt.",
 )
-def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, norsd, testzcorr, pk_powerlaw):
+def tracer(
+    fstate,
+    nside,
+    pol,
+    filename,
+    oversample,
+    za,
+    seed,
+    ttype,
+    norsd,
+    testzcorr,
+    pk_powerlaw,
+):
     """Generate an unresolved Gaussian simulation of the distribution of the chosen tracer.
-       For now it only does QSOs.
+    For now it only does QSOs.
     """
 
     from cora.signal import corr21cm
@@ -454,7 +474,9 @@ def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, norsd, tes
         cr = corr21cm.CorrBiasedTracerZA(tracer_type=ttype)
     else:
         if norsd:
-            cr = corr21cm.CorrBiasedTracerNoRSD(tracer_type=ttype, pk_powerlaw=pk_powerlaw)
+            cr = corr21cm.CorrBiasedTracerNoRSD(
+                tracer_type=ttype, pk_powerlaw=pk_powerlaw
+            )
         elif testzcorr:
             cr = corr21cm.CorrBiasedTracerTestZCorr(tracer_type=ttype)
         else:
@@ -464,7 +486,7 @@ def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, norsd, tes
     cr.frequencies = fstate.frequencies
     cr.oversample = oversample if oversample is not None else 3
 
-    if ((pol == "full") and za):
+    if (pol == "full") and za:
         msg = "Option pol = 'full' is not implemented for ZA case. Please use pol = ['zero', 'none']"
         raise NotImplementedError(msg)
 
@@ -482,8 +504,7 @@ def tracer(fstate, nside, pol, filename, oversample, za, seed, ttype, norsd, tes
 @cli.command()
 @map_options
 def gaussianfg(fstate, nside, pol, filename):
-    """Generate a full-sky Gaussian random field for synchrotron emission.
-    """
+    """Generate a full-sky Gaussian random field for synchrotron emission."""
 
     import numpy as np
 
@@ -531,8 +552,7 @@ def gaussianfg(fstate, nside, pol, filename):
 @click.option("--ra", type=float, help="RA (in degrees) for source to add.", default=0)
 @click.option("--dec", type=float, help="DEC (in degrees) of source to add.", default=0)
 def singlesource(fstate, nside, pol, filename, ra, dec):
-    """Generate a test map with a single source (amplitude I=1) at the given position.
-    """
+    """Generate a test map with a single source (amplitude I=1) at the given position."""
     import healpy
 
     nfreq = len(fstate.frequencies)

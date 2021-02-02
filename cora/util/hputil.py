@@ -63,10 +63,10 @@ Co-ordinate Transform
 
 """
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import healpy
@@ -566,17 +566,20 @@ def sphtrans_inv_sky_der1(alm, nside):
 
     """
     nfreq = alm.shape[0]
-#    npol = alm.shape[1]
-#    pol = (npol >= 3)
+    #    npol = alm.shape[1]
+    #    pol = (npol >= 3)
 
-    sky_freq = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
-    d_theta = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
+    sky_freq = np.empty(
+        (nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64
+    )
+    d_theta = np.empty(
+        (nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64
+    )
     d_phi = np.empty((nfreq, alm.shape[1], healpy.nside2npix(nside)), dtype=np.float64)
 
     for i in range(nfreq):
-        almp = pack_alm(alm[i,0])
-        sky_freq[i, 0], d_theta[i, 0], d_phi[i, 0] = healpy.alm2map_der1(almp,
-                                                            nside)
+        almp = pack_alm(alm[i, 0])
+        sky_freq[i, 0], d_theta[i, 0], d_phi[i, 0] = healpy.alm2map_der1(almp, nside)
 
     return sky_freq, d_theta, d_phi
 

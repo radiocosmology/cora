@@ -803,8 +803,7 @@ class Corr21cmNoRSD(Corr21cm):
     growth rate.
     """
 
-    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0,
-        pk_powerlaw=None, **kwargs):
+    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0, pk_powerlaw=None, **kwargs):
 
         self.pk_powerlaw = pk_powerlaw
 
@@ -870,8 +869,13 @@ class CorrBiasedTracerNoRSD(Corr21cmNoRSD):
     """
 
     def __init__(
-        self, ps=None, ps_redshift=0.0, sigma_v=0.0,
-        tracer_type="none", pk_powerlaw=None, **kwargs
+        self,
+        ps=None,
+        ps_redshift=0.0,
+        sigma_v=0.0,
+        tracer_type="none",
+        pk_powerlaw=None,
+        **kwargs
     ):
         # Tracer type
         self.tracer_type = tracer_type
@@ -887,7 +891,6 @@ class CorrBiasedTracerNoRSD(Corr21cmNoRSD):
     def bias_z(self, z):
         """"""
         return _tracer_bias_z(z, self.tracer_type)
-
 
 
 class EoR21cm(Corr21cm):
@@ -954,8 +957,7 @@ class Corr21cmTestZCorr(Corr21cm):
     """
 
     def getsky(self):
-        """Create a map of the unpolarised sky.
-        """
+        """Create a map of the unpolarised sky."""
         from cora.core import skysim
 
         lmax = 3 * self.nside - 1
@@ -969,11 +971,14 @@ class Corr21cmTestZCorr(Corr21cm):
         for zi in range(cla.shape[1]):
             for zj in range(cla.shape[1]):
                 if zi != zj:
-                    cla[:, zi, zj] = (1 - 0.05 * np.abs(zi-zj)) *  np.sqrt(cla[:, zi, zi] * cla[:, zj, zj])
+                    cla[:, zi, zj] = (1 - 0.05 * np.abs(zi - zj)) * np.sqrt(
+                        cla[:, zi, zi] * cla[:, zj, zj]
+                    )
 
         return self.mean_nu(self.nu_pixels)[:, np.newaxis] + skysim.mkfullsky(
             cla, self.nside
         )
+
 
 class CorrBiasedTracerTestZCorr(Corr21cmTestZCorr):
     r"""Correlation function of a biased field density fluctuations

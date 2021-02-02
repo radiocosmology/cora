@@ -261,8 +261,7 @@ class PointSourceModel(maps.Map3d):
         return sky
 
     def getpolsky(self):
-        """Simulate polarised point sources.
-        """
+        """Simulate polarised point sources."""
 
         sky_I = self.getsky()
 

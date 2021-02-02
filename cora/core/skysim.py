@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 import numpy as np
@@ -103,7 +103,7 @@ def mkfullsky(corr, nside, alms=False, gaussvars_list=None):
     hpmaps : np.ndarray (numz, npix)
         The Healpix maps. hpmaps[i] is the i'th map.
     """
-    if not isinstance(corr,list):
+    if not isinstance(corr, list):
         corr = [corr]
     ncorr = len(corr)
 
@@ -113,8 +113,10 @@ def mkfullsky(corr, nside, alms=False, gaussvars_list=None):
     if corr[0].shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1),
-                           dtype=np.complex128) for ii in range(ncorr)]
+    alm_list = [
+        np.zeros((numz, 1, maxl + 1, maxl + 1), dtype=np.complex128)
+        for ii in range(ncorr)
+    ]
 
     # Generate gaussian deviates and transform to have correct correlation
     # structure
@@ -180,7 +182,7 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
     resmaps : list [ncorr]
         The Healpix maps and derivatives.
     """
-    if not isinstance(corr,list):
+    if not isinstance(corr, list):
         corr = [corr]
     ncorr = len(corr)
 
@@ -190,8 +192,10 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
     if corr[0].shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-    alm_list = [ np.zeros((numz, 1, maxl + 1, maxl + 1),
-                           dtype=np.complex128) for ii in range(ncorr)]
+    alm_list = [
+        np.zeros((numz, 1, maxl + 1, maxl + 1), dtype=np.complex128)
+        for ii in range(ncorr)
+    ]
 
     # Generate gaussian deviates and transform to have correct correlation
     # structure
@@ -206,7 +210,7 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
             corrm = corr[ii][l] + np.identity(numz) * cmax
 
             trans = nputil.matrix_root_manynull(corrm, truncate=False)
-            alm_list[ii][:, 0, l, :(l + 1)] = np.dot(trans, gaussvars)
+            alm_list[ii][:, 0, l, : (l + 1)] = np.dot(trans, gaussvars)
 
     if alms:
         if ncorr == 1:
@@ -223,11 +227,19 @@ def mkfullsky_der1(corr, nside, comovd, alms=False, gaussvars_list=None):
         # Before it wanted a scalar representing the 'x-variation' between points.
         # The problem is that if you give it an array in old versions it doesn't crash!
         # I guess it silently takes the first value as 'x-variation'...?
-        #spacing = np.gradient(comovd)
-        #d_x = np.gradient(sky[:,0],spacing,axis=0)
-        d_x = np.gradient(sky[:,0],comovd,axis=0)
-        resmaps.append(np.array([sky[:,0], d_theta[:,0]/comovd[:,None],
-                                d_phi[:,0]/comovd[:,None], d_x]))
+        # spacing = np.gradient(comovd)
+        # d_x = np.gradient(sky[:,0],spacing,axis=0)
+        d_x = np.gradient(sky[:, 0], comovd, axis=0)
+        resmaps.append(
+            np.array(
+                [
+                    sky[:, 0],
+                    d_theta[:, 0] / comovd[:, None],
+                    d_phi[:, 0] / comovd[:, None],
+                    d_x,
+                ]
+            )
+        )
 
     if ncorr == 1:
         return resmaps[0]

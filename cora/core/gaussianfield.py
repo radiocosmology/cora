@@ -1,8 +1,8 @@
 # === Start Python 2/3 compatibility
-from __future__ import (absolute_import, division,
-                        print_function, unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 from future.builtins import *  # noqa  pylint: disable=W0401, W0614
 from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
+
 # === End Python 2/3 compatibility
 
 from future.utils import native_str
@@ -19,7 +19,7 @@ class RandomField(object):
 
     An appropriate `powerspectrum` function must be implemented to use
     this class.
-    
+
     Parameters
     ----------
     npix : list of ints
@@ -33,13 +33,12 @@ class RandomField(object):
     _kweightgen = False
     _n = None
     _w = None
-    
+
     def __init__(self, npix=None, wsize=None):
-        
+
         self._n = np.array(npix) if npix is not None else npix
         self._w = np.array(wsize) if wsize is not None else self._n
-        
-        
+
     def _check_input(self):
         if self._n is None or self._w is None:
             raise Exception("Either self._n or self._w has not been set.")
@@ -52,7 +51,7 @@ class RandomField(object):
 
     def powerspectrum(self, karray):
         r"""Get the power spectrum value at each wavevector.
-        
+
         Parameters
         ----------
         karray : ndarray
@@ -132,7 +131,7 @@ class RandomField(object):
 
 class RandomFieldA2F(RandomField, maps.Map3d):
     r"""Generate a realisation of a 3d gaussian field.
-    
+
     This routine is to generate simulated 3d observations. It is
     tailored for situations where there are two angular dimensions,
     and the third is frequency. The `powerspectrum` function must be
@@ -150,7 +149,7 @@ class RandomFieldA2F(RandomField, maps.Map3d):
 
 class RandomFieldA2(RandomField, maps.Map2d):
     r"""Generate a realisation of a 2d gaussian field.
-    
+
     This routine is to generate simulated 2d observations. It is
     tailored for situations where there are two angular
     dimensions. The `powerspectrum` function must be implemented to
@@ -173,8 +172,8 @@ class Cmb(RandomFieldA2):
         """ Initialise the CMB field class. """
 
         from cora.util.cubicspline import LogInterpolater
-                
-        if(psfile is None):
+
+        if psfile is None:
             from os.path import dirname, join
 
             psfile = join(dirname(__file__), "ps_cmb2.dat")
