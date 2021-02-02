@@ -1304,7 +1304,12 @@ class RedshiftCorrelation(object):
             else:
                 if pk_powerlaw is not None:
                     pk = np.zeros_like(k, dtype=np.float64).flatten()
-                    pk[k.flatten() > 0.01] = k.flatten()[k.flatten() > 0.01] ** -2
+                    # Implement kpar_min=0.01 and kperp_min=0.01
+                    pk_mask = (
+                        ((kperp + 0*kpar).flatten() > 0.01)
+                        & ((0*kperp + kpar).flatten() > 0.01)
+                    )
+                    pk[pk_mask] = k.flatten()[pk_mask] ** -2
                     pk = pk.reshape(k.shape)
                     self._dd = pk * np.sinc(kpar * self._freq_window / (2 * np.pi)) ** 2
                 else:
