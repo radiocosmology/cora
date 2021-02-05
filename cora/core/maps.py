@@ -1,10 +1,3 @@
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
-
 import numpy as np
 
 from cora.util import units
@@ -21,8 +14,6 @@ class Map2d(object):
         Angular size along each axis (in degrees).
     x_num, y_num : int
         Number of pixels along each angular axis.
-    nside : int
-        Resolution of Healpix map (must be power of 2).
     """
     x_width = 5.0
     y_width = 5.0
@@ -34,8 +25,7 @@ class Map2d(object):
 
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
-        r"""Create a Map2d (or subclassed) object the same shape as a given object.
-        """
+        r"""Create a Map2d (or subclassed) object the same shape as a given object."""
 
         c = cls(*args, **kwargs)
         c.x_width = mapobj.x_width
@@ -62,7 +52,13 @@ class Map2d(object):
 
     @property
     def nside(self):
-        """The resolution of the Healpix map."""
+        """
+        The resolution of the Healpix map (must be power of 2).
+
+        Returns
+        -------
+        int
+        """
         return self._nside
 
     @nside.setter
@@ -112,8 +108,7 @@ class Map3d(Map2d):
 
     @classmethod
     def like_map(cls, mapobj, *args, **kwargs):
-        r"""Create a Map3d (or subclassed) object the same shape as a given object.
-        """
+        r"""Create a Map3d (or subclassed) object the same shape as a given object."""
         # c = Map2d.like_map(cls, mapobj, *args, **kwargs)
 
         c = cls(*args, **kwargs)
@@ -158,8 +153,7 @@ class Map3d(Map2d):
 
     @property
     def frequencies(self):
-        """List of frequencies in the map.
-        """
+        """List of frequencies in the map."""
 
         if self._frequencies is not None:
             return self._frequencies
@@ -170,8 +164,7 @@ class Map3d(Map2d):
 
     @frequencies.setter
     def frequencies(self, freq):
-        """Set the frequencies in the map.
-        """
+        """Set the frequencies in the map."""
         self._frequencies = freq
 
     # Alias for frequencies for supporting old code.
@@ -230,8 +223,7 @@ class Sky3d(Map3d):
         raise Exception("Not implemented in base class.")
 
     def getsky(self):
-        """Create a map of the unpolarised sky.
-        """
+        """Create a map of the unpolarised sky."""
 
         lmax = 3 * self.nside - 1
         cla = skysim.clarray(
@@ -243,8 +235,7 @@ class Sky3d(Map3d):
         )
 
     def getpolsky(self):
-        """Create a map of the fully polarised sky (Stokes, I, Q, U and V).
-        """
+        """Create a map of the fully polarised sky (Stokes, I, Q, U and V)."""
         sky_I = self.getsky()
 
         sky_IQU = np.zeros((sky_I.shape[0], 4, sky_I.shape[1]), dtype=sky_I.dtype)

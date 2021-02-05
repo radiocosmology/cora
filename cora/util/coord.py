@@ -1,52 +1,27 @@
 """
-===============================================
-Co-ordinate Utilities (:mod:`~cora.util.coord`)
-===============================================
+Co-ordinate Utilities
 
 A module of useful functions when dealing with Spherical Polar
 co-ordinates.
 
 Transforms
 ==========
-
-.. autosummary::
-    :toctree: generated/
-
-    sph_to_cart
-    cart_to_sph
+- :py:meth:`sph_to_cart`
+- :py:meth:`cart_to_sph`
 
 Vector operations
 =================
-
-.. autosummary::
-    :toctree: generated/
-
-    sph_dot
+- :py:meth:`sph_dot`
 
 Tangent Plane
 =============
-
-.. autosummary::
-    :toctree: generated/
-
-    thetaphi_plane
-    thetaphi_plane_cart
+- :py:meth:`thetaphi_plane`
+- :py:meth:`thetaphi_plane_cart`
 
 Miscellaneous
 =============
-
-.. autosummary::
-    :toctree: generated/
-
-    great_circle_points
-
+- :py:meth:`great_circle_points`
 """
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
 
 
 import numpy as np
@@ -90,7 +65,7 @@ def sph_to_cart(sph_arr):
 
 def cart_to_sph(cart_arr):
     """Convert a cartesian vector into Spherical Polars.
-    
+
     Uses the same convention as `sph_to_cart`.
 
     Parameters
@@ -117,7 +92,7 @@ def cart_to_sph(cart_arr):
 
 def sph_dot(arr1, arr2):
     """Take the scalar product in spherical polars.
-    
+
     Parameters
     ----------
     arr1, arr2 : np.ndarray

@@ -11,14 +11,6 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
-
-import os
 
 import cora
 
@@ -36,20 +28,42 @@ import cora
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.pngmath",
     "sphinx.ext.mathjax",
-    "numpydoc",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
 ]
 
+napoleon_google_docstring = False
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = False
+napoleon_use_admonition_for_examples = False
+napoleon_use_admonition_for_notes = False
+napoleon_use_admonition_for_references = False
+napoleon_use_ivar = False
+napoleon_use_param = True
+napoleon_use_rtype = True
+napoleon_type_aliases = None
+napoleon_attr_annotations = True
+
+autoclass_content = "both"  # include both class docstring and __init__
+autodoc_default_options = {
+    # Make sure that any autodoc declarations show the right members
+    "members": True,
+    "show-inheritance": True,
+}
+
+# sort by appearance in the source (for cora.util.units)
+autodoc_member_order = "bysource"
+
+autosummary_generate = True  # Make _autosummary files and include them
+autosummary_imported_members = False
+
 numpydoc_show_class_members = False
-import glob
-
-autosummary_generate = glob.glob("*.rst")
-
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
+# templates_path = ["_templates"]
 
 # The suffix of source filenames.
 source_suffix = ".rst"
@@ -114,17 +128,7 @@ pygments_style = "sphinx"
 # -- Options for HTML output ---------------------------------------------------
 
 
-html_theme = "default"
-
-on_rtd = os.environ.get("READTHEDOCS", None) == "True"
-if not on_rtd:
-    try:
-        import sphinx_rtd_theme
-
-        html_theme = "sphinx_rtd_theme"
-        html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-    except ImportError:
-        pass
+html_theme = "sphinx_rtd_theme"
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
@@ -157,7 +161,7 @@ if not on_rtd:
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+# html_static_path = ["_static"]
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.

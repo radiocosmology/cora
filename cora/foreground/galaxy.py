@@ -1,29 +1,9 @@
 """
-=====================================================
-Galactic Synchrotron (:mod:`~cora.foreground.galaxy`)
-=====================================================
-
-.. currentmodule:: cora.foreground.galaxy
+Galactic Synchrotron
 
 Generate semi-realistic simulations of the full sky synchrotron emission
 from the Milky Way.
-
-Classes
-=======
-
-.. autosummary::
-    :toctree: generated/
-
-    ConstrainedGalaxy
 """
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
-
-from future.utils import native_str
 
 from os.path import join, dirname
 
@@ -110,16 +90,11 @@ class ConstrainedGalaxy(maps.Sky3d):
     Attributes
     ----------
     spectral_map : one of ['gsm', 'md', 'gd']
-        Specify which spectral index map to use. `gsm' uses a GSM derived map,
-        this was the old behaviour. `md' uses the synchrotron index map
+        Specify which spectral index map to use. `gsm` uses a GSM derived map,
+        this was the old behaviour. `md` uses the synchrotron index map
         derived by Miville-Deschenes et al. 2008, and is  now the default.
-        `gd' uses the map from Giardino et al. 2002.
+        `gd` uses the map from Giardino et al. 2002.
     nside
-
-    Methods
-    -------
-    getsky
-    getpolsky
     """
 
     # Spectral index map to use. Values are:
@@ -145,8 +120,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         _data_file = join(_datadir, "skydata.npz")
 
-        # TODO: Python 3 workaround numpy issue
-        f = np.load(native_str(_data_file))
+        f = np.load(_data_file)
         self._haslam = f["haslam"]
 
         self._sp_ind = {

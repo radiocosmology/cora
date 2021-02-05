@@ -1,11 +1,3 @@
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
-
-from future.utils import native_str
 from os.path import dirname, join, exists
 
 import scipy
@@ -381,8 +373,7 @@ class RedshiftCorrelation(object):
         if not exists(fname):
             raise Exception("Cache file does not exist.")
 
-        # TODO: Python 3 workaround numpy issue
-        a = np.loadtxt(native_str(fname))
+        a = np.loadtxt(fname)
         ra = a[:, 0]
         vv0 = a[:, 1]
         vv2 = a[:, 2]
@@ -437,8 +428,6 @@ class RedshiftCorrelation(object):
             dv0 = _integrate(ra, 0, self.ps_dv)
             dv2 = _integrate(ra, 2, self.ps_dv)
 
-        # TODO: Python 3 workaround numpy issue
-        fname = native_str(fname)
         if fname and not exists(fname):
             if self._vv_only:
                 np.savetxt(fname, np.dstack([ra, vv0, vv2, vv4])[0])
@@ -567,8 +556,7 @@ class RedshiftCorrelation(object):
         return np.ones_like(z) * sigma_v_hinvMpc
 
     def velocity_damping(self, kpar):
-        """The velocity damping term for the non-linear power spectrum.
-        """
+        """The velocity damping term for the non-linear power spectrum."""
         return (1.0 + (kpar * self.sigma_v(self.ps_redshift)) ** 2.0) ** -1.0
 
     def _realisation_dv(self, d, n):
@@ -884,13 +872,11 @@ class RedshiftCorrelation(object):
                 np.array([100]), np.array([1.0]), np.array([1.0])
             )
 
-        np.savez(native_str(fname), dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
+        np.savez(fname, dd=self._aps_dd, dv=self._aps_dv, vv=self._aps_vv)
 
     def load_fft_cache(self, fname):
-        """Load FFT angular powerspectrum cache.
-        """
-        # TODO: Python 3 workaround numpy issue
-        a = np.load(native_str(fname))
+        """Load FFT angular powerspectrum cache."""
+        a = np.load(fname)
 
         self._aps_dd = a["dd"]
         self._aps_dv = a["dv"]

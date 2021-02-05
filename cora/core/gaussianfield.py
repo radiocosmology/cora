@@ -1,11 +1,3 @@
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
-from future.utils import native_str
-
 import numpy as np
 import math
 
@@ -18,7 +10,7 @@ class RandomField(object):
 
     An appropriate `powerspectrum` function must be implemented to use
     this class.
-    
+
     Parameters
     ----------
     npix : list of ints
@@ -50,7 +42,7 @@ class RandomField(object):
 
     def powerspectrum(self, karray):
         r"""Get the power spectrum value at each wavevector.
-        
+
         Parameters
         ----------
         karray : ndarray
@@ -62,16 +54,16 @@ class RandomField(object):
         -------
         psarray : ndarray
             An array containing the power spectrum values for each
-            vector in `karray'. Must be the same shape as `karray'
+            vector in `karray`. Must be the same shape as `karray`
             with its last axis removed.
 
         Notes
         -----
         Frequencies are in terms of wavenumber. That is the positive
         frequencies for one axis are:
-        0, 2*math.pi / self._w[0], 2 * 2*math.pi / self._w[0], 3 * 2*math.pi
-        / self._w[0]....
-
+        ```
+        0, 2*math.pi / self._w[0], 2 * 2*math.pi / self._w[0], 3 * 2*math.pi / self._w[0]....
+        ```
         """
         raise Exception("Abstract method: need to override.")
 
@@ -130,7 +122,7 @@ class RandomField(object):
 
 class RandomFieldA2F(RandomField, maps.Map3d):
     r"""Generate a realisation of a 3d gaussian field.
-    
+
     This routine is to generate simulated 3d observations. It is
     tailored for situations where there are two angular dimensions,
     and the third is frequency. The `powerspectrum` function must be
@@ -148,7 +140,7 @@ class RandomFieldA2F(RandomField, maps.Map3d):
 
 class RandomFieldA2(RandomField, maps.Map2d):
     r"""Generate a realisation of a 2d gaussian field.
-    
+
     This routine is to generate simulated 2d observations. It is
     tailored for situations where there are two angular
     dimensions. The `powerspectrum` function must be implemented to
@@ -177,8 +169,7 @@ class Cmb(RandomFieldA2):
 
             psfile = join(dirname(__file__), "ps_cmb2.dat")
         if cambnorm:
-            # TODO: Python 3 workaround numpy requiring a native string
-            a = np.loadtxt(native_str(psfile))
+            a = np.loadtxt(psfile)
             l = a[:, 0]
             tt = (2 * math.pi) * a[:, 1] / (l * (l + 1.0))
             self._powerspectrum_int = LogInterpolater(np.vstack((l, tt)).T)

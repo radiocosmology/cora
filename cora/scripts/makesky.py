@@ -1,11 +1,4 @@
-"""Command line script for making sky maps.
-"""
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
+"""Command line script for making sky maps."""
 
 import os
 
@@ -332,8 +325,7 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     help="Oversample in redshift by 2**oversample_z + 1 to approximate finite width bins.",
 )
 def _21cm(fstate, nside, pol, filename, eor, oversample):
-    """Generate a Gaussian simulation of the unresolved 21cm background.
-    """
+    """Generate a Gaussian simulation of the unresolved 21cm background."""
 
     from cora.signal import corr21cm
 
@@ -356,9 +348,8 @@ def _21cm(fstate, nside, pol, filename, eor, oversample):
 
 @cli.command()
 @map_options
-def gaussianfg(fstate, nside, pol, filename, eor, oversample):
-    """Generate a full-sky Gaussian random field for synchrotron emission.
-    """
+def gaussianfg(fstate, nside, pol, filename):
+    """Generate a full-sky Gaussian random field for synchrotron emission."""
 
     import numpy as np
 
@@ -382,7 +373,7 @@ def gaussianfg(fstate, nside, pol, filename, eor, oversample):
         fsyn.angular_powerspectrum, lmax, fsyn.nu_pixels
     )
 
-    if ctx.obj.full_pol:
+    if pol == "full":
         cv_fg[:, 1, :, 1, :] = skysim.clarray(
             fpol.angular_powerspectrum, lmax, fsyn.nu_pixels
         )
@@ -406,8 +397,7 @@ def gaussianfg(fstate, nside, pol, filename, eor, oversample):
 @click.option("--ra", type=float, help="RA (in degrees) for source to add.", default=0)
 @click.option("--dec", type=float, help="DEC (in degrees) of source to add.", default=0)
 def singlesource(fstate, nside, pol, filename, ra, dec):
-    """Generate a test map with a single source (amplitude I=1) at the given position.
-    """
+    """Generate a test map with a single source (amplitude I=1) at the given position."""
     import healpy
 
     nfreq = len(fstate.frequencies)
@@ -426,7 +416,6 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
 
     import h5py
     import numpy as np
-    from future.utils import text_type
 
     # Make into 3D array
     if data.ndim == 3:
@@ -451,7 +440,7 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
         f.attrs["__memh5_distributed_file"] = True
 
         dset = f.create_dataset("map", data=data)
-        dt = h5py.special_dtype(vlen=text_type)
+        dt = h5py.special_dtype(vlen=str)
         dset.attrs["axis"] = np.array(["freq", "pol", "pixel"]).astype(dt)
         dset.attrs["__memh5_distributed_dset"] = True
 

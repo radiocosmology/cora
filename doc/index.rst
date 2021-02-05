@@ -16,15 +16,7 @@ Contents:
    :maxdepth: 1
 
    simulation
-
-Programming References:
-
-.. toctree::
-	:maxdepth: 1
-
-	cosmology
-	hputil
-	coord
+   reference
 
 
 

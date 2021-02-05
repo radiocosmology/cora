@@ -1,8 +1,7 @@
+click
 cython
-skyfield
+h5py
+healpy>=1.8
 numpy>=1.7
 scipy>=0.10
-healpy>=1.8
-h5py
-click
-future
+skyfield

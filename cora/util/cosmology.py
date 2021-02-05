@@ -1,27 +1,9 @@
 """
-================================================
-Cosmology routines (:mod:`~cora.util.cosmology`)
-================================================
+Cosmology routines: A module for various cosmological calculations.
 
-A module for various cosmological calculations.
-
-Classes
-=======
-
-The bulk of the work is within a class which stores a cosmology and can
+The bulk of the work is within the class :py:class:`Cosmology` which stores a cosmology and can
 calculate quantities like distance measures.
-
-.. autosummary::
-    :toctree: generated/
-
-    Cosmology
 """
-# === Start Python 2/3 compatibility
-from __future__ import absolute_import, division, print_function, unicode_literals
-from future.builtins import *  # noqa  pylint: disable=W0401, W0614
-from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
-
-# === End Python 2/3 compatibility
 
 import math
 import numpy as np
@@ -56,7 +38,7 @@ class Cosmology(object):
         a cosmological constant).
     omega_g : scalar
         Fraction of electromagnetic radiation relative to the critical density.
-    omega_g : scalar
+    omega_n : scalar
         Fraction of massless neutrinos relative to the critical density.
     H0 : scalar
         The Hubble constant in km/s / Mpc
@@ -260,7 +242,7 @@ class Cosmology(object):
         return self.proper_distance(z) / (1 + z)
 
     def luminosity_distance(self, z):
-        r""" The luminosity distance to redshift z. This
+        r"""The luminosity distance to redshift z. This
         routine is vectorized.
 
         Parameters
@@ -276,7 +258,7 @@ class Cosmology(object):
         return self.proper_distance(z) * (1 + z)
 
     def lookback_time(self, z):
-        r""" The lookback time out to redshift z.
+        r"""The lookback time out to redshift z.
 
         Parameters
         ----------
@@ -365,8 +347,10 @@ def growth_factor(z, c=None):
 
     Notes
     -----
-    See _[1].
+    See [1]_.
 
+    References
+    ----------
     .. [1] http://arxiv.org/abs/1012.2671
     """
 
@@ -400,9 +384,11 @@ def growth_rate(z, c):
 
     Notes
     -----
-    See _[1].
+    See [2]_.
 
-    .. [1] http://arxiv.org/abs/1012.2671
+    References
+    ----------
+    .. [2] http://arxiv.org/abs/1012.2671
     """
 
     if c is None:
