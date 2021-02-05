@@ -19,6 +19,7 @@ import numpy.random as rnd
 # on macOS 10.15. I imagine other OSs are not affected.
 import healpy
 from scipy.optimize import newton
+from scipy import constants, integrate
 
 from cora.core import maps
 from cora.util import units
@@ -382,8 +383,10 @@ class DiMatteo(PointSourceModel):
 
     gamma1 = 1.75
     gamma2 = 2.51
-    S_0 = 0.88
-    k1 = 1.52e3
+    S_0 = 1.0
+    source_pivot = 0.88
+    k2 = 4.0 * 1e3
+    k1 = k2 * (source_pivot / S_0) ** (gamma1 - gamma2)
 
     spectral_mean = -0.7
     spectral_width = 0.1
@@ -393,9 +396,10 @@ class DiMatteo(PointSourceModel):
     def source_count(self, flux):
         r"""Power law luminosity function."""
 
-        s = flux / self.S_0
+        powerlaw_1 = self.k1 * (flux / self.S_0) ** (-self.gamma1)
+        powerlaw_2 = self.k2 * (flux / self.S_0) ** (-self.gamma2)
 
-        return self.k1 / (s ** self.gamma1 + s ** self.gamma2)
+        return np.where(flux <= self.source_pivot, powerlaw_1, powerlaw_2)
 
     def spectral_realisation(self, flux, freq):
         r"""Power-law spectral function with Gaussian distributed index."""
@@ -555,7 +559,7 @@ class CombinedPointSources(maps.Map3d):
 
     ## Internal classes for creating PS simulation
     class _UnresolvedBackground(gaussianfg.PointSources):
-        A = 3.55e-5
+        A = 2.2e-4
         nu_0 = 408.0
         l_0 = 100.0
 
@@ -564,7 +568,7 @@ class CombinedPointSources(maps.Map3d):
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
         flux_max = (
-            4.0 * (151.0 / 600.0) ** DiMatteo.spectral_mean
+            10.0 * (151.0 / 600.0) ** DiMatteo.spectral_mean
         )  # Convert to a flux cut at 151 MHz
 
     class _RealResolved(RealPointSources):
@@ -594,3 +598,154 @@ class CombinedPointSources(maps.Map3d):
         ps_all += obj_real.getpolsky()
 
         return ps_all
+
+
+class PointSourcesDiMatteo(gaussianfg.ForegroundSCK):
+    r"""A ForegroundSCK style foreground given the double power-law source count model
+    from DiMatteo.
+
+    Uses the results of Di Mattero et al. [1]_
+
+    Attributes
+    ----------
+    gamma1, gamma2 : scalar
+        The two power law indices.
+    source_pivot : scalar
+        The pivot of the source count function (in Jy).
+    S_0 : scalar
+        The normalizing flux (in Jy).
+    k1, k2: scalar
+        The amplitudes of the luminosity function at pivot flux (number of sources /
+        Jy^-1 sr^-1 at the pivot).
+    spectral_pivot : scalar
+        Frequency of the pivot point (in MHz). This is the frequency
+        that the flux is defined at.
+    flux_max : scalar
+        The flux cut (in Jy) of the unresolved background at 600 MHz. Below flux_max, point sources are treated as unresolved.
+    alpha : scalar
+        Power law index of the frequency variance
+    beta : scalar
+        Power law index of the angular scale l.
+    zeta : scalar
+        Frequency correlation parameter.
+    nu_0 : scalar
+        Pivot frequency for ForegroundSCK style foreground.
+    l_0 : scalar
+        Pivot angular scale
+
+    References
+    ----------
+    .. [1] Di Matteo et al. 2002 (http://arxiv.org/abs/astro-ph/0109241)
+    """
+    # Source count model attributes
+    gamma1 = 1.75
+    gamma2 = 2.51
+    source_pivot = 0.88
+    S_0 = 1.0
+    k2 = 4.0 * 1e3
+    k1 = k2 * (source_pivot / S_0) ** (gamma1 - gamma2)
+    spectral_pivot = 151.0
+    spectral_mean = -0.7
+    spectral_width = 0.1
+    flux_max = 10.0 * (spectral_pivot / 600.0) ** (-spectral_mean)
+    # Convert to a flux cut at 151 MHz for Di Matteo model.
+    S_cut = 10.0 * (spectral_pivot / 600.0) ** (-spectral_mean)
+
+    # Angular power spectrum model attributes
+    alpha = 2.07
+    beta = 1.1
+    zeta = 1.0
+    nu_0 = 408.0
+    l_0 = 100.0
+
+    poisson = True
+
+    def __init__(self):
+
+        super(PointSourcesDiMatteo, self).__init__()
+
+        # Convert flux in Jy to brightness temperature in K at spectral pivot
+        self.conv_factor = (
+            constants.c ** 2
+            / (2 * (self.spectral_pivot * 10 ** 6) ** 2 * constants.k)
+            * 1e-26
+        )
+
+        # Frequency rescaling
+        self.frequency_rescaling = (
+            self.spectral_pivot ** 2 / self.nu_0 ** 2
+        ) ** self.alpha
+
+    def source_count(self, flux):
+        r"""Double power law luminosity function."""
+        # powerlaw_1 = self.k1 * (flux / self.S_0) ** (-self.gamma1)
+        # powerlaw_2 = self.k2 * (flux / self.S_0) ** (-self.gamma2)
+
+        # return np.where(flux <= self.source_pivot, powerlaw_1, powerlaw_2)
+
+        # use np.where and use vector integrator (?)
+        if flux <= self.source_pivot:
+            return self.k1 * (flux / self.S_0) ** (-self.gamma1)
+        else:
+            return self.k2 * (flux / self.S_0) ** (-self.gamma2)
+
+    def angular_ps(self, larray):
+
+        if isinstance(larray, np.ndarray):
+            mask0 = np.where(larray == 0)
+            larray[mask0] = 1.0
+
+        ps_cluster = self.A * (larray / self.l_0) ** (-self.beta)
+
+        if self.poisson:
+            psarray = ps_cluster + self.A_poisson
+        else:
+            psarray = ps_cluster
+
+        print(psarray.shape, psarray[0])
+        # if isinstance(larray, np.ndarray):
+        #    psarray[mask0] = 0.0
+
+        return psarray
+
+    @property
+    def A(self):
+        """Calculate the amplitude of the angular power spectrum from the clustered component
+        """
+
+        # Normalising constant see ref DiMatteo 2004, and Scott and White 1999.
+        w_l = 0.01264
+
+        w_l0 = w_l * (1 / self.l_0) ** self.beta
+
+        integrand = lambda s: s * self.source_count(s)
+
+        # Calculate the background intensity in units of sr^{-1} mJy^{-1}
+        background_intensity = integrate.quad(integrand, 0.0, self.S_cut)
+        # background_intensity = integrate.quad_vec(integrand, 0.0, self.S_cut)
+
+        # Convert to K
+        amp = (background_intensity[0] * self.conv_factor) ** 2 * w_l0
+
+        # A change in the pivot frequency rescales the amplitude
+        amp *= self.frequency_rescaling
+
+        return amp
+
+    @property
+    def A_poisson(self):
+        """Calculate the amplitude due to the poisson term"""
+
+        integrand = lambda s: s ** 2 * self.source_count(s)
+
+        # Calculate the power due to poisson noise
+        poisson_noise = integrate.quad(integrand, 0.0, self.S_cut)
+        # poisson_noise = integrate.quad_vec(integrand, 0.0, self.S_cut)
+
+        # Convert to K
+        amp = poisson_noise[0] * self.conv_factor ** 2
+
+        # A change in the pivot frequency rescales the amplitude
+        amp *= self.frequency_rescaling
+
+        return amp
