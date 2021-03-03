@@ -1,20 +1,21 @@
 """
 Cosmology routines: A module for various cosmological calculations.
 
-The bulk of the work is within the class :py:class:`Cosmology` which stores a cosmology and can
-calculate quantities like distance measures.
+The bulk of the work is within the class :py:class:`Cosmology` which stores a
+cosmology and can calculate quantities like distance measures.
 """
+from dataclasses import dataclass, asdict
 
-import math
 import numpy as np
 
 # Import integration routines
 from scipy import integrate as si
 
 # Package imports
-from cora.util.units import *
+from cora.util import units as u
 
 
+@dataclass
 class Cosmology(object):
     """Class to store a cosmology, and compute measures.
 
@@ -54,43 +55,53 @@ class Cosmology(object):
 
     """
 
-    units = "cosmo"
+    # The unit type to use
+    # TODO: switch to Literal["cosmo", "astro", "si"] on Python 3.8
+    units: str = "cosmo"
 
-    omega_b = 0.0483
-    omega_c = 0.2589
-    omega_l = 0.6914
+    # Standard density parameters
+    omega_b: float = 0.0483
+    omega_c: float = 0.2589
+    omega_l: float = 0.6914
 
-    omega_g = 0.0
-    omega_n = 0.0
+    # Density parameters more relevant for the early Universe
+    omega_g: float = 0.0
+    omega_n: float = 0.0
 
     # H_0 given in km/s / Mpc
-    H0 = 67.77
+    H0: float = 67.77
 
     # Dark energy parameters
-    w_0 = -1.0
-    w_a = 0.0
+    w_0: float = -1.0
+    w_a: float = 0.0
 
     @property
-    def omega_m(self):
+    def omega_m(self) -> float:
         return self.omega_b + self.omega_c
 
     @property
-    def omega_r(self):
+    def omega_r(self) -> float:
         return self.omega_g + self.omega_n
 
     @property
-    def omega_k(self):
+    def omega_k(self) -> float:
         return 1.0 - (
             self.omega_l + self.omega_b + self.omega_c + self.omega_g + self.omega_n
         )
 
-    @staticmethod
-    def init_physical(
-        ombh2=0.022161, omch2=0.11889, H0=67.77, omkh2=0.0, t0=2.726, nnu=3.046
-    ):
+    @classmethod
+    def from_physical(
+        cls,
+        ombh2: float = 0.022161,
+        omch2: float = 0.11889,
+        H0: float = 67.77,
+        omkh2: float = 0.0,
+        t0=2.726,
+        nnu=3.046,
+    ) -> "Cosmology":
         r"""Initialise a new cosmology from the physical parameters.
 
-        This uses the CMB relevant parameterisation that is commonly
+        This uses the CMB relevant parameterization that is commonly
         used. The dark energy density is calculated from the given
         parameters.
 
@@ -114,25 +125,29 @@ class Cosmology(object):
         cosmo : instance of Cosmology
         """
         h = H0 / 100.0
-
-        c = Cosmology()
-
-        c.omega_b = ombh2 / h ** 2
-        c.omega_c = omch2 / h ** 2
-        c.H0 = H0
-
-        rhoc = 3.0 * c.H() ** 2 * c_sl ** 2 / (8.0 * math.pi * G_n)
-        rhorad = a_rad * t0 ** 4
-        c.omega_g = rhorad / rhoc
-
+        H_si = H0 * 1000.0 / u.mega_parsec
+        rhoc = 3.0 * H_si ** 2 * u.c_sl ** 2 / (8.0 * np.pi * u.G_n)
+        rhorad = u.a_rad * t0 ** 4
         rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
-        c.omega_n = rhonu / rhoc
 
-        c.omega_l = 1.0 - (omkh2 + ombh2 + omch2) / h ** 2 - (c.omega_g + c.omega_n)
+        omega_b = ombh2 / h ** 2
+        omega_c = omch2 / h ** 2
+        omega_g = rhorad / rhoc
+        omega_n = rhonu / rhoc
+        omega_l = 1.0 - (omkh2 + ombh2 + omch2) / h ** 2 - (omega_g + omega_n)
 
-        return c
+        return cls(
+            omega_b=omega_b,
+            omega_c=omega_c,
+            omega_l=omega_l,
+            omega_g=omega_g,
+            omega_n=omega_n,
+        )
 
-    def H(self, z=0.0):
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    def H(self, z: float = 0.0):
         """The Hubble parameter at redshift z.
 
         Return the Hubble parameter in SI units (s^-1), regardless of
@@ -164,7 +179,7 @@ class Cosmology(object):
         )
 
         # Convert to SI
-        return H * 1000.0 / mega_parsec
+        return H * 1000.0 / u.mega_parsec
 
     def comoving_distance(self, z):
         r"""The comoving distance to redshift z.
@@ -184,7 +199,7 @@ class Cosmology(object):
 
         # Calculate the integrand.
         def f(z1):
-            return c_sl / self.H(z1)
+            return u.c_sl / self.H(z1)
 
         return _intf_0_z(f, z) / self._unit_distance
 
@@ -211,7 +226,7 @@ class Cosmology(object):
 
         om_k = self.omega_k
 
-        dhi = math.sqrt(math.fabs(om_k)) * self.H() / c_sl * self._unit_distance
+        dhi = np.sqrt(np.fabs(om_k)) * self.H() / u.c_sl * self._unit_distance
 
         if om_k < 0.0:
             x = np.sin(x * dhi) / dhi
@@ -281,9 +296,9 @@ class Cosmology(object):
     def _unit_distance(self):
         # Select the appropriate distance unit
         if self.units == "astro":
-            return mega_parsec
+            return u.mega_parsec
         elif self.units == "cosmo":
-            return mega_parsec / (self.H0 / 100.0)
+            return u.mega_parsec / (self.H0 / 100.0)
         elif self.units == "si":
             return 1.0
 
@@ -293,9 +308,9 @@ class Cosmology(object):
     def _unit_time(self):
         # Select the appropriate time unit
         if self.units == "astro":
-            return mega_year
+            return u.mega_year
         elif self.units == "cosmo":
-            return mega_year
+            return u.mega_year
         elif self.units == "si":
             return 1.0
 
@@ -464,14 +479,14 @@ def ps_nowiggle(kh, z=0.0, c=None):
     d2k = (
         4.0
         / 25
-        * (c_sl * k / (1000.0 * c.H0)) ** 4
+        * (u.c_sl * k / (1000.0 * c.H0)) ** 4
         * t ** 2
         * pkp
         / c.omega_m ** 2
         * growth_factor(z, c) ** 2
     )
 
-    # d2k = deltah**2 * (c_sl * k / (1000.0 * c.H0))**(3 + ns) * t**2
+    # d2k = deltah**2 * (u.c_sl * k / (1000.0 * c.H0))**(3 + ns) * t**2
 
     pk = d2k * 2 * np.pi ** 2 / kh ** 3  # Change to normal PS
 
