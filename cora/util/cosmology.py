@@ -302,7 +302,7 @@ class Cosmology(object):
         elif self.units == "si":
             return 1.0
 
-        raise Exception("Units not known")
+        raise RuntimeError("Units not known")
 
     @property
     def _unit_time(self):
@@ -314,7 +314,7 @@ class Cosmology(object):
         elif self.units == "si":
             return 1.0
 
-        raise Exception("Units not known")
+        raise RuntimeError("Units not known")
 
 
 def _intf_0_z(f, z):
