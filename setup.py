@@ -1,8 +1,9 @@
 import os
-import warnings
 
 from setuptools import setup, Extension, find_packages
 from distutils import sysconfig
+
+from Cython.Build import cythonize
 
 import re
 
@@ -21,27 +22,10 @@ else:
     args = ["-fopenmp"]
 
 
-# Cython extensions
-try:
-    from Cython.Distutils import build_ext
-
-    HAVE_CYTHON = True
-except ImportError as e:
-    warnings.warn("Cython not installed.")
-    from distutils.command import build_ext
-
-    HAVE_CYTHON = False
-
-
-def cython_file(filename):
-    return filename + (".pyx" if HAVE_CYTHON else ".c")
-
-
 # Cubic spline extension
-# args = to_native(args)  # TODO: Python 3
 cs_ext = Extension(
     "cora.util.cubicspline",
-    [cython_file("cora/util/cubicspline")],
+    ["cora/util/cubicspline.pyx"],
     include_dirs=[np.get_include()],
     extra_compile_args=args,
     extra_link_args=args,
@@ -50,7 +34,7 @@ cs_ext = Extension(
 # Bi-linear map extension
 bm_ext = Extension(
     "cora.util.bilinearmap",
-    [cython_file("cora/util/bilinearmap")],
+    ["cora/util/bilinearmap.pyx"],
     include_dirs=[np.get_include()],
     extra_compile_args=args,
     extra_link_args=args,
@@ -59,7 +43,7 @@ bm_ext = Extension(
 # coord extension
 cr_ext = Extension(
     "cora.util.coord",
-    [cython_file("cora/util/coord")],
+    ["cora/util/coord.pyx"],
     include_dirs=[np.get_include()],
     extra_compile_args=args,
     extra_link_args=args,
@@ -77,9 +61,9 @@ with open("README.rst", "r") as fh:
 setup(
     name="cora",
     version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass({"build_ext": build_ext}),
+    cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(),
-    ext_modules=[cs_ext, bm_ext, cr_ext],
+    ext_modules=cythonize([cs_ext, bm_ext, cr_ext]),
     python_requires=">=3.6",
     install_requires=requires,
     package_data={
