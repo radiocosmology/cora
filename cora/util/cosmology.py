@@ -324,7 +324,7 @@ def _intf_0_z(f, z):
 
     # Wrap and unwrap in case we are operating on a scalar
     if not isinstance(z, np.ndarray):
-        z = np.array([z])
+        z = np.array([z], dtype=np.float64)
         return _intf_0_z(f, z)[0]
 
     # Write the y' function for the ODE solver
