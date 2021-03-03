@@ -82,7 +82,6 @@ setup(
     ext_modules=[cs_ext, bm_ext, cr_ext],
     python_requires=">=3.6",
     install_requires=requires,
-    extras_require={"sphfunc": ["pygsl"]},
     package_data={
         "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat"],
         "cora.foreground": ["data/skydata.npz", "data/combinedps.dat"],
