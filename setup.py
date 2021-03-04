@@ -49,6 +49,15 @@ cr_ext = Extension(
     extra_link_args=args,
 )
 
+# particle-mesh gridding extension
+pm_ext = Extension(
+    "cora.util.pmesh",
+    ["cora/util/pmesh.pyx"],
+    include_dirs=[np.get_include()],
+    extra_compile_args=args,
+    extra_link_args=args,
+)
+
 # Load the requirements list
 with open("requirements.txt", "r") as fh:
     requires = fh.read().split()
@@ -63,7 +72,7 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(),
-    ext_modules=cythonize([cs_ext, bm_ext, cr_ext]),
+    ext_modules=cythonize([cs_ext, bm_ext, cr_ext, pm_ext]),
     python_requires=">=3.7",
     install_requires=requires,
     package_data={
