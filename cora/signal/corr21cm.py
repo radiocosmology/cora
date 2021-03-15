@@ -893,6 +893,108 @@ class CorrBiasedTracerNoRSD(Corr21cmNoRSD):
         return _tracer_bias_z(z, self.tracer_type)
 
 
+
+class Corr21cmConstZ(Corr21cm):
+    r"""Correlation function of HI brightness temperature fluctuations.
+
+    Computes C_ell(z,z') using rpar corresponding to difference between
+    z and z', but otherwise assumes that everything is at the same z
+    (hard-coded for now to be z=1.02857, equivalent to 700MHz).
+    """
+
+    def __init__(self, ps=None, redshift=0.0, sigma_v=0.0, pk_powerlaw=None, **kwargs):
+
+        self.pk_powerlaw = pk_powerlaw
+
+        super(Corr21cmConstZ, self).__init__(**kwargs)
+
+    # Override angular_power spectrum to switch to allow using frequency
+    def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        const_z = 1.02857
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return corr.RedshiftCorrelation.constz_angular_powerspectrum(
+            self, l, z1, z2, const_z=const_z
+        )
+
+    # Override angular_power spectrum to switch to allow using frequency
+    def angular_powerspectrum_full(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum by explicit integration.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        raise NotImplementedError(
+            "angular_powerspectrum_full not implemented in Corr21cmNoRSD!"
+        )
+
+
+class CorrBiasedTracerConstZ(Corr21cmConstZ):
+    r"""Correlation function of a biased field density fluctuations
+    using the Gaussian fields.
+    """
+
+    def __init__(
+        self,
+        ps=None,
+        ps_redshift=0.0,
+        sigma_v=0.0,
+        tracer_type="none",
+        pk_powerlaw=None,
+        **kwargs
+    ):
+        # Tracer type
+        self.tracer_type = tracer_type
+        super(CorrBiasedTracerConstZ, self).__init__(
+            ps, ps_redshift, sigma_v, pk_powerlaw, **kwargs
+        )
+
+    def prefactor(self, z):
+        """This inherits from Corr21cm, so need to overwrite
+        prefactor to ones."""
+        return 1.0 * np.ones_like(z)
+
+    def bias_z(self, z):
+        """"""
+        return _tracer_bias_z(z, self.tracer_type)
+
+
+
 class EoR21cm(Corr21cm):
     def T_b(self, z):
 

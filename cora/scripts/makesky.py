@@ -351,6 +351,11 @@ def pointsource(fstate, nside, pol, filename, maxflux):
     help="Generate map without linear RSD.",
 )
 @click.option(
+    "--const_z",
+    is_flag=True,
+    help="Generate maps at constant z.",
+)
+@click.option(
     "--testzcorr",
     is_flag=True,
     help="Generate maps with customized z-z' correlations.",
@@ -374,6 +379,7 @@ def _21cm(
     norsd,
     testzcorr,
     pk_powerlaw,
+    const_z
 ):
     """Generate a Gaussian simulation of the unresolved 21cm background."""
 
@@ -389,6 +395,8 @@ def _21cm(
         else:
             if norsd:
                 cr = corr21cm.Corr21cmNoRSD(bias=bias, pk_powerlaw=pk_powerlaw)
+            elif const_z:
+                cr = corr21cm.Corr21cmConstZ(bias=bias, pk_powerlaw=pk_powerlaw)
             elif testzcorr:
                 cr = corr21cm.Corr21cmTestZCorr(bias=bias)
             else:
@@ -440,6 +448,11 @@ def _21cm(
     help="Generate map without linear RSD.",
 )
 @click.option(
+    "--const_z",
+    is_flag=True,
+    help="Generate maps at constant z.",
+)
+@click.option(
     "--testzcorr",
     is_flag=True,
     help="Generate maps with customized z-z' correlations.",
@@ -462,6 +475,7 @@ def tracer(
     norsd,
     testzcorr,
     pk_powerlaw,
+    const_z
 ):
     """Generate an unresolved Gaussian simulation of the distribution of the chosen tracer.
     For now it only does QSOs.
@@ -475,6 +489,10 @@ def tracer(
     else:
         if norsd:
             cr = corr21cm.CorrBiasedTracerNoRSD(
+                tracer_type=ttype, pk_powerlaw=pk_powerlaw
+            )
+        elif const_z:
+            cr = corr21cm.CorrBiasedTracerConstZ(
                 tracer_type=ttype, pk_powerlaw=pk_powerlaw
             )
         elif testzcorr:
