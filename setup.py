@@ -64,7 +64,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(),
     ext_modules=cythonize([cs_ext, bm_ext, cr_ext]),
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=requires,
     package_data={
         "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat"],
