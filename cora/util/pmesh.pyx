@@ -12,11 +12,11 @@ def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     psi : array-like [3,nz,npix]
         Coordinate displacements
     rho0 : array-like [nz,npix]
-        The underlying density field to be displaced. Usually the Gaussian 
-        matter density field linearly evolved to the correct redshifts and 
+        The underlying density field to be displaced. Usually the Gaussian
+        matter density field linearly evolved to the correct redshifts and
         biased with a Lagrangian bias (with mean 1, not 0).
     """
-        
+
     def interp_ugd(f,ndiv):
         n = len(f)
         # TODO: my version of scipy doesn't have extrapolate (starts in 0.17.0).
@@ -42,7 +42,7 @@ def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     # Comoving distance bins for digitizing:
     # Does not include edges due to way np.digitize works.
     # This actually adds all displacements past the last bins to
-    # the last bins. It doesn't matter with redshift padding, 
+    # the last bins. It doesn't matter with redshift padding,
     # because the last bins get discarded.
     comov_bins = (comovd[1:]+comovd[:-1])*0.5
 
@@ -63,7 +63,7 @@ def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
     comov0_idx = np.arange(len(comov0),dtype=int)
     comov0_idx = comov0_idx//ndiv_radial
     # Initial angular positions in higher resolution grid:
-    ang0 = np.array(hp.pixelfunc.pix2ang(nside*nside_factor, 
+    ang0 = np.array(hp.pixelfunc.pix2ang(nside*nside_factor,
                     np.arange(hp.pixelfunc.nside2npix(nside*nside_factor))))
     # Index corresponding to ang0 values in lower resolution grid:
     ang0_idx = hp.pixelfunc.ang2pix(nside, *ang0)
@@ -77,7 +77,7 @@ def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
         # Coordinate displacements
         psi_slc = psi[:,comov0_idx[ii],ang0_idx]
         # Final angles:
-        ang1 = ang0[:,:]+psi_slc[:2]
+        ang1 = ang0[:,:]+psi_slc[1:]
         # Wrap theta around pi:
         wrap_idxs = np.where(np.logical_or(ang1[0]>np.pi,ang1[0]<0))
         ang1[0][wrap_idxs] = np.pi -  ang1[0][wrap_idxs]%np.pi
@@ -86,7 +86,7 @@ def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
         wrap_idxs = np.where(np.logical_or(ang1[1]>2.*np.pi,ang1[1]<0))
         ang1[1][wrap_idxs] = ang1[1][wrap_idxs]%(2.*np.pi)
         # Final radial positions:
-        comov1 = comov0[ii,np.newaxis] + psi_slc[2]
+        comov1 = comov0[ii,np.newaxis] + psi_slc[0]
         # Indices of final positions in lower resolution grid:
         ang_idx = hp.pixelfunc.ang2pix(nside, *ang1)
         radial_idx = np.digitize(comov1,comov_bins)
@@ -98,8 +98,8 @@ def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
 
 
 # I tried to use 'nogil' in this function call but apparently it
-# degraded the performance slightly. 
-cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx, 
+# degraded the performance slightly.
+cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx,
                          long[:] ang_idx, double[:] rho0):
 # 'delta_za' is defined in the argument as a cython memoryview.
 # It can take a numpy array as parameter and modifying one changes the other.
@@ -109,3 +109,71 @@ cpdef void fill_delta_za(double[:,:] delta_za, long[:] rad_idx,
         jj = ang_idx[kk]
         #delta_za[ii,jj] += 1. # TODO: delete
         delta_za[ii,jj] += rho0[kk]
+
+
+def calculate_positions(angpos, displacement):
+    """Apply an angular displacement, accounting for wrapping.
+
+    Parameters
+    ----------
+    angpos : np.ndarray[2, npix]
+        The original angular positions ordered as theta, phi
+    displacement : np.ndarray[2, npix]
+        The shift to apply to each coordinate.
+
+    Returns
+    -------
+    new_angpos
+    """
+
+    new_angpos = angpos + displacement
+
+    # Wrap out of bounds values in theta
+    wrap_ind = np.where(np.logical_or(new_angpos[0] > np.pi, new_angpos[0] < 0))
+    new_angpos[0][wrap_ind] = np.pi - new_angpos[0][wrap_ind] % np.pi
+    new_angpos[1][wrap_ind] += np.pi
+
+    # Wrap out of bounds in phi
+    new_angpos[1] = new_angpos[1] % (2 * np.pi)
+
+    return new_angpos
+
+
+cpdef void _bin_delta(
+    double[::1] rho,
+    int[:, ::1] pixel_ind, double[:, ::1] pixel_weight,
+    int[:, ::1] radial_ind, double[:, ::1] radial_weight,
+    double[:, ::1] out
+):
+
+    cdef int ipix, jpix, irad
+    cdef int pi, ri
+    cdef double pw, rw
+    cdef int npix
+    cdef double v
+
+    if pixel_ind.shape[0] != 4 or pixel_weight.shape[0] != 4:
+        raise RuntimeError("Pixel arrays are the wrong shape.")
+
+    if radial_ind.shape[0] != 2 or radial_weight.shape[0] != 2:
+        raise RuntimeError("Radial arrays are the wrong shape.")
+
+    npix = pixel_ind.shape[1]
+
+    for ipix in range(npix):
+
+        v = rho[ipix]
+
+        for jpix in range(4):
+            pi = pixel_ind[jpix, ipix]
+            pw = pixel_weight[jpix, ipix]
+
+            for irad in range(2):
+
+                ri = radial_ind[irad, ipix]
+                rw = radial_weight[irad, ipix]
+
+                if rw < 0:
+                    continue
+
+                out[ri, pi] += v * pw * rw
