@@ -75,6 +75,9 @@ setup(
     ext_modules=cythonize([cs_ext, bm_ext, cr_ext, pm_ext]),
     python_requires=">=3.7",
     install_requires=requires,
+    extras_requires={
+        "lss": ["draco @ git+https://github.com/radiocosmology/draco.git"],
+    },
     package_data={
         "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat"],
         "cora.foreground": ["data/skydata.npz", "data/combinedps.dat"],
