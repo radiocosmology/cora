@@ -76,7 +76,10 @@ setup(
     python_requires=">=3.7",
     install_requires=requires,
     extras_requires={
-        "lss": ["draco @ git+https://github.com/radiocosmology/draco.git"],
+        "lss": [
+            "draco @ git+https://github.com/radiocosmology/draco.git",
+            "hankel",
+        ],
     },
     package_data={
         "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat"],
