@@ -113,12 +113,20 @@ class GenerateInitialLSS(task.SingleTask):
         Overrides redshift property if specified.
     num : int
         The number of simulations to generate.
+    xromb : int, optional
+        Romberg order for integrating C_ell over radial bins.
+        xromb=0 turns off this integral. Default: 2.
+    leg_q : int, optional
+        Integration accuracy parameter for Legendre transform for C_ell
+        computation. Default: 4.
     """
 
     nside = config.Property(proptype=int)
     redshift = config.Property(proptype=lssutil.linspace, default=None)
     frequencies = config.Property(proptype=lssutil.linspace, default=None)
     num = config.Property(proptype=int, default=1)
+    xromb = config.Property(proptype=int, default=2)
+    leg_q = config.Property(proptype=int, default=4)
 
     def setup(self, correlation_functions: InterpolatedFunction):
         """Setup the task.
@@ -166,11 +174,10 @@ class GenerateInitialLSS(task.SingleTask):
         xa = self.cosmology.comoving_distance(redshift)
         lmax = 3 * self.nside
 
-        # TODO: configurable accuracy parameters, xromb, q
         self.log.debug("Generating C_l(x, x')")
-        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=2, q=16)
-        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=2, q=16)
-        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=2, q=16)
+        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=self.xromb, q=self.leg_q)
 
         nz = len(redshift)
 
