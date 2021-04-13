@@ -188,11 +188,15 @@ class GenerateInitialLSS(task.SingleTask):
 
         if self.frequencies is not None:
             f = InitialLSS(
-                cosmology=self.cosmology, nside=self.nside, freq=self.frequencies,
+                cosmology=self.cosmology,
+                nside=self.nside,
+                freq=self.frequencies,
             )
         else:
             f = InitialLSS(
-                cosmology=self.cosmology, nside=self.nside, redshift=redshift,
+                cosmology=self.cosmology,
+                nside=self.nside,
+                redshift=redshift,
             )
         f.phi[:] = sky[:nz]
         f.delta[:] = sky[nz:]
@@ -510,6 +514,63 @@ class LinearDynamics(DynamicsBase):
             final_field.delta[:] += vterm
 
         return final_field
+
+
+class BiasedLSSToMap(task.SingleTask):
+    """Convert a BiasedLSS object into a Map object.
+
+    Attributes
+    ----------
+    use_mean_21cmT : bool
+        Multiply map by mean 21cm temperature as a function of z (default: False).
+    """
+
+    use_mean_21cmT = config.Property(proptype=int, default=False)
+    map_prefactor = config.Property(proptype=float, default=1.)
+
+    def process(self, biased_lss) -> Map:
+        """Generate a realisation of the LSS initial conditions.
+
+        Parameters
+        ----------
+        biased_lss : BiasedLSS
+            Input BiasedLSS container.
+
+        Returns
+        -------
+        out_map : Map
+            Output Map container.
+        """
+
+        # Form frequency map in appropriate format to feed into Map container
+        n_freq = len(biased_lss.freq)
+        freqmap = np.zeros(n_freq, dtype=[("centre", np.float64), ("width", np.float64)])
+        freqmap["centre"][:] = biased_lss.freq[:]
+        freqmap["width"][:] = np.abs(np.diff(biased_lss.freq[:])[0])
+
+        # Make new map container and copy delta into Stokes I component
+        m = Map(
+            freq=freqmap,
+            polarisation=True,
+            axes_from=biased_lss,
+            attrs_from=biased_lss
+        )
+        m.map[:, 0, :] = biased_lss.delta[:, :]
+
+        # Multiply map by specific prefactor, if desired
+        if self.map_prefactor != 1:
+            self.log.info("Multiplying map by %g" % self.map_prefactor)
+            m.map[:] *= self.map_prefactor
+
+        # If desired, multiply by Tb(z)
+        if self.use_mean_21cmT:
+            from . import corr21cm
+
+            cr = corr21cm.Corr21cm()
+
+            m.map[:, 0] *= cr.T_b(biased_lss.redshift)[:, np.newaxis]
+
+        return m
 
 
 def za_density_grid(
