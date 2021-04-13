@@ -1,4 +1,4 @@
-from typing import Callable, Union, Optional
+from typing import Callable, Union, Optional, Tuple
 
 import numpy as np
 import scipy.integrate as si
@@ -36,7 +36,7 @@ def ps_to_corr(
     log_threshold: float = 1,
     samples_per_decade: int = 100,
     h: float = 1e-5,
-) -> Union[Callable[[np.ndarray], np.ndarray], tuple[np.ndarray, np.ndarray]]:
+) -> Union[Callable[[np.ndarray], np.ndarray], Tuple[np.ndarray, np.ndarray]]:
     """Transform a 3D power spectrum into a correlation function.
 
     Parameters
