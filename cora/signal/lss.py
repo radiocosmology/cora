@@ -17,8 +17,10 @@ from caput import config
 from caput import pipeline
 
 from cora.util.cosmology import Cosmology, growth_factor
+from cora.util import units
 
 from draco.core import task
+from draco.core.containers import Map
 
 from .lsscontainers import InterpolatedFunction, InitialLSS, BiasedLSS
 from . import lssutil
@@ -106,12 +108,16 @@ class GenerateInitialLSS(task.SingleTask):
         The Healpix resolution to use.
     redshift : np.ndarray
         The redshifts for the map slices.
+    frequencies : np.ndarray
+        The frequencies that determine the redshifts for the map slices.
+        Overrides redshift property if specified.
     num : int
         The number of simulations to generate.
     """
 
     nside = config.Property(proptype=int)
-    redshift = config.Property(proptype=lssutil.linspace)
+    redshift = config.Property(proptype=lssutil.linspace, default=None)
+    frequencies = config.Property(proptype=lssutil.linspace, default=None)
     num = config.Property(proptype=int, default=1)
 
     def setup(self, correlation_functions: InterpolatedFunction):
@@ -131,6 +137,9 @@ class GenerateInitialLSS(task.SingleTask):
         self.cosmology = cr.cosmology
         self.correlation_functions = correlation_functions
 
+        if self.redshift is None and self.frequencies is None:
+            raise RuntimeError("Redshifts or frequencies must be specified!")
+
     def process(self) -> InitialLSS:
         """Generate a realisation of the LSS initial conditions.
 
@@ -149,7 +158,12 @@ class GenerateInitialLSS(task.SingleTask):
         corr2 = self.correlation_functions.get_function("corr2")
         corr4 = self.correlation_functions.get_function("corr4")
 
-        xa = self.cosmology.comoving_distance(self.redshift)
+        if self.frequencies is None:
+            redshift = self.redshift
+        else:
+            redshift = units.nu21 / self.frequencies - 1.0
+
+        xa = self.cosmology.comoving_distance(redshift)
         lmax = 3 * self.nside
 
         # TODO: configurable accuracy parameters, xromb, q
@@ -158,7 +172,7 @@ class GenerateInitialLSS(task.SingleTask):
         cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=2, q=16)
         cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=2, q=16)
 
-        nz = len(self.redshift)
+        nz = len(redshift)
 
         # Create an extended covariance matrix capturing the cross correlations between
         # the fields
@@ -172,9 +186,14 @@ class GenerateInitialLSS(task.SingleTask):
         self.log.debug("Generating realisation of fields")
         sky = skysim.mkfullsky(cla, self.nside)
 
-        f = InitialLSS(
-            cosmology=self.cosmology, nside=self.nside, redshift=self.redshift
-        )
+        if self.frequencies is not None:
+            f = InitialLSS(
+                cosmology=self.cosmology, nside=self.nside, freq=self.frequencies,
+            )
+        else:
+            f = InitialLSS(
+                cosmology=self.cosmology, nside=self.nside, redshift=redshift,
+            )
         f.phi[:] = sky[:nz]
         f.delta[:] = sky[nz:]
 
