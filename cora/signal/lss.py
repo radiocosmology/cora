@@ -29,7 +29,29 @@ from . import corrfunc
 
 
 class CalculateCorrelations(task.SingleTask):
-    """Calculate the density and potential correlation functions from a power spectrum."""
+    """Calculate the density and potential correlation functions from a power spectrum.
+
+    Attributes
+    ----------
+    minlogr, maxlogr : float
+        The minimum and maximum values of r to calculate (given as log_10(r h /
+        Mpc)). Defaults: -1, 5
+    switchlogr : float
+        The scale below which to directly integrate. Above this the `hankel` package
+        integration is used. Default: 2
+    log_threshold : float
+        Below this level in the correlation function use a linear interpolation. This
+        should be set to be around the level where the correlation function starts to
+        switch sign. Default: 1
+    samples_per_decade : int
+        How many samples per decade to calculate. Default: 100
+    """
+
+    minlogr = config.Property(proptype=float, default=-1)
+    maxlogr = config.Property(proptype=float, default=5)
+    switchlogr = config.Property(proptype=float, default=2)
+    log_threshold = config.Property(proptype=float, default=1)
+    samples_per_decade = config.Property(proptype=int, default=100)
 
     run = False
 
@@ -77,15 +99,35 @@ class CalculateCorrelations(task.SingleTask):
         # Calculate the correlation functions
         self.log.debug("Generating C_dd(r)")
         k0, c0 = corrfunc.ps_to_corr(
-            self._ps_n(0), samples=True, samples_per_decade=1000
+            self._ps_n(0),
+            samples=True,
+            minlogr=self.minlogr,
+            maxlogr=self.maxlogr,
+            switchlogr=self.switchlogr,
+            log_threshold=self.log_threshold,
+            samples_per_decade=self.samples_per_decade,
         )
         self.log.debug("Generating C_dp(r)")
         k2, c2 = corrfunc.ps_to_corr(
-            self._ps_n(2), h=3e-6, samples=True, samples_per_decade=1000
+            self._ps_n(2),
+            h=3e-6,
+            samples=True,
+            minlogr=self.minlogr,
+            maxlogr=self.maxlogr,
+            switchlogr=self.switchlogr,
+            log_threshold=self.log_threshold,
+            samples_per_decade=self.samples_per_decade,
         )
         self.log.debug("Generating C_pp(r)")
         k4, c4 = corrfunc.ps_to_corr(
-            self._ps_n(4), h=2e-6, samples=True, samples_per_decade=1000
+            self._ps_n(4),
+            h=2e-6,
+            samples=True,
+            minlogr=self.minlogr,
+            maxlogr=self.maxlogr,
+            switchlogr=self.switchlogr,
+            log_threshold=self.log_threshold,
+            samples_per_decade=self.samples_per_decade,
         )
 
         func = InterpolatedFunction()
