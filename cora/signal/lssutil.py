@@ -113,7 +113,8 @@ def diff2(f: np.ndarray, x: np.ndarray, axis: int = -1) -> np.ndarray:
 
     Notes
     -----
-    From https://doi.org/10.1016/0307-904X(94)00020-7
+    Main scheme from https://doi.org/10.1016/0307-904X(94)00020-7,
+    one-sided schemes from https://en.wikipedia.org/wiki/Finite_difference_coefficient#Arbitrary_stencil_points
     """
 
     d2 = np.zeros_like(f)
@@ -125,6 +126,7 @@ def diff2(f: np.ndarray, x: np.ndarray, axis: int = -1) -> np.ndarray:
     def sl(v):
         return (slice(None),) * axis + (v,)
 
+    # Compute elements from i=2 to N-2
     for i in range(2, f.shape[axis] - 1):
 
         dm2 = x[i] - x[i - 2]
@@ -139,6 +141,44 @@ def diff2(f: np.ndarray, x: np.ndarray, axis: int = -1) -> np.ndarray:
         d2[sl(i)] += beta * f[sl(i - 1)]
         d2[sl(i)] -= (alpha + beta + gamma) * f[sl(i)]
         d2[sl(i)] += gamma * f[sl(i + 1)]
+
+    # Compute element i=0 with one-sided 4-point 2nd derivative
+    dp1 = x[1] - x[0]
+    dp2 = x[2] - x[0]
+    dp3 = x[3] - x[0]
+
+    alpha = 2 * (dp1 + dp2 + dp3) / (dp1 * dp2 * dp3)
+    beta = -2 * (dp2 + dp3) / (dp1 * (dp1 - dp2) * (dp1 - dp3))
+    gamma = 2 * (dp1 + dp3) / ((dp1 - dp2) * dp2 * (dp2 - dp3))
+    delta = 2 * (dp1 + dp2) / ((dp1 - dp3) * dp3 * (-dp2 + dp3))
+
+    d2[sl(0)] = alpha * f[sl(0)] + beta * f[sl(1)] + gamma * f[sl(2)] + delta * f[sl(3)]
+
+    # Compute element i=1 with 4-point 2nd derivative
+    dm1 = x[1] - x[0]
+    dp1 = x[2] - x[1]
+    dp2 = x[3] - x[1]
+
+    alpha = 2 * (dp1 + dp2) / (dm1 * (dm1 + dp1) * (dm1 + dp2))
+    beta = 2 * (dm1 - dp1 - dp2) / (dm1 * dp1 * dp2)
+    gamma = 2 * (dm1 - dp2) / (dp1 * (dm1 + dp1) * (dp1 - dp2))
+    delta = -2 * (dm1 - dp1) / ((dp1 - dp2) * dp2 * (dm1 + dp2))
+
+    d2[sl(1)] = alpha * f[sl(0)] + beta * f[sl(1)] + gamma * f[sl(2)] + delta * f[sl(3)]
+
+    # Compute element i=N-1 with one-sided 4-point 2nd derivative
+    dm1 = x[-1] - x[-2]
+    dm2 = x[-1] - x[-3]
+    dm3 = x[-1] - x[-4]
+
+    alpha = 2 * (dm1 + dm2) / ((dm1 - dm3) * dm3 * (-dm2 + dm3))
+    beta = 2 * (dm1 + dm3) / ((dm1 - dm2) * dm2 * (dm2 - dm3))
+    gamma = -2 * (dm2 + dm3) / (dm1 * (dm1 - dm2) * (dm1 - dm3))
+    delta = 2 * (dm1 + dm2 + dm3) / (dm1 * dm2 * dm3)
+
+    d2[sl(-1)] = (
+        alpha * f[sl(-4)] + beta * f[sl(-3)] + gamma * f[sl(-2)] + delta * f[sl(-1)]
+    )
 
     return d2
 
