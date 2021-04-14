@@ -205,8 +205,15 @@ class GenerateInitialLSS(task.SingleTask):
                 nside=self.nside,
                 redshift=redshift,
             )
-        f.phi[:] = sky[:nz]
-        f.delta[:] = sky[nz:]
+
+        # Local shape and offset along chi axis
+        loff = f.phi.local_offset[0]
+        lshape = f.phi.local_shape[0]
+
+        # f.phi[:] = sky[:nz]
+        # f.delta[:] = sky[nz:]
+        f.phi[:] = sky[loff : loff + lshape]
+        f.delta[:] = sky[nz + loff : nz + loff + lshape]
 
         return f
 
@@ -281,7 +288,14 @@ class GenerateBiasedFieldBase(task.SingleTask):
         # Apply any first order bias
         try:
             b1 = self._bias_1(z)
-            biased_field.delta[:] += (D * b1)[:, np.newaxis] * f.delta
+
+            # Local offset and shape along chi axis
+            loff = f.delta.local_offset[0]
+            lshape = f.delta.local_shape[0]
+
+            biased_field.delta[:] += (D * b1)[
+                loff : loff + lshape, np.newaxis
+            ] * f.delta[:]
         except NotImplementedError:
             self.log.info("First order bias is not implemented. This is a bit odd.")
 
@@ -511,12 +525,18 @@ class LinearDynamics(DynamicsBase):
         final_field.delta[:] = biased_field.delta[:]
 
         # Add in standard linear term
-        final_field.delta[:] += D[:, np.newaxis] * initial_field.delta[:]
+        loff = final_field.delta.local_offset[0]
+        lshape = final_field.delta.local_shape[0]
+        final_field.delta[:] += (
+            D[loff : loff + lshape, np.newaxis] * initial_field.delta[:]
+        )
 
         if self.redshift_space:
             fr = cosmology.growth_rate(za, c)
-            vterm = lssutil.diff2(initial_field.phi[:], chi, axis=0)
-            vterm *= -(D * fr)[:, np.newaxis]
+            vterm = lssutil.diff2(
+                initial_field.phi[:], chi[loff : loff + lshape], axis=0
+            )
+            vterm *= -(D * fr)[loff : loff + lshape, np.newaxis]
 
             final_field.delta[:] += vterm
 
@@ -533,7 +553,7 @@ class BiasedLSSToMap(task.SingleTask):
     """
 
     use_mean_21cmT = config.Property(proptype=int, default=False)
-    map_prefactor = config.Property(proptype=float, default=1.)
+    map_prefactor = config.Property(proptype=float, default=1.0)
 
     def process(self, biased_lss) -> Map:
         """Generate a realisation of the LSS initial conditions.
@@ -551,16 +571,15 @@ class BiasedLSSToMap(task.SingleTask):
 
         # Form frequency map in appropriate format to feed into Map container
         n_freq = len(biased_lss.freq)
-        freqmap = np.zeros(n_freq, dtype=[("centre", np.float64), ("width", np.float64)])
+        freqmap = np.zeros(
+            n_freq, dtype=[("centre", np.float64), ("width", np.float64)]
+        )
         freqmap["centre"][:] = biased_lss.freq[:]
         freqmap["width"][:] = np.abs(np.diff(biased_lss.freq[:])[0])
 
         # Make new map container and copy delta into Stokes I component
         m = Map(
-            freq=freqmap,
-            polarisation=True,
-            axes_from=biased_lss,
-            attrs_from=biased_lss
+            freq=freqmap, polarisation=True, axes_from=biased_lss, attrs_from=biased_lss
         )
         m.map[:, 0, :] = biased_lss.delta[:, :]
 
@@ -575,7 +594,9 @@ class BiasedLSSToMap(task.SingleTask):
 
             cr = corr21cm.Corr21cm()
 
-            m.map[:, 0] *= cr.T_b(biased_lss.redshift)[:, np.newaxis]
+            loff = m.map.local_offset[0]
+            lshape = m.map.local_shape[0]
+            m.map[:, 0] *= cr.T_b(biased_lss.redshift)[loff : loff + lshape, np.newaxis]
 
         return m
 
