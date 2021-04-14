@@ -113,6 +113,10 @@ class GenerateInitialLSS(task.SingleTask):
         Overrides redshift property if specified.
     num : int
         The number of simulations to generate.
+    start_seed : int
+        The random seed to use for generating the first simulation.
+        Sim i (indexed from 0) is generated using start_seed+i.
+        Default: 0.
     xromb : int, optional
         Romberg order for integrating C_ell over radial bins.
         xromb=0 turns off this integral. Default: 2.
@@ -125,6 +129,7 @@ class GenerateInitialLSS(task.SingleTask):
     redshift = config.Property(proptype=lssutil.linspace, default=None)
     frequencies = config.Property(proptype=lssutil.linspace, default=None)
     num = config.Property(proptype=int, default=1)
+    start_seed = config.Property(proptype=int, default=0)
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
 
@@ -147,6 +152,8 @@ class GenerateInitialLSS(task.SingleTask):
 
         if self.redshift is None and self.frequencies is None:
             raise RuntimeError("Redshifts or frequencies must be specified!")
+
+        self.seed = self.start_seed
 
     def process(self) -> InitialLSS:
         """Generate a realisation of the LSS initial conditions.
@@ -189,8 +196,8 @@ class GenerateInitialLSS(task.SingleTask):
         cla[:, nz:, :nz] = cla2
         cla[:, nz:, nz:] = cla0
 
-        # TODO: replace with a properly seeded MPI parallel routine
-        self.log.debug("Generating realisation of fields")
+        self.log.info("Generating realisation of fields using seed %d" % self.seed)
+        np.random.seed(self.seed)
         sky = skysim.mkfullsky(cla, self.nside)
 
         if self.frequencies is not None:
@@ -214,6 +221,8 @@ class GenerateInitialLSS(task.SingleTask):
         # f.delta[:] = sky[nz:]
         f.phi[:] = sky[loff : loff + lshape]
         f.delta[:] = sky[nz + loff : nz + loff + lshape]
+
+        self.seed += 1
 
         return f
 
