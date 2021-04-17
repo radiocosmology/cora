@@ -239,8 +239,8 @@ class GenerateInitialLSS(task.SingleTask):
         cla[:, nz:, nz:] = cla0
 
         self.log.info("Generating realisation of fields using seed %d" % self.seed)
-        np.random.seed(self.seed)
-        sky = skysim.mkfullsky(cla, self.nside)
+        rng = np.random.default_rng(self.seed)
+        sky = skysim.mkfullsky(cla, self.nside, rng=rng)
 
         if self.frequencies is not None:
             f = InitialLSS(

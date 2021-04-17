@@ -96,13 +96,15 @@ def matrix_root_manynull(mat, threshold=1e-16, truncate=True):
         return root
 
 
-def complex_std_normal(shape):
+def complex_std_normal(shape, rng=None):
     """Get a set of complex standard normal variables.
 
     Parameters
     ----------
     shape : tuple
         Shape of the array of variables.
+    rng : numpy RNG, optional
+        Seeded random number generator to use. Default: None.
 
     Returns
     -------
@@ -110,6 +112,11 @@ def complex_std_normal(shape):
         Complex gaussian variates.
     """
 
-    return (
-        np.random.standard_normal(shape) + 1.0j * np.random.standard_normal(shape)
-    ) / 2 ** 0.5
+    if rng is None:
+        return (
+            np.random.standard_normal(shape) + 1.0j * np.random.standard_normal(shape)
+        ) / 2 ** 0.5
+    else:
+        return (
+            rng.standard_normal(shape) + 1.0j * rng.standard_normal(shape)
+        ) / 2 ** 0.5
