@@ -82,9 +82,13 @@ def sinh_interpolate(
     # Create cubic spline interpolater
     fs = cs.Interpolater(asx, asf)
 
+    def _thinwrap(x):
+        return fs(x)
+
     def _f_asinh(x_):
         sx = np.arcsinh(x_ / x_t)
-        return f_t * np.sinh(fs(sx))
+        fv = _thinwrap(sx)
+        return f_t * np.sinh(fv)
 
     return _f_asinh
 
@@ -199,7 +203,7 @@ def gradient(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
 
     for i in range(nmaps):
 
-        alm = healpy.map2alm(maps[i], pol=False)
+        alm = healpy.map2alm(maps[i], pol=False, use_pixel_weights=True)
 
         # Get the derivatives in each angular direction
         # NOTE: the zeroth component doesn't yet contain dr
