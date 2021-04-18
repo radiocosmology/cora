@@ -2,7 +2,12 @@ from typing import Tuple, Optional
 from cora.core import skysim
 from cora.util import cosmology
 from cora.util import hputil
-from cora.util.pmesh import calculate_positions, _bin_delta
+from cora.util.pmesh import (
+    calculate_positions,
+    _bin_delta,
+    _pixel_weights,
+    _radial_weights,
+)
 
 import numpy as np
 
@@ -369,6 +374,8 @@ class DynamicsBase(task.SingleTask):
 class ZeldovichDynamics(DynamicsBase):
     """Generate a simulated LSS field using Zel'dovich dynamics."""
 
+    sph = config.Property(proptype=bool, default=True)
+
     def process(self, initial_field: InitialLSS, biased_field: BiasedLSS) -> BiasedLSS:
         """Apply Zel'dovich dynamics to the biased field to get the final field.
 
@@ -415,7 +422,20 @@ class ZeldovichDynamics(DynamicsBase):
 
         # Calculate the Zel'dovich displaced field and assign directly into the output
         # container
-        za_density(vpsi, biased_field.delta[:], nside, chi, out=final_field.delta[:])
+        # za_density(vpsi, biased_field.delta[:], nside, chi, out=final_field.delta[:])
+        delta_m = (initial_field.delta[:] * D[:, np.newaxis]).view(np.ndarray)
+        delta_bias = biased_field.delta[:].view(np.ndarray)
+
+        if self.sph:
+            za_density_sph(
+                vpsi,
+                delta_bias,
+                delta_m,
+                chi,
+                final_field.delta[:],
+            )
+        else:
+            za_density_grid(vpsi, delta_bias, delta_m, chi, final_field.delta[:])
         return final_field
 
 
@@ -467,7 +487,51 @@ class LinearDynamics(DynamicsBase):
         return final_field
 
 
-def za_density(psi, delta, nside, chi, out=None):
+def za_density_grid(
+    psi: np.ndarray,
+    delta_bias: np.ndarray,
+    delta_m: np.ndarray,
+    chi: np.ndarray,
+    out: np.ndarray,
+):
+    """Calculate the density field under the Zel'dovich approximations.
+
+    This treats the initial mass as a grid of cuboids which are moved to their final
+    location and their mass allocate to pixels in the final grid according to their
+    overlap.
+
+    .. warning::
+        Healpix actually has a very weird definition of the points for a bilinear
+        interpolation, so this doesn't really work like it should.
+
+        Also this does not apply any scaling based on the change in volume of the
+        grid cell.
+
+    Parameters
+    ----------
+    psi
+        The vector displacement field.
+    delta_bias
+        The biased density field.
+    delta_m
+        The underlying matter density field. Used to calculate the density dependent
+        particle smoothing scale.
+    chi
+        The comoving distance of each slice.
+    out
+        The array to save the output into.
+    """
+    nchi, npix = delta_bias.shape
+
+    # Validate all the array shapes
+    _assert_shape(psi, (3, nchi, npix), "psi")
+    _assert_shape(delta_m, (nchi, npix), "delta_m")
+    _assert_shape(chi, (nchi,), "chi")
+    _assert_shape(out, (nchi, npix), "out")
+
+    nside = healpy.npix2nside(npix)
+
+    angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
 
     # Extend the chi bins to add another cell at each end
     # This makes it easier to deal with interpolation at the boundaries
@@ -476,19 +540,16 @@ def za_density(psi, delta, nside, chi, out=None):
     chi_ext[0] = chi[0] - (chi[1] - chi[0])
     chi_ext[-1] = chi[-1] + (chi[-1] - chi[-2])
 
-    npix = healpy.pixelfunc.nside2npix(nside)  # In original size maps
-    nz = len(chi)
-
     # Array to hold the density obtained from the ZA approximation
     if out is None:
-        out = np.zeros((nz, npix), dtype=delta.dtype)
+        out = np.zeros((nchi, npix), dtype=delta_bias.dtype)
 
     angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
 
-    for ii in range(nz):
+    for ii in range(nchi):
 
         # Initial density
-        density_slice = 1 + delta[ii]
+        density_slice = 1 + delta_bias[ii]
         # Coordinate displacements
         psi_slc = psi[:, ii]
 
@@ -503,8 +564,8 @@ def za_density(psi, delta, nside, chi, out=None):
 
         # Find
         chi_ext_ind = np.digitize(new_chi, chi_ext)
-        chi0 = chi_ext[(chi_ext_ind - 1) % (nz + 2)]
-        chi1 = chi_ext[chi_ext_ind % (nz + 2)]
+        chi0 = chi_ext[(chi_ext_ind - 1) % (nchi + 2)]
+        chi1 = chi_ext[chi_ext_ind % (nchi + 2)]
         dchi = chi1 - chi0
 
         # Calculate the indices and weights in the radial direction
@@ -513,18 +574,18 @@ def za_density(psi, delta, nside, chi, out=None):
         i0 = chi_ext_ind - 2
         i1 = chi_ext_ind - 1
 
-        w0[np.where((i0 < 0) | (i0 >= nz))] = -1
-        w1[np.where((i1 < 0) | (i1 >= nz))] = -1
+        w0[np.where((i0 < 0) | (i0 >= nchi))] = -1
+        w1[np.where((i1 < 0) | (i1 >= nchi))] = -1
 
         radial_ind = np.array([i0, i1])
         radial_weight = np.array([w0, w1])
 
         _bin_delta(
             density_slice,
-            pixel_ind.astype(np.int32),
-            pixel_weight,
-            radial_ind.astype(np.int32),
-            radial_weight,
+            pixel_ind.T.astype(np.int32, order="C"),
+            pixel_weight.T.copy(),
+            radial_ind.T.astype(np.int32, order="C"),
+            radial_weight.T.copy(),
             out,
         )
 
@@ -567,5 +628,133 @@ def lognormal_transform(
 
     np.exp(out, out=out)
     out -= 1
+
+    return out
+
+
+def _assert_shape(arr, shape, name):
+
+    if arr.ndim != len(shape):
+        raise ValueError(
+            f"Array {name} has wrong number of dimensions (got {arr.ndim}, "
+            f"expected {len(shape)}"
+        )
+
+    if arr.shape != shape:
+        raise ValueError(
+            f"Array {name} has the wrong shape (got {arr.shape}, expected {shape}"
+        )
+
+
+def za_density_sph(
+    psi: np.ndarray,
+    delta_bias: np.ndarray,
+    delta_m: np.ndarray,
+    chi: np.ndarray,
+    out: np.ndarray,
+):
+    """Calculate the density field under the Zel'dovich approximations.
+
+    This treats the initial mass as a grid of particles that are displaced to their
+    final location. Their mass is allocated to the underlying final grid with a
+    Gaussian profile that truncates beyond their immediate nearest neighbours.
+
+    Parameters
+    ----------
+    psi
+        The vector displacement field.
+    delta_bias
+        The biased density field.
+    delta_m
+        The underlying matter density field. Used to calculate the density dependent
+        particle smoothing scale.
+    chi
+        The comoving distance of each slice.
+    out
+        The array to save the output into.
+    """
+    nchi, npix = delta_bias.shape
+    nside = healpy.npix2nside(npix)
+
+    # Validate all the array shapes
+    _assert_shape(psi, (3, nchi, npix), "psi")
+    _assert_shape(delta_m, (nchi, npix), "delta_m")
+    _assert_shape(chi, (nchi,), "chi")
+    _assert_shape(out, (nchi, npix), "out")
+
+    # Set the nominal smoothing scales at mean density
+    sigma_chi = np.mean(np.abs(np.diff(chi))) / 2
+    sigma_ang = healpy.nside2resol(nside) / 2
+
+    angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
+
+    # For every pixel in the map figure out the indices of its nearest neighbours
+    nn_ind = np.zeros((npix, 9), dtype=int)
+    nn_ind[:, 0] = np.arange(npix)
+    nn_ind[:, 1:] = healpy.get_all_neighbours(nside, nn_ind[:, 0]).T
+
+    # For each neighbour calculate its 3D position vector
+    nn_vec = np.array(healpy.pix2vec(nside, nn_ind.ravel())).T.reshape(npix, 9, 3)
+    nn_vec = np.ascontiguousarray(nn_vec)
+
+    # Pre-allocate arrays to save the indices and weights into
+    pixel_ind = np.zeros((npix, 9), dtype=np.int32)
+    pixel_weight = np.zeros((npix, 9), dtype=np.float64)
+    radial_ind = np.zeros((npix, 3), dtype=np.int32)
+    radial_weight = np.zeros((npix, 3), dtype=np.float64)
+
+    for ii in range(nchi):
+
+        # Calculate the biased mass associated with each particle
+        density_slice = 1 + delta_bias[ii]
+
+        # Coordinate displacements
+        psi_slc = psi[:, ii]
+
+        # Calculate the amount we expect each particle to change volume
+        # NOTE: we clip at the low delta end to stop particles growing to enormous
+        # sizes
+        scaling = np.clip(1 + delta_m[ii], 0.1, 3.0) ** (-1.0 / 3)
+
+        # Final angles and radial coordinate
+        new_angpos = calculate_positions(angpos, psi_slc[1:])
+        new_chi = chi[ii] + psi_slc[0]
+
+        # Get the pixel index that each new angular position maps into
+        new_ang_ind = healpy.ang2pix(nside, new_angpos[0], new_angpos[1])
+
+        # Calculate the 3D vector for each angular position
+        new_ang_vec = np.ascontiguousarray(healpy.ang2vec(new_angpos[0], new_angpos[1]))
+
+        # Calculate the weights for each neighbour in the pixel direction, these should
+        # add up to 1
+        _pixel_weights(
+            new_ang_ind,
+            new_ang_vec,
+            scaling,
+            sigma_ang,
+            nn_ind,
+            nn_vec,
+            pixel_ind,
+            pixel_weight,
+        )
+
+        # Calculate the radial weights
+        chi_ind = np.searchsorted(chi, new_chi)
+        _radial_weights(
+            chi_ind, new_chi, scaling, sigma_chi, 1, chi, radial_ind, radial_weight
+        )
+
+        # Loop over all particles and spread their mass into the final pixel locations
+        _bin_delta(
+            density_slice,
+            pixel_ind,
+            pixel_weight,
+            radial_ind,
+            radial_weight,
+            out,
+        )
+
+    out[:] -= 1.0
 
     return out
