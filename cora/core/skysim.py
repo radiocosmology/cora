@@ -39,16 +39,20 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_func=None):
         Array of the C_l(z,z') values.
     """
 
-    if b_second_func is None:
-        b_second_func = lambda z : np.ones_like(z)
-
     if zromb == 0:
-        return aps(
-            np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
-            zarray[np.newaxis, :, np.newaxis],
-            zarray[np.newaxis, np.newaxis, :],
-            b_second_func(zarray)[np.newaxis, np.newaxis, :]
-        )
+        if b_second_func is not None:
+            return aps(
+                np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
+                zarray[np.newaxis, :, np.newaxis],
+                zarray[np.newaxis, np.newaxis, :],
+                b_second_func(zarray)[np.newaxis, np.newaxis, :]
+            )
+        else:
+            return aps(
+                np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
+                zarray[np.newaxis, :, np.newaxis],
+                zarray[np.newaxis, np.newaxis, :]
+            )
 
     else:
         zsort = np.sort(zarray)
@@ -66,12 +70,19 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_func=None):
         cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
         for lsec in lsections:
-            clt = aps(
-                lsec[:, np.newaxis, np.newaxis],
-                za[np.newaxis, :, np.newaxis],
-                za[np.newaxis, np.newaxis, :],
-                b_second_func(za)[np.newaxis, np.newaxis, :]
-            )
+            if b_second_func is not None:
+                clt = aps(
+                    lsec[:, np.newaxis, np.newaxis],
+                    za[np.newaxis, :, np.newaxis],
+                    za[np.newaxis, np.newaxis, :],
+                    b_second_func(za)[np.newaxis, np.newaxis, :]
+                )
+            else:
+                clt = aps(
+                    lsec[:, np.newaxis, np.newaxis],
+                    za[np.newaxis, :, np.newaxis],
+                    za[np.newaxis, np.newaxis, :]
+                )
 
             clt = clt.reshape(-1, zlen, zint, zlen, zint)
 
