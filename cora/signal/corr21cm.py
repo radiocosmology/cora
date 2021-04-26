@@ -215,7 +215,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             return np.ones_like(z) * self.bias
 
     # Override angular_power spectrum to switch to allow using frequency
-    def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+    def angular_powerspectrum(self, l, nu1, nu2, redshift=False, b_nu2=None):
         """Calculate the angular powerspectrum.
 
         Parameters
@@ -225,8 +225,11 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         nu1, nu2 : np.ndarray
             Frequencies/redshifts to calculate at.
         redshift : boolean, optional
-            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            If `False` (default) interpret `nu1`, `nu2` as frequencies,
             otherwise they are redshifts (relative to the 21cm line).
+        b_nu2 : float, optional
+            Linear bias at second frequency/redshift. Useful for tests involving cross
+            spectra between tracer with different biases. Default: None.
 
         Returns
         -------
@@ -240,7 +243,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             z1 = nu1
             z2 = nu2
 
-        return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
+        return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2, b_z2 = b_nu2)
 
     # Override angular_power spectrum to switch to allow using frequency
     def angular_powerspectrum_full(self, l, nu1, nu2, redshift=False):

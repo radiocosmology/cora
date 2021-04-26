@@ -1168,7 +1168,7 @@ class RedshiftCorrelation(object):
 
         return (1.0 / (xc ** 2 * np.pi)) * psdd  # No Growth factor nor RSD
 
-    def angular_powerspectrum_fft(self, la, za1, za2):
+    def angular_powerspectrum_fft(self, la, za1, za2, b_z2=None):
         """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
 
         Uses FFT based method to generate a lookup table for fast computation.
@@ -1179,6 +1179,9 @@ class RedshiftCorrelation(object):
             The multipole moments to return at.
         z1, z2 : array_like
             The redshift slices to correlate.
+        b_z2 : float, optional
+            Linear bias at redshift z2. Useful for tests involving cross
+            spectra between tracer with different biases. Default: None.
 
         Returns
         -------
@@ -1225,7 +1228,11 @@ class RedshiftCorrelation(object):
         xa1 = self.cosmology.comoving_distance(za1)
         xa2 = self.cosmology.comoving_distance(za2)
 
-        b1, b2 = self.bias_z(za1), self.bias_z(za2)
+        b1 = self.bias_z(za1)
+        if b_z2 is not None:
+            b2 = b_z2
+        else:
+            b2 = self.bias_z(za2)
         f1, f2 = self.growth_rate(za1), self.growth_rate(za2)
         pf1, pf2 = self.prefactor(za1), self.prefactor(za2)
         D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
