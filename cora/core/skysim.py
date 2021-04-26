@@ -13,7 +13,7 @@ import healpy
 from cora.util import hputil, nputil
 
 
-def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
+def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_array=None):
     """Calculate an array of C_l(z, z').
 
     Parameters
@@ -29,6 +29,9 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
     zwidth : scalar, optional
         Width of frequency channel to integrate over. If None (default),
         calculate from the separation of the first two bins.
+    b_second_func : function, optional
+        Linear bias of second tracer as a function of z or frequency, depending
+        on format of aps. Default: None.
 
     Returns
     -------
@@ -41,6 +44,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
             np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
             zarray[np.newaxis, :, np.newaxis],
             zarray[np.newaxis, np.newaxis, :],
+            b_second_func(z_array)[np.newaxis, np.newaxis, :]
         )
 
     else:
@@ -63,6 +67,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
                 lsec[:, np.newaxis, np.newaxis],
                 za[np.newaxis, :, np.newaxis],
                 za[np.newaxis, np.newaxis, :],
+                b_second_func(za)[np.newaxis, np.newaxis, :]
             )
 
             clt = clt.reshape(-1, zlen, zint, zlen, zint)
