@@ -13,7 +13,7 @@ import healpy
 from cora.util import hputil, nputil
 
 
-def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_array=None):
+def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_func=None):
     """Calculate an array of C_l(z, z').
 
     Parameters
