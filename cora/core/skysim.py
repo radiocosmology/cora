@@ -45,7 +45,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_func=None):
                 np.arange(lmax + 1)[:, np.newaxis, np.newaxis],
                 zarray[np.newaxis, :, np.newaxis],
                 zarray[np.newaxis, np.newaxis, :],
-                b_second_func(zarray)[np.newaxis, np.newaxis, :]
+                b_nu2=b_second_func(zarray)[np.newaxis, np.newaxis, :]
             )
         else:
             return aps(
