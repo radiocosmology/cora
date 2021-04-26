@@ -75,7 +75,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_func=None):
                     lsec[:, np.newaxis, np.newaxis],
                     za[np.newaxis, :, np.newaxis],
                     za[np.newaxis, np.newaxis, :],
-                    b_second_func(za)[np.newaxis, np.newaxis, :]
+                    b_nu2=b_second_func(za)[np.newaxis, np.newaxis, :]
                 )
             else:
                 clt = aps(
