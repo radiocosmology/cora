@@ -403,6 +403,9 @@ class FLASKMapsToMapContainer(task.SingleTask):
         lshape = m.map.local_shape[0]
         gshape = m.map.global_shape[0]
 
+        # Get local section of map
+        map_local = m.map[:]
+        
         # For each frequency on this rank, read FLASK map and insert into
         # Map container
         for fi_local in range(lshape):
@@ -415,13 +418,13 @@ class FLASKMapsToMapContainer(task.SingleTask):
             if not os.path.isfile(in_file):
                 raise RuntimeError("File %s not found!" % in_file)
 
-            m.map[fi_local, 0, :] = healpy.read_map(in_file)
+            map_local[fi_local, 0, :] = healpy.read_map(in_file)[:]
             self.log.debug(f"Rank %d: Read file %s" % (mpiutil.rank, in_file))
-
+            
         # Multiply map by specific prefactor, if desired
         if self.map_prefactor != 1:
             self.log.info("Multiplying map by %g" % self.map_prefactor)
-            m.map[:] *= self.map_prefactor
+            map_local *= self.map_prefactor
 
         # If desired, multiply by Tb(z)
         if self.use_mean_21cmT:
@@ -429,7 +432,7 @@ class FLASKMapsToMapContainer(task.SingleTask):
             cr = Corr21cm()
 
             z_local = u.nu21 / freq[loff : loff+lshape] - 1
-            m.map[:, 0] *= cr.T_b(z_local)[:, np.newaxis]
+            map_local[:, 0] *= cr.T_b(z_local)[:, np.newaxis]
 
         self.done = True
 
