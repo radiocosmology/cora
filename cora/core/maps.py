@@ -334,13 +334,14 @@ class FLASKMapsToMapContainer(task.SingleTask):
 
             in_file = (
                 self.input_map_prefix
-                + "%dz%d.fits" % (self.flask_field_num, loff + fi_local + 1)
+                + "f%dz%d.fits" % (self.flask_field_num, loff + fi_local + 1)
             )
             if not os.path.isfile(in_file):
                 raise RuntimeError("File %s not found!" % in_file)
 
             m.map[fi_local, 0, :] = hp.read_map(in_file)
-
+            self.log.debug(f"Rank %d: Read file %s" % (mpiutil.rank, in_file))
+            
         # Multiply map by specific prefactor, if desired
         if self.map_prefactor != 1:
             self.log.info("Multiplying map by %g" % self.map_prefactor)
@@ -348,8 +349,8 @@ class FLASKMapsToMapContainer(task.SingleTask):
 
         # If desired, multiply by Tb(z)
         if self.use_mean_21cmT:
-            from . import corr21cm
-            cr = corr21cm.Corr21cm()
+            from cora.signal.corr21cm import Corr21cm
+            cr = Corr21cm()
 
             z_local = u.nu21 / freq[loff : loff+lshape] - 1
             m.map[:, 0] *= cr.T_b(z_local)[:, np.newaxis]
