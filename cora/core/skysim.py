@@ -5,12 +5,16 @@ from future.builtins.disabled import *  # noqa  pylint: disable=W0401, W0614
 
 # === End Python 2/3 compatibility
 
+import os
 import numpy as np
 import scipy.linalg as la
 import scipy.integrate as si
 import healpy
 
-from cora.util import hputil, nputil
+from cora.util import hputil, nputil, units as u
+
+from caput import mpiutil, pipeline, config, mpiarray
+from draco.core import containers, task, io
 
 
 def clarray(aps, lmax, zarray, zromb=3, zwidth=None, b_second_func=None):
@@ -329,3 +333,105 @@ def mkconstrained(corr, constraints, nside):
         hpmaps[i] = healpy.alm2map(cv[i], nside, verbose=False)
 
     return hpmaps
+
+
+
+
+class FLASKMapsToMapContainer(task.SingleTask):
+    """Convert a set of single-frequency FLASK maps into a Map container.
+
+    Attributes
+    ----------
+    input_map_prefix : str
+        Prefix of filenames for input FLASK maps, including final "-".
+    nside : int
+        Nside of input maps.
+    flask_field_num : int, optional
+        FLASK field number for input maps (default: 1).
+    use_mean_21cmT : bool, optional
+        Multiply map by mean 21cm temperature as a function of z (default: False).
+    map_prefactor : float, optional
+        Constant prefactor to multiply maps by (default: 1).
+    """
+
+    input_map_prefix = config.Property(proptype=str)
+    nside = config.Property(proptype=int)
+
+    flask_field_num = config.Property(proptype=int, default=1)
+    use_mean_21cmT = config.Property(proptype=int, default=False)
+    map_prefactor = config.Property(proptype=float, default=1.)
+
+    done = False
+
+    def setup(self, bt):
+        """Setup the simulation.
+
+        Parameters
+        ----------
+        bt : ProductManager or BeamTransfer
+            Beam Transfer maanger.
+        """
+        self.beamtransfer = io.get_beamtransfer(bt)
+        self.telescope = io.get_telescope(bt)
+
+    def process(self) -> containers.Map:
+        """Read FLASK maps and assemble into Map container.
+
+        Returns
+        -------
+        out_map : Map
+            Output Map container.
+        """
+
+        # Form frequency map in appropriate format to feed into Map container
+        freq = self.telescope.frequencies
+        n_freq = len(freq)
+        freqmap = np.zeros(n_freq, dtype=[("centre", np.float64), ("width", np.float64)])
+        freqmap["centre"][:] = freq
+        freqmap["width"][:] = np.abs(np.diff(freq)[0])
+
+        # Make new map container and copy delta into Stokes I component
+        m = containers.Map(
+            freq=freqmap,
+            polarisation=True,
+            distributed=True,
+            pixel=np.arange(healpy.nside2npix(self.nside))
+        )
+
+        # Get indexing info for this rank
+        loff = m.map.local_offset[0]
+        lshape = m.map.local_shape[0]
+        gshape = m.map.global_shape[0]
+
+        # For each frequency on this rank, read FLASK map and insert into
+        # Map container
+        for fi_local in range(lshape):
+            # print("Rank %d: fi_local, fi_global = %d, %d" % (mpiutil.rank, fi_local, loff+fi_local))
+
+            in_file = (
+                self.input_map_prefix
+                + "f%dz%d.fits" % (self.flask_field_num, loff + fi_local + 1)
+            )
+            if not os.path.isfile(in_file):
+                raise RuntimeError("File %s not found!" % in_file)
+
+            m.map[fi_local, 0, :] = healpy.read_map(in_file)
+            self.log.debug(f"Rank %d: Read file %s" % (mpiutil.rank, in_file))
+
+        # Multiply map by specific prefactor, if desired
+        if self.map_prefactor != 1:
+            self.log.info("Multiplying map by %g" % self.map_prefactor)
+            m.map[:] *= self.map_prefactor
+
+        # If desired, multiply by Tb(z)
+        if self.use_mean_21cmT:
+            from cora.signal.corr21cm import Corr21cm
+            cr = Corr21cm()
+
+            z_local = u.nu21 / freq[loff : loff+lshape] - 1
+            m.map[:, 0] *= cr.T_b(z_local)[:, np.newaxis]
+
+        self.done = True
+
+        return m
+
