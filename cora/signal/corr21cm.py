@@ -257,6 +257,38 @@ class CorrBiasedTracer(corr.RedshiftCorrelation, maps.Sky3d):
         return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
 
     # Wrap angular_powerspectrum to switch to allow using frequency
+    # and to remove the RSD.
+    def norsd_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+        """Calculate the angular powerspectrum of the matter over-density
+        without RSD.
+
+        Parameters
+        ----------
+        l : np.ndarray
+            Multipoles to calculate at.
+        nu1, nu2 : np.ndarray
+            Frequencies/redshifts to calculate at.
+        redshift : boolean, optional
+            If `False` (default) interperet `nu1`, `nu2` as frequencies,
+            otherwise they are redshifts (relative to the 21cm line).
+
+        Returns
+        -------
+        aps : np.ndarray
+        """
+
+        if not redshift:
+            z1 = units.nu21 / nu1 - 1.0
+            z2 = units.nu21 / nu2 - 1.0
+        else:
+            z1 = nu1
+            z2 = nu2
+
+        return corr.RedshiftCorrelation.angular_powerspectrum(
+                            self, l, z1, z2,
+                            include_rsd=False)
+
+    # Wrap angular_powerspectrum to switch to allow using frequency
     # and to remove bias, prefactors, evolution and RSD.
     def raw_angular_powerspectrum(self, l, nu1, nu2, redshift=False):
         """Calculate the angular powerspectrum of the matter over-density
@@ -323,8 +355,16 @@ class CorrBiasedTracer(corr.RedshiftCorrelation, maps.Sky3d):
         """Create a map of the unpolarised sky.
         """
 
-        if (self.lognorm or self.no_rsd):
+        if self.no_rsd:
+            lmax = 3 * self.nside - 1
+            cla = skysim.clarray(
+                self.norsd_angular_powerspectrum, lmax, 
+                self.frequencies, zromb=self.oversample
+            )
+            zero_mean_map = skysim.mkfullsky(cla, self.nside)
+            return self.mean_nu(self.frequencies)[:, np.newaxis] + zero_mean_map
 
+        if self.lognorm:
             lmax = 3 * self.nside - 1
             cla = skysim.clarray(
                 self.raw_angular_powerspectrum, lmax, 
@@ -332,17 +372,16 @@ class CorrBiasedTracer(corr.RedshiftCorrelation, maps.Sky3d):
             )
             zero_mean_map = skysim.mkfullsky(cla, self.nside)
 
-            if self.lognorm:
-                # Log-normalization:
-                map_var = np.var(zero_mean_map, axis=1)
-                zero_mean_map = np.exp(zero_mean_map - map_var[:, np.newaxis]) - 1.0
+            # Log-normalization:
+            map_var = np.var(zero_mean_map, axis=1)
+            zero_mean_map = np.exp(zero_mean_map - map_var[:, np.newaxis]) - 1.0
 
             # Apply prefactor, evolution and bias since 
             # they were ommited in the C_l's.
             z_pixels = units.nu21 / self.frequencies - 1.0
             zero_mean_map *= self.prefactor(z_pixels)[:, np.newaxis]
             zero_mean_map *= self.bias_z(z_pixels)[:, np.newaxis]
-            zero_mean_map *= self.growth_factor(z_pixels)[:, np.newaxis]
+            zero_mean_map *= (self.growth_factor(z_pixels) / self.growth_factor(self.ps_redshift))[:, np.newaxis]
 
             return self.mean_nu(self.frequencies)[:, np.newaxis] + zero_mean_map
 
