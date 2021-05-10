@@ -1,4 +1,6 @@
 """Module for interpolating sampled functions."""
+# cython: profile=True
+# cython: linetrace=True
 
 import numpy as np
 
@@ -49,8 +51,8 @@ cdef class Interpolater(object):
     y''[0] = y''[-1] = 0. Written using Cython for massive speedup.
     """
 
-    cdef np.ndarray __data_
-    cdef np.ndarray __y2_
+    cdef double[:, :] __data_
+    cdef double[:] __y2_
 
     cdef double * _data_p
     cdef double * _y2_p
@@ -60,7 +62,7 @@ cdef class Interpolater(object):
     fromfile = classmethod(_int_fromfile)
 
 
-    def __init__(self, data1, data2=None):
+    def __init__(self, double[:] data1, double[:] data2=None):
         """Constructor to initialise from data.
 
         Need to supply a 2d data array of X-Y pairs to
@@ -88,12 +90,12 @@ cdef class Interpolater(object):
         self.__data_ = np.ascontiguousarray(data)
         self.__gen_spline_()
 
-        self._data_p = <double *>self.__data_.data
-        self._y2_p = <double *>self.__y2_.data
+        self._data_p = <double *>self.__data_
+        self._y2_p = <double *>self.__y2_
         self._n = <Py_ssize_t>self.__data_.shape[0]
 
 
-    def value(self, x):
+    def value(self, int x):
         """Returns the value of the function at x. """
         if isinstance(x, np.ndarray):
             return self.value_array(x)
@@ -102,15 +104,15 @@ cdef class Interpolater(object):
 
 
 
-    def __call__(self, x):
+    def __call__(self, int x):
         """Returns the value of the function at x."""
         return self.value(x)
 
     @cython.boundscheck(False)
-    def value_array(self, x):
+    def value_array(self, int x):
 
-        cdef np.ndarray[dbltype_t, ndim=1] xr
-        cdef np.ndarray[dbltype_t, ndim=1] rr
+        cdef double[:] xr
+        cdef double[:] rr
 
         cdef Py_ssize_t i, nr
 
@@ -264,7 +266,7 @@ cdef class LogInterpolater(Interpolater):
 
         Interpolater.__init__(self, np.log(data))
 
-    def value(self, x):
+    def value(self, int x):
         """ Return the value of the log-interpolated function."""
         if isinstance(x, np.ndarray):
             return self.value_log_array(x)
@@ -273,10 +275,10 @@ cdef class LogInterpolater(Interpolater):
 
 
     @cython.boundscheck(False)
-    def value_log_array(self, x):
+    def value_log_array(self, int x):
 
-        cdef np.ndarray[dbltype_t, ndim=1] xr
-        cdef np.ndarray[dbltype_t, ndim=1] rr
+        cdef double[:] xr
+        cdef double[:] rr
 
         cdef Py_ssize_t i, nr
 
