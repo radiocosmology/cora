@@ -180,13 +180,15 @@ cdef class Interpolater(object):
         return (a * data[2*kl+1] + b * data[2*kh+1]
                 + c * y2[kl] + d * y2[kh])
 
-
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)   # Deactivate negative indexing.
     def __gen_spline_(self):
         # Solve for the second derivative matrix to generate the
         # splines.
 
         cdef Py_ssize_t n = self.__data_.shape[0]
         cdef Py_ssize_t length = n - 2
+        cdef Py_ssize_t i
 
         al_raw = np.zeros(length, dtype=np.float64)
         bt_raw = np.zeros(length, dtype=np.float64)
