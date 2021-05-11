@@ -1,3 +1,4 @@
+# cython: language_level=3
 """Module for interpolating sampled functions."""
 
 import numpy as np
@@ -30,7 +31,7 @@ def _int_fromfile(cls, file, colspec=None):
             colspec = [0,1]
 
         if len(colspec) != 2:
-            print cls, file, colspec
+            print(f"cls: {cls}, file: {file}, colspec: {colspec}")
             raise InterpolationException("Can only use two columns.")
 
         d1 = np.loadtxt(file, usecols = colspec)
