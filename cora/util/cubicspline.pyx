@@ -71,7 +71,10 @@ cdef class Interpolater(object):
         if data2 is None:
             data = data1
         else:
-            data = np.dstack((data1, data2))[0]
+            try:
+                data = np.dstack((data1, data2))[0]
+            except ValueError as e:
+                raise InterpolationException("Failure stacking x and y data.") from e
 
         # Check to ensure array contains correct data.
         s = data.shape
