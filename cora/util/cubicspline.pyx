@@ -51,8 +51,8 @@ cdef class Interpolater(object):
     y''[0] = y''[-1] = 0. Written using Cython for massive speedup.
     """
 
-    cdef double[:, :] __data_
-    cdef double[:] __y2_
+    cdef np.ndarray __data_
+    cdef np.ndarray __y2_
 
     cdef double * _data_p
     cdef double * _y2_p
@@ -90,8 +90,8 @@ cdef class Interpolater(object):
         self.__data_ = np.ascontiguousarray(data)
         self.__gen_spline_()
 
-        self._data_p = <double *>self.__data_
-        self._y2_p = <double *>self.__y2_
+        self._data_p = <double *>self.__data_.data
+        self._y2_p = <double *>self.__y2_.data
         self._n = <Py_ssize_t>self.__data_.shape[0]
 
 
@@ -185,23 +185,33 @@ cdef class Interpolater(object):
         # Solve for the second derivative matrix to generate the
         # splines.
 
-        n = self.__data_.shape[0]
+        cdef Py_ssize_t n = self.__data_.shape[0]
+        cdef Py_ssize_t length = n - 2
 
-        al = np.zeros(n-2)
-        bt = np.zeros(n-2)
-        gm = np.zeros(n-2)
-        f = np.zeros(n-2)
-        z = np.zeros(n-2)
-        l = np.zeros(n-2)
-        m = np.zeros(n-2)
+        al_raw = np.zeros(length, dtype=np.float64)
+        bt_raw = np.zeros(length, dtype=np.float64)
+        gm_raw = np.zeros(length, dtype=np.float64)
+        f_raw = np.zeros(length, dtype=np.float64)
+        z_raw = np.zeros(length, dtype=np.float64)
+        l_raw = np.zeros(length, dtype=np.float64)
+        m_raw = np.zeros(length, dtype=np.float64)
 
-        self.__y2_ = np.zeros(n)
+        cdef double[:] al = al_raw
+        cdef double[:] bt = bt_raw
+        cdef double[:] gm = gm_raw
+        cdef double[:] f = f_raw 
+        cdef double[:] z = z_raw 
+        cdef double[:] l = l_raw 
+        cdef double[:] m = m_raw 
+
+        self.__y2_ = np.zeros(n, dtype=np.float64)
+        cdef double[:] y2 = self.__y2_
 
         # Fill out matrices (al diagonal, bt lower, gm upper).
-        y = self.__data_[:,1]
-        x = self.__data_[:,0]
+        cdef double[:] y = self.__data_[:,1]
+        cdef double[:] x = self.__data_[:,0]
 
-        for i in xrange(0, n-2):
+        for i in xrange(length):
 
             f[i] = (y[i+2] - y[i+1]) / (x[i+2] - x[i+1]) - (y[i+1] - y[i]) / (x[i+1] - x[i])
 
@@ -215,13 +225,13 @@ cdef class Interpolater(object):
         l[0] = al[0]
         m[0] = gm[0] / al[0]
 
-        for i in xrange(1, n-2):
+        for i in xrange(1, length):
             l[i] = al[i] - bt[i] * m[i-1]
             m[i] = gm[i] / l[i]
 
         # Solve L.z = f
         z[0] = f[0] / l[0]
-        for i in xrange(1, n-2):
+        for i in xrange(1, length):
             z[i] = (f[i] - bt[i] * z[i-1]) / l[i]
 
         # Solve U.x = z
@@ -229,8 +239,8 @@ cdef class Interpolater(object):
             z[i] = z[i] - m[i] * z[i+1]
 
         # Set second derivatives.
-        for i in xrange(1,n-1):
-            self.__y2_[i] = z[i-1]
+        for i in xrange(1,length + 1):
+            y2[i] = z[i-1]
 
     def data(self):
         """Return the data array."""
