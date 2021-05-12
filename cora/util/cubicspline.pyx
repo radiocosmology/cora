@@ -123,15 +123,14 @@ cdef class Interpolater(object):
 
         nr = xr.size
 
-        for i in prange(nr, nogil=True):
+        for i in range(nr):
             rr[i] = self.value_cdef(xr[i])
 
         return rr.reshape(x.shape)
 
-
     @cython.cdivision(True)
     @cython.boundscheck(False)
-    cdef dbltype_t value_cdef(self, dbltype_t x) nogil:
+    def value_cdef(self, x):
         """Returns the value of the function at x.
 
         Cdef'd function to do the work.
@@ -289,7 +288,7 @@ cdef class LogInterpolater(Interpolater):
 
         nr = xr.size
 
-        for i in prange(nr, nogil=True):
+        for i in range(nr):
             rr[i] = libc.math.exp(self.value_cdef(libc.math.log(xr[i])))
 
         return rr.reshape(x.shape)

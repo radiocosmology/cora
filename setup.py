@@ -11,6 +11,13 @@ import numpy as np
 
 import versioneer
 
+from Cython.Compiler.Options import get_directive_defaults
+
+directive_defaults = get_directive_defaults()
+
+directive_defaults["linetrace"] = True
+directive_defaults["binding"] = True
+
 
 # Decide whether to use OpenMP or not
 if ("CORA_NO_OPENMP" in os.environ) or (
@@ -29,6 +36,7 @@ cs_ext = Extension(
     include_dirs=[np.get_include()],
     extra_compile_args=args,
     extra_link_args=args,
+    define_macros=[("CYTHON_TRACE_NOGIL", "1")],
 )
 
 # Bi-linear map extension
