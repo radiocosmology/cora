@@ -118,16 +118,19 @@ cdef class Interpolater(object):
         rr = np.empty_like(xr)
 
         nr = xr.size
+        # a pointer, so we could modify its value from within `value_cdef`
+        cdef int *last_guess
+        last_guess[0] = 0
 
         for i in prange(nr, nogil=True):
-            rr[i] = self.value_cdef(xr[i])
+            rr[i] = self.value_cdef(xr[i], &last_guess)
 
         return rr.reshape(x.shape)
 
 
     @cython.cdivision(True)
     @cython.boundscheck(False)
-    cdef dbltype_t value_cdef(self, dbltype_t x) nogil:
+    cdef dbltype_t value_cdef(self, dbltype_t x, int *last_guess) nogil:
         """Returns the value of the function at x.
 
         Cdef'd function to do the work.
@@ -142,7 +145,7 @@ cdef class Interpolater(object):
         # cdef np.ndarray[dbltype_t, ndim=2] data = self.__data_
         # cdef np.ndarray[dbltype_t, ndim=1] y2 = self.__y2_
 
-        kl = 0
+        kl = last_guess[0]
         kh = self._n
 
         if(x < data[0]):
@@ -158,7 +161,45 @@ cdef class Interpolater(object):
             a = (data[2*kh+1] - data[2*(kh-1)+1]) / h
             return (a + h * y2[kh-1] / 6) * (x - data[2*kh]) + data[2*kh+1]
 
-        # Use bisection to locate the interval
+        # Locate the Interval
+
+        # the hunting increment
+        cdef dbltype_t inc
+        inc = 1
+
+        # boolean variable that marks when the hunt is over
+        end_hunt = False
+
+        if (x >= data[2*kl]): # Hunt up
+            if (kl >= self._n):
+                end_hunt = True # how do i break at this point? what needs to happen?
+            if end_hunt: return 1 # x does not exist in our interpolation; error
+            kh = kl+1
+            while(x >= data[2*kh]): # not done hunting
+                kl = kh
+                inc *= 2 # double the increment
+                kh = kl + inc
+                if (kh > self._n): # done hunting, since off end of table
+                    kh = self._n+1
+                    break
+        else: # hunt down
+            if (kl == 1):
+                kl = 0
+                end_hunt = True
+            if end_hunt: return 1
+            kh = kl
+            kl -= 1
+            while(x < data[2*kl]): # not done hunting
+                kh = kl
+                inc *= 2 # double the increment
+
+                if (inc >= kh): # done hunting since off end of table
+                    kl = 0
+                    break
+                else:
+                    kl = kh - inc # and try again
+
+        # Hunt is done; Use bisection as final phase to locate the interval
         while(kh - kl > 1):
             kn = (kh + kl) / 2
             if(data[2*kn] > x):
@@ -173,6 +214,8 @@ cdef class Interpolater(object):
         b = (x - data[2*kl]) / h
         c = (a**3 - a) * h**2 / 6
         d = (b**3 - b) * h**2 / 6
+
+        last_guess[0] = kl
 
         # Return the spline interpolated value.
         return (a * data[2*kl+1] + b * data[2*kh+1]
