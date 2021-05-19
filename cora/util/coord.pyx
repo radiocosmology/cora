@@ -195,7 +195,7 @@ def great_circle_points(sph1, sph2, npoints):
 
     # Turn points on circle into Cartesian vectors
     c1 = sph_to_cart(sph1)
-    c1 = sph_to_cart(sph2)
+    c2 = sph_to_cart(sph2)
 
     # Construct the difference vector
     dc = c2 - c1
