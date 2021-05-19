@@ -211,6 +211,35 @@ def thetaphi_plane_cart(sph_coords):
     return tp_cart
 
 
+def norm_vec2(vec2):
+    """For an array of 2D vectors, normalise each to unit length *inplace*.
+
+    Parameters
+    ----------
+    vec2 : np.ndarray[..., 2]
+        An array of 2D vectors
+    """
+
+    cdef double[:, ::1] vec_view
+    cdef Py_ssize_t i, n
+    cdef double norm
+
+    if not isinstance(vec2, np.ndarray) or vec2.shape[-1] != 2:
+        raise ValueError("Argument must be a numpy array with last axis of length 2.")
+
+    vec_view = vec2.reshape(-1, 2)
+
+    n = vec_view.shape[0]
+
+    with cython.wraparound(False), cython.boundscheck(False):
+        for i in prange(n, nogil=True):
+
+            norm = hypot(vec_view[i, 0], vec_view[i, 1])
+            vec_view[i, 0] /= norm
+            vec_view[i, 1] /= norm
+
+
+
 def groundsph_to_cart(gsph, zenith):
 
     ta = gsph[..., 0]
