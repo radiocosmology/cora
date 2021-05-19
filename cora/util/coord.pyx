@@ -165,22 +165,50 @@ def thetaphi_plane(sph_arr):
     return thetahat, phihat
 
 
-def thetaphi_plane_cart(sph_arr):
-    """For each position, return the theta, phi unit vectors (in cartesians).
+def thetaphi_plane_cart(sph_coords):
+    """For each position, return theta, phi tangent vectors in cartesian coordinates.
+
+    This routine is OpenMP parallel.
 
     Parameters
     ----------
-    sph_arr : np.ndarray
+    sph_coords : np.ndarray
         Angular positions (in spherical polar co-ordinates).
 
     Returns
     -------
     thetahat, phihat : np.ndarray
-        Unit vectors in the theta and phi directions (in cartesian coordinates).
+        Unit vectors in the theta and phi directions now in cartesian coordinates.
     """
-    that, phat = thetaphi_plane(sph_arr)
 
-    return sph_to_cart(that), sph_to_cart(phat)
+    cdef double[:, ::1] sph_view
+    cdef double[:, :, ::1] tp_view
+    cdef Py_ssize_t i, n
+    cdef double theta, phi
+
+    if not isinstance(sph_coords, np.ndarray) or sph_coords.shape[-1] != 2:
+        raise ValueError("Argument must be a numpy array with last axis of length 2.")
+
+    #sph_coords = np.ascontiguousarray(sph_coords).astype(np.float64, copy=False)
+    #sph_coords = np.ascontiguousarray(sph_coords).astype(np.float64, copy=False)
+    sph_view = sph_coords.reshape(-1, 2)
+
+    # Create an array of the correct size for the output.
+    tp_cart = np.empty((2,) + sph_coords.shape[:-1] + (3,), dtype=np.float64)
+    tp_view = tp_cart.reshape(2, -1, 3)
+
+    n = sph_view.shape[0]
+
+    with cython.wraparound(False), cython.boundscheck(False):
+        for i in prange(n, nogil=True):
+
+            theta = sph_view[i, 0]
+            phi = sph_view[i, 1]
+
+            _s2c(theta + M_PI_2, phi, &tp_view[0, i, 0])
+            _s2c(M_PI_2, phi + M_PI_2, &tp_view[1, i, 0])
+
+    return tp_cart
 
 
 def groundsph_to_cart(gsph, zenith):
