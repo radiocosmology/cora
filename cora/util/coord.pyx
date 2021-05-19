@@ -12,6 +12,7 @@ Transforms
 Vector operations
 =================
 - :py:meth:`sph_dot`
+- :py:meth:`norm_vec2`
 
 Tangent Plane
 =============
@@ -237,27 +238,6 @@ def norm_vec2(vec2):
             norm = hypot(vec_view[i, 0], vec_view[i, 1])
             vec_view[i, 0] /= norm
             vec_view[i, 1] /= norm
-
-
-
-def groundsph_to_cart(gsph, zenith):
-
-    ta = gsph[..., 0]
-    pa = gsph[..., 1]
-
-    zenc = sph_to_cart(zenith)
-
-    that, phat = thetaphi_plane_cart(zenith)
-
-    cart_arr = np.empty(ta.shape + (3,), dtype=ta.dtype)
-
-    cart_arr = (
-        ta[..., np.newaxis] * that
-        + pa[..., np.newaxis] * phat
-        + ((1.0 - ta ** 2 - pa ** 2) ** 0.5)[..., np.newaxis] * zenc
-    )
-
-    return cart_arr
 
 
 def great_circle_points(sph1, sph2, npoints):
