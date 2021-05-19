@@ -22,45 +22,72 @@ Miscellaneous
 =============
 - :py:meth:`great_circle_points`
 """
-
+cimport cython
+from cython.parallel cimport prange, parallel
 
 import numpy as np
+cimport numpy
+
+from libc.stdlib cimport abort, malloc, free
+from libc.math cimport sin, cos, tan, exp, hypot, M_PI, M_PI_2, M_LN2
 
 
-def sph_to_cart(sph_arr):
+def sph_to_cart(sph_coords):
     """Convert a vector in Spherical Polar coordinates to Cartesians.
+
+    This routine is OpenMP parallel.
 
     Parameters
     ----------
-    sph_arr : np.ndarry
+    sph_coords : np.ndarry
         A vector (or array of) in spherical polar co-ordinates. Values should be
         packed as [r, theta, phi] along the last axis. Alternatively they can be
         packed as [theta, phi] in which case r is assumed to be one.
 
     Returns
     -------
-    cart_arr : np.ndarry
+    cart_coords : np.ndarray
         Array of equivalent vectors in cartesian coordinartes.
     """
+    cdef double[:, ::1] sph_view, cart_view
+    cdef Py_ssize_t i, n, nd
+    cdef double r
+
+    if not isinstance(sph_coords, np.ndarray):
+        raise ValueError("Argument must be a numpy array.")
+
+    nd = sph_coords.shape[-1]
+
+    # Make sure we are dealing with double precision types
+    sph_view = sph_coords.astype(np.float64, copy=False).reshape(-1, nd)
 
     # Create an array of the correct size for the output.
-    shape = list(sph_arr.shape)
-    shape[-1] = 3
-    cart_arr = np.empty(shape)
+    cart_coords = np.empty(sph_coords.shape[:-1] + (3,), dtype=np.float64)
+    cart_view = cart_coords.reshape(-1, 3)
 
-    # Useful quantities
-    if sph_arr.shape[-1] == 3:
-        radius = sph_arr[..., 0]
-    else:
-        radius = 1.0
+    n = sph_view.shape[0]
 
-    sintheta = np.sin(sph_arr[..., -2])
+    with cython.wraparound(False), cython.boundscheck(False):
 
-    cart_arr[..., 0] = radius * sintheta * np.cos(sph_arr[..., -1])  # x-axis
-    cart_arr[..., 1] = radius * sintheta * np.sin(sph_arr[..., -1])  # y-axis
-    cart_arr[..., 2] = radius * np.cos(sph_arr[..., -2])  # z-axis
+        if nd == 2:
+            for i in prange(n, nogil=True):
+                _s2c(sph_view[i, 0], sph_view[i, 1], &cart_view[i, 0])
 
-    return cart_arr
+        elif nd == 3:
+            for i in prange(n, nogil=True):
+                _s2c(sph_view[i, 1], sph_view[i, 2], &cart_view[i, 0])
+                r = sph_view[i, 0]
+                cart_view[i, 0] *= r
+                cart_view[i, 1] *= r
+                cart_view[i, 2] *= r
+
+        else:
+            raise ValueError(
+                f"Last axis of `sph_view` has unsupported length {nd}."
+            )
+
+
+    return cart_coords
 
 
 def cart_to_sph(cart_arr):
@@ -219,3 +246,14 @@ def great_circle_points(sph1, sph2, npoints):
 
     # Return the angular poitions of the points
     return cart_to_sph(cv)[:, 1:]
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline void _s2c(double theta, double phi, double cart[3]) nogil:
+    # Worker function for calculating the cartesian version of a unit vector in
+    # spherical polars
+    cdef double sintheta = sin(theta)
+    cart[0] = sintheta * cos(phi)
+    cart[1] = sintheta * sin(phi)
+    cart[2] = cos(theta)
