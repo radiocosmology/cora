@@ -56,6 +56,15 @@ bm_ext = Extension(
     extra_link_args=args,
 )
 
+# coord extension
+cr_ext = Extension(
+    "cora.util.coord",
+    [cython_file("cora/util/coord")],
+    include_dirs=[np.get_include()],
+    extra_compile_args=args,
+    extra_link_args=args,
+)
+
 # Load the requirements list
 with open("requirements.txt", "r") as fh:
     requires = fh.read().split()
@@ -70,7 +79,7 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass({"build_ext": build_ext}),
     packages=find_packages(),
-    ext_modules=[cs_ext, bm_ext],
+    ext_modules=[cs_ext, bm_ext, cr_ext],
     python_requires=">=3.6",
     install_requires=requires,
     extras_require={"sphfunc": ["pygsl"]},
