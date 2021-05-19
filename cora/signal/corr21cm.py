@@ -176,7 +176,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return f
 
     def bias_z(self, z):
-        r"""It's unclear what the bias should be. Using 1 for the moment. """
+        r"""It's unclear what the bias should be. Using 1 for the moment."""
 
         return np.ones_like(z) * 1.0
 
