@@ -73,7 +73,7 @@ class InterpolatedFunction(memh5.BasicCont):
                 x_t = dset.attrs["x_t"]
                 f_t = dset.attrs["f_t"]
 
-                self._function_cache[name] = sinh_interpolate(x, f, x_t, f_t)
+                self._function_cache[name] = cs.SinhInterpolater(data, x_t, f_t)
             else:  # Unrecognized interpolation type
                 raise RuntimeError(
                     f"Unrecognized interpolation type {interpolation_type}"
