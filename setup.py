@@ -17,9 +17,9 @@ if ("CORA_NO_OPENMP" in os.environ) or (
     re.search("gcc", sysconfig.get_config_var("CC")) is None
 ):
     print("Not using OpenMP")
-    args = []
+    args = ["-std=c99"]
 else:
-    args = ["-fopenmp"]
+    args = ["-std=c99", "-fopenmp"]
 
 
 # Cubic spline extension

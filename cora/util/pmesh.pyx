@@ -3,11 +3,27 @@
 """ Module for deriving a density filed from a distribution of particles. """
 
 cimport cython
+from cython.parallel import prange
+
 from libc.math cimport exp
 
 import numpy as np
 from scipy.interpolate import interp1d
 import healpy as hp
+
+
+cdef extern from "pmesh_util.c":
+    void _bin_delta_c(
+            double* rho,
+            int* pixel_ind,
+            double* pixel_weight,
+            int* radial_ind,
+            double* radial_weight,
+            double* out,
+            int npart,
+            int npix,
+            int nrad
+    )
 
 # TODO: Apparently unused variable nslices. Delete?
 def za_density(psi,rho0,nside,comovd,nside_factor,ndiv_radial,nslices=2):
@@ -227,7 +243,7 @@ cpdef _pixel_weights(
         raise ValueError("pixel_weight has wrong shape")
 
 
-    for ii in range(npart):
+    for ii in prange(npart, nogil=True):
 
         ind = new_ang_ind[ii]
 
@@ -340,7 +356,7 @@ cpdef _radial_weights(
     if not _check_shape(radial_weight, (npart, nn)):
         raise ValueError("radial_weight has incorrect shape.")
 
-    for ii in range(npart):
+    for ii in prange(npart, nogil=True):
 
         ind = new_chi_ind[ii]
 
@@ -422,25 +438,15 @@ cpdef void _bin_delta(
     if pixel_ind.shape[0] != npart:
         raise ValueError("Weight arrays do not have the same length as the `rho` array")
 
-    for ipart in range(npart):
+    _bin_delta_c(
+            &rho[0],
+        &pixel_ind[0, 0],
+        &pixel_weight[0, 0],
+        &radial_ind[0, 0],
+        &radial_weight[0, 0],
+        &out[0, 0],
+        npart,
+        len_pixel,
+        len_radial
+    )
 
-        v = rho[ipart]
-
-        for ipix in range(len_pixel):
-            pi = pixel_ind[ipart, ipix]
-            pw = pixel_weight[ipart, ipix]
-
-            # if pi < 0 or pi >= npix:
-            #     raise RuntimeError("out of bounds index %i" % pi)
-
-            for irad in range(len_radial):
-                ri = radial_ind[ipart, irad]
-                rw = radial_weight[ipart, irad]
-
-                # if ri < 0 or ri >= nchi:
-                #     raise RuntimeError("out of bounds index chi %i" % ri)
-
-                if rw < 0:
-                    continue
-
-                out[ri, pi] += v * pw * rw
