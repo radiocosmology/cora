@@ -74,11 +74,17 @@ class CalculateCorrelations(task.SingleTask):
 
         # Calculate the correlation functions
         self.log.debug("Generating C_dd(r)")
-        k0, c0 = corrfunc.ps_to_corr(self._ps_n(0), samples=True)
+        k0, c0 = corrfunc.ps_to_corr(
+            self._ps_n(0), samples=True, samples_per_decade=1000
+        )
         self.log.debug("Generating C_dp(r)")
-        k2, c2 = corrfunc.ps_to_corr(self._ps_n(2), h=3e-6, samples=True)
+        k2, c2 = corrfunc.ps_to_corr(
+            self._ps_n(2), h=3e-6, samples=True, samples_per_decade=1000
+        )
         self.log.debug("Generating C_pp(r)")
-        k4, c4 = corrfunc.ps_to_corr(self._ps_n(4), h=2e-6, samples=True)
+        k4, c4 = corrfunc.ps_to_corr(
+            self._ps_n(4), h=2e-6, samples=True, samples_per_decade=1000
+        )
 
         func = InterpolatedFunction()
 
@@ -148,9 +154,9 @@ class GenerateInitialLSS(task.SingleTask):
 
         # TODO: configurable accuracy parameters, xromb, q
         self.log.debug("Generating C_l(x, x')")
-        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=2, q=4)
-        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=2, q=4)
-        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=2, q=4)
+        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=2, q=16)
+        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=2, q=16)
+        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=2, q=16)
 
         nz = len(self.redshift)
 
