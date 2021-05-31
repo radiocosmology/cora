@@ -993,6 +993,7 @@ def _pl(l, x):
 @np.vectorize
 def _integrate(r, l, psfunc):
 
+    from scipy.integrate import quad
     from ..util import sphfunc
 
     def _integrand_linear(k, r, l, psfunc):

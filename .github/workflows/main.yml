@@ -30,7 +30,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.6, 3.9]
+        python-version: [3.7, 3.9]
 
     runs-on: ubuntu-latest
     steps:
@@ -70,10 +70,9 @@ jobs:
 
     - name: Install pip dependencies
       run: |
-        pip install numpy  # pygsl doesn't install without this
         pip install --use-deprecated=legacy-resolver -r requirements.txt
         pip install --use-deprecated=legacy-resolver -r doc/requirements.txt
-        pip install --use-deprecated=legacy-resolver -e .[sphfunc]
+        pip install --use-deprecated=legacy-resolver -e .
 
     - name: Build sphinx docs
       run: sphinx-build -W -b html doc/ doc/_build/html

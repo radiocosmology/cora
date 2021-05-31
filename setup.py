@@ -1,8 +1,9 @@
 import os
-import warnings
 
 from setuptools import setup, Extension, find_packages
 from distutils import sysconfig
+
+from Cython.Build import cythonize
 
 import re
 
@@ -21,27 +22,10 @@ else:
     args = ["-fopenmp"]
 
 
-# Cython extensions
-try:
-    from Cython.Distutils import build_ext
-
-    HAVE_CYTHON = True
-except ImportError as e:
-    warnings.warn("Cython not installed.")
-    from distutils.command import build_ext
-
-    HAVE_CYTHON = False
-
-
-def cython_file(filename):
-    return filename + (".pyx" if HAVE_CYTHON else ".c")
-
-
 # Cubic spline extension
-# args = to_native(args)  # TODO: Python 3
 cs_ext = Extension(
     "cora.util.cubicspline",
-    [cython_file("cora/util/cubicspline")],
+    ["cora/util/cubicspline.pyx"],
     include_dirs=[np.get_include()],
     extra_compile_args=args,
     extra_link_args=args,
@@ -50,7 +34,16 @@ cs_ext = Extension(
 # Bi-linear map extension
 bm_ext = Extension(
     "cora.util.bilinearmap",
-    [cython_file("cora/util/bilinearmap")],
+    ["cora/util/bilinearmap.pyx"],
+    include_dirs=[np.get_include()],
+    extra_compile_args=args,
+    extra_link_args=args,
+)
+
+# coord extension
+cr_ext = Extension(
+    "cora.util.coord",
+    ["cora/util/coord.pyx"],
     include_dirs=[np.get_include()],
     extra_compile_args=args,
     extra_link_args=args,
@@ -68,12 +61,11 @@ with open("README.rst", "r") as fh:
 setup(
     name="cora",
     version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass({"build_ext": build_ext}),
+    cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(),
-    ext_modules=[cs_ext, bm_ext],
-    python_requires=">=3.6",
+    ext_modules=cythonize([cs_ext, bm_ext, cr_ext]),
+    python_requires=">=3.7",
     install_requires=requires,
-    extras_require={"sphfunc": ["pygsl"]},
     package_data={
         "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat"],
         "cora.foreground": ["data/skydata.npz", "data/combinedps.dat"],

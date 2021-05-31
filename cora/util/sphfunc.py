@@ -7,8 +7,7 @@ available in `scipy` they tend to be inaccurate at large values of `l`.
 
 
 import numpy as np
-
-import pygsl.testing.sf as sf
+import scipy.special as ss
 
 
 def jl(l, z):
@@ -47,7 +46,7 @@ def jl(l, z):
     jla[zza] = 0.0
     jla[lza] = _jl_approx_lowz(la[lza], za[lza])
     jla[hza] = _jl_approx_highz(la[hza], za[hza])
-    jla[gza] = _jl_gsl(la[gza], za[gza])
+    jla[gza] = ss.spherical_jn(la[gza], za[gza])
 
     if isinstance(lt, np.ndarray) or isinstance(zt, np.ndarray):
         return jla
