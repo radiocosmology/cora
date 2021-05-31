@@ -16,7 +16,7 @@ cdef extern from "math.h":
 
 cimport libc.math
 
-dbltype = np.int
+dbltype = int
 ctypedef np.float64_t dbltype_t
 
 
