@@ -202,8 +202,9 @@ def sphtrans_real(hpmap, lmax=None, lside=None):
     lmax : scalar, optional
         The maximum l to calculate. If `None` (default), calculate up
         to ``3*NSIDE - 1``.
-    lmax : scalar, optional
-        Size of array to return.
+    lside : scalar, optional
+        Size of array to return minus one, i.e.  what would be lmax if the array was
+        filled.
 
     Returns
     -------
@@ -248,6 +249,9 @@ def sphtrans_complex(hpmap, lmax=None, centered=False, lside=None):
         and the latter half alm[l,lmax+1:], contains m < 0. If True the first
         half of alm[l,:] contains m < 0, and the second half m > 0. m = 0 is
         the central column.
+    lside : scalar, optional
+        Size of array to return minus one, i.e.  what would be lmax if the array was
+        filled.
 
     Returns
     -------
@@ -257,14 +261,12 @@ def sphtrans_complex(hpmap, lmax=None, centered=False, lside=None):
     if lmax is None:
         lmax = 3 * healpy.npix2nside(hpmap.size) - 1
 
-    rlm = _make_full_alm(
+    alm = _make_full_alm(
         sphtrans_real(hpmap.real, lmax=lmax, lside=lside), centered=centered
     )
-    ilm = _make_full_alm(
+    alm += 1.0j * _make_full_alm(
         sphtrans_real(hpmap.imag, lmax=lmax, lside=lside), centered=centered
     )
-
-    alm = rlm + 1.0j * ilm
 
     return alm
 
@@ -340,6 +342,9 @@ def sphtrans_complex_pol(hpmaps, lmax=None, centered=False, lside=None):
         and the latter half alm[l,lmax+1:], contains m < 0. If True the first
         half opf alm[l,:] contains m < 0, and the second half m > 0. m = 0 is
         the central column.
+    lside : scalar, optional
+        Size of array to return minus one, i.e.  what would be lmax if the array was
+        filled.
 
     Returns
     -------
@@ -349,18 +354,16 @@ def sphtrans_complex_pol(hpmaps, lmax=None, centered=False, lside=None):
     if lmax is None:
         lmax = 3 * healpy.npix2nside(hpmaps[0].size) - 1
 
-    rlms = _make_full_alm(
-        sphtrans_real_pol([hpmap.real for hpmap in hpmaps], lmax=lmax, lside=lside),
+    alm = _make_full_alm(
+        sphtrans_real_pol(hpmaps.real, lmax=lmax, lside=lside),
         centered=centered,
     )
-    ilms = _make_full_alm(
-        sphtrans_real_pol([hpmap.imag for hpmap in hpmaps], lmax=lmax, lside=lside),
+    alm += 1.0j * _make_full_alm(
+        sphtrans_real_pol(hpmaps.imag, lmax=lmax, lside=lside),
         centered=centered,
     )
 
-    alms = [rlm + 1.0j * ilm for rlm, ilm in zip(rlms, ilms)]
-
-    return alms
+    return alm
 
 
 def sphtrans_inv_real(alm, nside):

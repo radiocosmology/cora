@@ -1,3 +1,4 @@
+# cython: language_level=3
 """Module for interpolating sampled functions."""
 # cython: profile=True
 # cython: linetrace=True
@@ -17,7 +18,7 @@ cdef extern from "math.h":
 
 cimport libc.math
 
-dbltype = np.int
+dbltype = int
 ctypedef np.float64_t dbltype_t
 
 
@@ -32,7 +33,7 @@ def _int_fromfile(cls, file, colspec=None):
             colspec = [0,1]
 
         if len(colspec) != 2:
-            print cls, file, colspec
+            print(f"cls: {cls}, file: {file}, colspec: {colspec}")
             raise InterpolationException("Can only use two columns.")
 
         d1 = np.loadtxt(file, usecols = colspec)
@@ -72,7 +73,10 @@ cdef class Interpolater(object):
         if data2 is None:
             data = data1
         else:
-            data = np.dstack((data1, data2))[0]
+            try:
+                data = np.dstack((data1, data2))[0]
+            except ValueError as e:
+                raise InterpolationException("Failure stacking x and y data.") from e
 
         # Check to ensure array contains correct data.
         s = data.shape

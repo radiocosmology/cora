@@ -160,7 +160,7 @@ class Cmb(RandomFieldA2):
     r"""Simulate a patch of the CMB."""
 
     def __init__(self, psfile=None, cambnorm=True):
-        """ Initialise the CMB field class. """
+        """Initialise the CMB field class."""
 
         from cora.util.cubicspline import LogInterpolater
 
