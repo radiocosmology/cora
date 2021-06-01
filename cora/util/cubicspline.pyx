@@ -1,7 +1,4 @@
-# cython: language_level=3
 """Module for interpolating sampled functions."""
-# cython: profile=True
-# cython: linetrace=True
 
 import numpy as np
 
@@ -18,7 +15,7 @@ cdef extern from "math.h":
 
 cimport libc.math
 
-dbltype = int
+dbltype = np.int
 ctypedef np.float64_t dbltype_t
 
 
@@ -63,7 +60,7 @@ cdef class Interpolater(object):
     fromfile = classmethod(_int_fromfile)
 
 
-    def __init__(self, double[:] data1, double[:] data2=None):
+    def __init__(self, data1, data2=None):
         """Constructor to initialise from data.
 
         Need to supply a 2d data array of X-Y pairs to
@@ -99,7 +96,7 @@ cdef class Interpolater(object):
         self._n = <Py_ssize_t>self.__data_.shape[0]
 
 
-    def value(self, int x):
+    def value(self, x):
         """Returns the value of the function at x. """
         if isinstance(x, np.ndarray):
             return self.value_array(x)
@@ -108,12 +105,12 @@ cdef class Interpolater(object):
 
 
 
-    def __call__(self, int x):
+    def __call__(self, x):
         """Returns the value of the function at x."""
         return self.value(x)
 
     @cython.boundscheck(False)
-    def value_array(self, int x):
+    def value_array(self, x):
 
         cdef double[:] xr
         cdef double[:] rr
@@ -282,7 +279,7 @@ cdef class LogInterpolater(Interpolater):
 
         Interpolater.__init__(self, np.log(data))
 
-    def value(self, int x):
+    def value(self, x):
         """ Return the value of the log-interpolated function."""
         if isinstance(x, np.ndarray):
             return self.value_log_array(x)
@@ -291,7 +288,7 @@ cdef class LogInterpolater(Interpolater):
 
 
     @cython.boundscheck(False)
-    def value_log_array(self, int x):
+    def value_log_array(self, x):
 
         cdef double[:] xr
         cdef double[:] rr
