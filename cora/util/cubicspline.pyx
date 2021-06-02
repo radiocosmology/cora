@@ -125,7 +125,7 @@ cdef class Interpolater(object):
         for i in prange(nr, nogil=True):
             rr[i] = self.value_cdef(xr[i])
 
-        return rr.reshape(x.shape)
+        return np.asarray(rr).reshape(x.shape)
 
 
     @cython.cdivision(True)
@@ -303,4 +303,4 @@ cdef class LogInterpolater(Interpolater):
         for i in prange(nr, nogil=True):
             rr[i] = libc.math.exp(self.value_cdef(libc.math.log(xr[i])))
 
-        return rr.reshape(x.shape)
+        return np.asarray(rr).reshape(x.shape)
