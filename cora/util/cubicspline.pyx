@@ -110,14 +110,14 @@ cdef class Interpolater(object):
         return self.value(x)
 
     @cython.boundscheck(False)
-    def value_array(self, x):
+    def value_array(self, double[::1]x):
 
         cdef double[:] xr
         cdef double[:] rr
 
         cdef Py_ssize_t i, nr
 
-        xr = x.ravel()
+        xr = np.asarray(x).ravel()
         rr = np.empty_like(xr)
 
         nr = xr.size
@@ -125,7 +125,7 @@ cdef class Interpolater(object):
         for i in prange(nr, nogil=True):
             rr[i] = self.value_cdef(xr[i])
 
-        return np.asarray(rr).reshape(x.shape)
+        return np.asarray(rr).reshape(np.asarray(x).shape)
 
 
     @cython.cdivision(True)
