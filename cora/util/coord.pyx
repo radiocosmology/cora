@@ -60,7 +60,8 @@ def sph_to_cart(sph_coords):
     nd = sph_coords.shape[-1]
 
     # Make sure we are dealing with double precision types
-    sph_view = sph_coords.astype(np.float64, copy=False).reshape(-1, nd)
+    sph_coords = np.ascontiguousarray(sph_coords).astype(np.float64, copy=False)
+    sph_view = sph_coords.reshape(-1, nd)
 
     # Create an array of the correct size for the output.
     cart_coords = np.empty(sph_coords.shape[:-1] + (3,), dtype=np.float64)
@@ -190,8 +191,7 @@ def thetaphi_plane_cart(sph_coords):
     if not isinstance(sph_coords, np.ndarray) or sph_coords.shape[-1] != 2:
         raise ValueError("Argument must be a numpy array with last axis of length 2.")
 
-    #sph_coords = np.ascontiguousarray(sph_coords).astype(np.float64, copy=False)
-    #sph_coords = np.ascontiguousarray(sph_coords).astype(np.float64, copy=False)
+    sph_coords = np.ascontiguousarray(sph_coords).astype(np.float64, copy=False)
     sph_view = sph_coords.reshape(-1, 2)
 
     # Create an array of the correct size for the output.
