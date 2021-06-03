@@ -88,7 +88,7 @@ cdef class Interpolater(object):
         if(np.isinf(data).any() or np.isnan(data).any()):
             raise InterpolationException("Some values invalid.")
 
-        self.__data_ = np.ascontiguousarray(data)
+        self.__data_ = np.ascontiguousarray(data).astype(np.float64, copy=False)
         self.__gen_spline_()
 
         self._data_p = <double *>self.__data_.data
@@ -211,8 +211,8 @@ cdef class Interpolater(object):
         cdef double[:] y2 = self.__y2_
 
         # Fill out matrices (al diagonal, bt lower, gm upper).
-        cdef double[:] y = self.__data_[:,1].astype(np.float64)
-        cdef double[:] x = self.__data_[:,0].astype(np.float64)
+        cdef double[:] y = self.__data_[:,1]
+        cdef double[:] x = self.__data_[:,0]
 
         for i in xrange(length):
 
