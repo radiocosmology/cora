@@ -211,8 +211,8 @@ cdef class Interpolater(object):
         cdef double[:] y2 = self.__y2_
 
         # Fill out matrices (al diagonal, bt lower, gm upper).
-        cdef double[:] y = self.__data_[:,1]
-        cdef double[:] x = self.__data_[:,0]
+        cdef double[:] y = self.__data_[:,1].astype(np.float64)
+        cdef double[:] x = self.__data_[:,0].astype(np.float64)
 
         for i in xrange(length):
 
