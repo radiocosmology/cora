@@ -279,7 +279,7 @@ class BiasedLSS(FZXContainer, containers.HealpixContainer):
     Parameters
     ----------
     lightcone : bool, optional
-        Is the field on the lightcone.
+        Is the field on the lightcone. If not set, default to True.
     fixed_redshift : float, optional
         If not on the lightcone what is the fixed redshift.
     *args, **kwargs
@@ -299,13 +299,19 @@ class BiasedLSS(FZXContainer, containers.HealpixContainer):
     def __init__(
         self,
         *args,
-        lightcone: bool = True,
+        lightcone: Optional[bool] = None,
         fixed_redshift: Optional[float] = None,
         **kwargs,
     ):
 
         super().__init__(*args, **kwargs)
-        self.attrs["lightcone"] = lightcone
+
+        # Set lightcone taking into account it might have been set already by an
+        # `attrs_from` argument to the super constructor
+        if lightcone is not None:
+            self.attrs["lightcone"] = lightcone
+        elif "lightcone" not in self.attrs:
+            self.attrs["lightcone"] = True
 
         if fixed_redshift is not None:
             self.attrs["fixed_redshift"] = fixed_redshift
