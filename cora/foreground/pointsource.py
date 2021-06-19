@@ -588,8 +588,7 @@ class CombinedPointSources(maps.Map3d):
 
 
 class PointSourcesDiMatteo(gaussianfg.ForegroundSCK):
-    r"""A ForegroundSCK style foreground given the double power-law source count model
-    from DiMatteo.
+    r"""A ForegroundSCK style foreground given the double power-law source count model from DiMatteo.
 
     Uses the results of Di Mattero et al. [1]_
 
@@ -634,9 +633,9 @@ class PointSourcesDiMatteo(gaussianfg.ForegroundSCK):
     spectral_pivot = 151.0
     spectral_mean = -0.7
     spectral_width = 0.1
-    flux_max = 10.0 * (spectral_pivot / 600.0) ** (-spectral_mean)
-    # Convert to a flux cut at 151 MHz for Di Matteo model.
-    S_cut = 10.0 * (spectral_pivot / 600.0) ** (-spectral_mean)
+    # S_cut should be configurable. Set to default 1Jy and whatever is
+    # set to S_cut_readin will be translated to 151 MHz
+    S_cut_readin = 1.0
 
     # Angular power spectrum model attributes
     alpha = 2.07
@@ -707,8 +706,10 @@ class PointSourcesDiMatteo(gaussianfg.ForegroundSCK):
 
         integrand = lambda s: s * self.source_count(s)
 
+        S_cut = self.S_cut_readin * (self.spectral_pivot / 600.0) ** (-self.spectral_mean)
+
         # Calculate the background intensity in units of sr^{-1} mJy^{-1}
-        background_intensity = integrate.quad(integrand, 0.0, self.S_cut)
+        background_intensity = integrate.quad(integrand, 0.0, S_cut)
         # background_intensity = integrate.quad_vec(integrand, 0.0, self.S_cut)
 
         # Convert to K
@@ -725,8 +726,10 @@ class PointSourcesDiMatteo(gaussianfg.ForegroundSCK):
 
         integrand = lambda s: s ** 2 * self.source_count(s)
 
+        S_cut = self.S_cut_readin * (self.spectral_pivot / 600.0) ** (-self.spectral_mean)
+
         # Calculate the power due to poisson noise
-        poisson_noise = integrate.quad(integrand, 0.0, self.S_cut)
+        poisson_noise = integrate.quad(integrand, 0.0, S_cut)
         # poisson_noise = integrate.quad_vec(integrand, 0.0, self.S_cut)
 
         # Convert to K
