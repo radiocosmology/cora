@@ -381,7 +381,7 @@ def tracer(fstate, nside, pol, filename, eor, oversample, za, seed, bias, ttype,
         cr = corr21cm.EoR21cm()
     else:
         if za:
-            cr = corr21cm.CorrZA(bias=bias, tracer_type=ttype, twostep=twostep)
+            cr = corr21cm.CorrZA(bias=bias, tracer_type=ttype, twostep=twostep, no_rsd=no_rsd)
         else:
             cr = corr21cm.CorrBiasedTracer(bias=bias, tracer_type=ttype, lognorm=lognorm, no_rsd=no_rsd)
 

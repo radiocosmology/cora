@@ -477,7 +477,8 @@ class CorrZA(CorrBiasedTracer):
     """
 
     def __init__(self, ps=None, nside_factor=4, ndiv_radial=4,
-                 ps_redshift=0.0, sigma_v=0.0, twostep=False, **kwargs):
+                 ps_redshift=0.0, sigma_v=0.0, twostep=False, 
+                 no_rsd=False, **kwargs):
 
         # Wether to compute the ZA field in two steps
         self.twostep = twostep
@@ -485,8 +486,10 @@ class CorrZA(CorrBiasedTracer):
         self.nside_factor = nside_factor
         # Factor to increase radial resolution for the particle mesh 
         self.ndiv_radial = ndiv_radial
+        # For now I only implemented the no_rsd case for the two-step method.
+        self.no_rsd = no_rsd
 
-        super(CorrZA, self).__init__(ps, ps_redshift, sigma_v, **kwargs)
+        super(CorrZA, self).__init__(ps, ps_redshift, sigma_v, no_rsd=no_rsd, **kwargs)
 
         # Simpler alias for Power spectrum
         self.ps = self.ps_vv
@@ -576,10 +579,11 @@ class CorrZA(CorrBiasedTracer):
               np.sum(delta_za<0.)/np.prod(delta_za.shape), delta_za.shape))
         delta_za = np.where(delta_za<0., 0., delta_za)
 
-        # Displace for RSD:
-        delta_za = pm.za_density(disp_rsd, delta_za, self.nside,
-                                 comovd, self.nside_factor, self.ndiv_radial,
-                                 nslices=2) 
+        if not self.no_rsd:
+            # Displace for RSD:
+            delta_za = pm.za_density(disp_rsd, delta_za, self.nside,
+                                     comovd, self.nside_factor, self.ndiv_radial,
+                                     nslices=2) 
 
         # Recover original frequency range:
         delta_za = delta_za[self.freq_slice]
