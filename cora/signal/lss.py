@@ -49,7 +49,7 @@ class CalculateCorrelations(task.SingleTask):
 
     minlogr = config.Property(proptype=float, default=-1)
     maxlogr = config.Property(proptype=float, default=5)
-    switchlogr = config.Property(proptype=float, default=2)
+    switchlogr = config.Property(proptype=float, default=1)
     log_threshold = config.Property(proptype=float, default=1)
     samples_per_decade = config.Property(proptype=int, default=1000)
 
@@ -104,10 +104,9 @@ class CalculateCorrelations(task.SingleTask):
             maxlogr=self.maxlogr,
             switchlogr=self.switchlogr,
             samples_per_decade=self.samples_per_decade,
-            upsample=int(2e6 / self.samples_per_decade),
             pad_low=4,
-            pad_high=1,
-            q_bias=1,
+            pad_high=6,
+            richardson_n=9,
         )
         self.log.debug("Generating C_dp(r)")
         k2, c2 = corrfunc.ps_to_corr(
@@ -116,10 +115,9 @@ class CalculateCorrelations(task.SingleTask):
             maxlogr=self.maxlogr,
             switchlogr=self.switchlogr,
             samples_per_decade=self.samples_per_decade,
-            upsample=int(2e6 / self.samples_per_decade),
-            pad_low=3,
-            pad_high=1,
-            q_bias=1,
+            pad_low=4,
+            pad_high=6,
+            richardson_n=9,
         )
         self.log.debug("Generating C_pp(r)")
         k4, c4 = corrfunc.ps_to_corr(
@@ -128,10 +126,9 @@ class CalculateCorrelations(task.SingleTask):
             maxlogr=self.maxlogr,
             switchlogr=self.switchlogr,
             samples_per_decade=self.samples_per_decade,
-            upsample=int(2e6 / self.samples_per_decade),
-            pad_low=2,
-            pad_high=1,
-            q_bias=-0.3,
+            pad_low=4,
+            pad_high=6,
+            richardson_n=9,
         )
 
         func = InterpolatedFunction()
