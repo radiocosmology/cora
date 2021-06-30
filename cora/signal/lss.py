@@ -51,7 +51,7 @@ class CalculateCorrelations(task.SingleTask):
     maxlogr = config.Property(proptype=float, default=5)
     switchlogr = config.Property(proptype=float, default=2)
     log_threshold = config.Property(proptype=float, default=1)
-    samples_per_decade = config.Property(proptype=int, default=100)
+    samples_per_decade = config.Property(proptype=int, default=1000)
 
     run = False
 
@@ -100,34 +100,38 @@ class CalculateCorrelations(task.SingleTask):
         self.log.debug("Generating C_dd(r)")
         k0, c0 = corrfunc.ps_to_corr(
             self._ps_n(0),
-            samples=True,
             minlogr=self.minlogr,
             maxlogr=self.maxlogr,
             switchlogr=self.switchlogr,
-            log_threshold=self.log_threshold,
             samples_per_decade=self.samples_per_decade,
+            upsample=int(2e6 / self.samples_per_decade),
+            pad_low=4,
+            pad_high=1,
+            q_bias=1,
         )
         self.log.debug("Generating C_dp(r)")
         k2, c2 = corrfunc.ps_to_corr(
             self._ps_n(2),
-            h=3e-6,
-            samples=True,
             minlogr=self.minlogr,
             maxlogr=self.maxlogr,
             switchlogr=self.switchlogr,
-            log_threshold=self.log_threshold,
             samples_per_decade=self.samples_per_decade,
+            upsample=int(2e6 / self.samples_per_decade),
+            pad_low=3,
+            pad_high=1,
+            q_bias=1,
         )
         self.log.debug("Generating C_pp(r)")
         k4, c4 = corrfunc.ps_to_corr(
             self._ps_n(4),
-            h=2e-6,
-            samples=True,
             minlogr=self.minlogr,
             maxlogr=self.maxlogr,
             switchlogr=self.switchlogr,
-            log_threshold=self.log_threshold,
             samples_per_decade=self.samples_per_decade,
+            upsample=int(2e6 / self.samples_per_decade),
+            pad_low=2,
+            pad_high=1,
+            q_bias=-0.3,
         )
 
         func = InterpolatedFunction()

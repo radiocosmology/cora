@@ -6,6 +6,7 @@ import scipy.special as ss
 from scipy.fftpack import dct
 
 import hankel
+import pyfftlog
 
 from cora.util import bilinearmap
 
@@ -27,16 +28,78 @@ def _corr_direct(psfunc, log_k0, log_k1, r, k=16):
     return si.romb(integrand) * dlk
 
 
+def _corr_fftlog(
+    func,
+    logrmin,
+    logrmax,
+    samples_per_decade,
+    upsample=1000,
+    pad_low=2,
+    pad_high=1,
+    q_bias=0.0,
+):
+    # Evaluate a correlation function from a power spectrum using the pyfftlog library.
+    # The default values here should mostly work for density and potential power spectra
+
+    # Pad the limits
+    rlow = logrmin - pad_low
+    rhigh = logrmax + pad_high
+    n = samples_per_decade * upsample * (rhigh - rlow)
+
+    dlnr = (rhigh - rlow) * np.log(10.0) / n
+    rc = 10 ** ((rhigh + rlow) / 2.0)
+
+    # Initialise and calculate the optimal kr for this n
+    kr, xsave = pyfftlog.fhti(n, 0.5, dlnr, q=q_bias, kr=1.0, kropt=1)
+
+    # Get the actual sample locations
+    ja = np.arange(n)
+    jc = (n + 1) / 2.0
+    kc = kr / rc
+    ra = rc * np.exp((ja - jc) * dlnr)
+    ka = kc * np.exp((ja - jc) * dlnr)
+    del ja
+
+    # Perform the transform
+    f = func(ka) * ka
+    del ka
+    ft = pyfftlog.fftl(f, xsave, rk=(kc / rc), tdir=1)
+
+    # Decimate and trim to get to the requested sample density
+    rd = ra[::upsample]
+    fd = ft[::upsample]
+    del ra, ft
+    mask = (np.log10(rd) >= logrmin) & (np.log10(rd) <= logrmax)
+    rd = rd[mask]
+    fd = fd[mask]
+
+    # Apply the final scaling and return
+    return rd, fd / rd / (8 * np.pi ** 3) ** 0.5
+
+
+def _corr_hankel(func, logrmin, logrmax, samples_per_decade, h=1e-5):
+    # Perform a hankel integration of density and potential power
+    # spectra to get a correlation function. They key here is choosing appropriate values for N and h, and these have
+    # been tested against other exact integration approach
+    ft = hankel.SymmetricFourierTransform(ndim=3, N=(np.pi / h), h=h)
+
+    r = np.logspace(logrmin, logrmax, int((logrmax - logrmin) * samples_per_decade) + 1)
+
+    # Perform the transform
+    F = ft.transform(func, r, ret_err=False) / (2 * np.pi) ** 3
+
+    return r, F
+
+
 def ps_to_corr(
     psfunc: Callable[[np.ndarray], np.ndarray],
     minlogr: float = -1,
     maxlogr: float = 5,
     switchlogr: float = 2,
-    samples: bool = False,
-    log_threshold: float = 1,
     samples_per_decade: int = 100,
-    h: float = 1e-5,
-) -> Union[Callable[[np.ndarray], np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+    fftlog: bool = True,
+    **kwargs,
+) -> Tuple[np.ndarray, np.ndarray]:
     """Transform a 3D power spectrum into a correlation function.
 
     Parameters
@@ -58,19 +121,19 @@ def ps_to_corr(
         switch sign.
     samples_per_decade
         How many samples per decade to calculate.
-    h
-        Numerical accuracy parameter for the `hankel` modules transform.
+    fftlog
+        If set, use the FFTlog method for the large-r calculations. If False use the
+        hankel package.
+    kwargs
+        If using the hankel package there is one parameter available: `h`. If using
+        fftlog there are four parameters: `upsample`, `pad_low`, `pad_high`, and
+        `q_bias`.
 
     Returns
     -------
     [type]
         [description]
     """
-
-    # Create a transform class suitable for integration of density and potential power
-    # spectra. They key here is choosing appropriate values for N and h, and these have
-    # been tested against other exact integration approach
-    ft = hankel.SymmetricFourierTransform(ndim=3, N=(np.pi / h), h=h)
 
     # Create a grid with 100 points per decade
     rlow = np.logspace(
@@ -79,12 +142,16 @@ def ps_to_corr(
         int((switchlogr - minlogr) * samples_per_decade),
         endpoint=False,
     )
-    rhigh = np.logspace(
-        switchlogr, maxlogr, int((maxlogr - switchlogr) * samples_per_decade) + 1
-    )
 
-    # Perform the transform
-    Fhigh = ft.transform(psfunc, rhigh, ret_err=False) / (2 * np.pi) ** 3
+    # Perform the high-r transform
+    if fftlog:
+        rhigh, Fhigh = _corr_fftlog(
+            psfunc, switchlogr, maxlogr, samples_per_decade, **kwargs
+        )
+    else:
+        rhigh, Fhigh = _corr_hankel(
+            psfunc, switchlogr, maxlogr, samples_per_decade, **kwargs
+        )
 
     # Explicitly calculate and insert the zero lag correlation
     # TODO: remove the hardcoded limits
@@ -94,10 +161,7 @@ def ps_to_corr(
     ra = np.concatenate([rlow, rhigh])
     Fr = np.concatenate([Flow, Fhigh])
 
-    if samples:
-        return ra, Fr
-
-    return sinh_interpolate(ra, Fr, x_t=ra[1], f_t=log_threshold)
+    return ra, Fr
 
 
 def legendre_array(lmax: int, mu: np.ndarray) -> np.ndarray:

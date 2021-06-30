@@ -79,6 +79,7 @@ setup(
         "lss": [
             "draco @ git+https://github.com/radiocosmology/draco.git",
             "hankel",
+            "pyfftlog",
         ],
     },
     package_data={
