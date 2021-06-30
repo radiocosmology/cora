@@ -1,16 +1,72 @@
-from typing import Callable, Union, Optional, Tuple
+from typing import Callable, Union, Optional, Tuple, List
 
 import numpy as np
 import scipy.integrate as si
 import scipy.special as ss
 from scipy.fftpack import dct
 
+import hankl
 import hankel
 import pyfftlog
 
 from cora.util import bilinearmap
 
-from .lssutil import sinh_interpolate
+from .lssutil import FloatArrayLike
+
+
+def richardson(
+    estimates: List[FloatArrayLike],
+    t: float,
+    base_pow: int = 1,
+    return_table: bool = False,
+) -> Union[FloatArrayLike, List[List[FloatArrayLike]]]:
+    """Use Richardson extrapolation to improve the accuracy of a sequence of estimates.
+
+    Parameters
+    ----------
+    estimates
+        A list of the estimates. Each successive entry should have an accuracy parameter
+        `h` (i.e. step size) which decreases by a factor `t`.
+    t
+        The rate at which the step size decreases, e.g. t = 2 corresponds to halving the
+        step size for each successive entry.
+    base_pow
+        The powers in the error series. By default this is 1 which will cancel all error
+        terms up to and including `k - 1` (where `k` is the length of `estimates`. If
+        the series only includes even error terms, this can be set to 2, which will
+        cancel up to `2 (k - 1)`.
+    return_table
+        If True return the full Richardson table, if False just return the highest
+        accuracy entry.
+
+    Returns
+    -------
+    ret
+        The highest accuracy estimate after extrapolation if `table` is False, otherwise
+        the full triangular extrapolation table.
+    """
+
+    k = len(estimates)
+
+    table = []
+
+    for row_ind in range(k):
+
+        newrow = [estimates[row_ind]]
+
+        # Cancel off each successive power at this step size using previous estimates
+        for col_ind in range(1, row_ind + 1):
+
+            n = col_ind * base_pow
+            r = (t ** n * newrow[col_ind - 1] - table[row_ind - 1][col_ind - 1]) / (
+                t ** n - 1.0
+            )
+
+            newrow.append(r)
+
+        table.append(newrow)
+
+    return table if return_table else table[k - 1][k - 1]
 
 
 def _corr_direct(psfunc, log_k0, log_k1, r, k=16):
@@ -91,6 +147,46 @@ def _corr_hankel(func, logrmin, logrmax, samples_per_decade, h=1e-5):
     return r, F
 
 
+def _corr_hankl_richardson(
+    func, logrmin, logrmax, samples_per_decade, richardson_n=6, pad_low=2, pad_high=1
+):
+    # Evaluate a correlation function from a power spectrum using the hankl library with
+    # Richardson extrapolation.
+    # The default values here should mostly work for density and potential power spectra
+
+    # Pad the limits
+    rlow = logrmin - pad_low
+    rhigh = logrmax + pad_high
+    n = int(samples_per_decade * (rhigh - rlow))
+
+    # Calculate the correlation function upsampling by a factor 2**ii
+    def _work(ii):
+
+        u = 2 ** ii
+        k = np.logspace(-rhigh, -rlow, n * u, endpoint=False)
+
+        r, xi = hankl.P2xi(k, func(k), 0, lowring=False)
+
+        rt = r[(u - 1) :: u]
+        xit = xi.real[(u - 1) :: u]
+
+        return rt, xit
+
+    rs, estimates = zip(*[_work(ii) for ii in range(richardson_n)])
+
+    # Double check that the samples have all ended up at the same r points
+    for r in rs[1:]:
+        assert np.allclose(r, rs[0])
+
+    # Trim to the requested set of r values
+    mask = (np.log10(rs[0]) >= logrmin) & (np.log10(rs[0]) <= logrmax)
+    r = rs[0][mask]
+    estimates = [e[mask] for e in estimates]
+
+    # Perform and return the Richardson extrapolation
+    return r, richardson(estimates, 2.0)
+
+
 def ps_to_corr(
     psfunc: Callable[[np.ndarray], np.ndarray],
     minlogr: float = -1,
@@ -122,8 +218,8 @@ def ps_to_corr(
     samples_per_decade
         How many samples per decade to calculate.
     fftlog
-        If set, use the FFTlog method for the large-r calculations. If False use the
-        hankel package.
+        If set, use the FFTlog method with Richardson extrapolation for the large-r
+        calculations. If False use the hankel package.
     kwargs
         If using the hankel package there is one parameter available: `h`. If using
         fftlog there are four parameters: `upsample`, `pad_low`, `pad_high`, and
@@ -145,7 +241,7 @@ def ps_to_corr(
 
     # Perform the high-r transform
     if fftlog:
-        rhigh, Fhigh = _corr_fftlog(
+        rhigh, Fhigh = _corr_hankl_richardson(
             psfunc, switchlogr, maxlogr, samples_per_decade, **kwargs
         )
     else:
