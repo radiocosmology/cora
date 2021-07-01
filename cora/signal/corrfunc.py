@@ -9,7 +9,7 @@ import hankl
 import hankel
 import pyfftlog
 
-from cora.util import bilinearmap
+from cora.util import bilinearmap, coord
 
 from .lssutil import FloatArrayLike
 
@@ -304,8 +304,10 @@ def corr_to_clarray(
     xarray
         Array of comoving distances to calculate at.
     xromb
-        The Romberg order for integrating over radial bins. This generates an
-        exponentially increasing amount of work, so increase carefully.
+        The order for integrating over radial bins, uses `2**xromb + 1` points. This
+        generates an exponentially increasing amount of work, so increase carefully.
+        Note that despite the parameter name this no longer uses a Romberg integrator,
+        but a Gauss-Legendre quadrature rule.
     xwidth
         Width of radial bin to integrate over. If None (default),
         calculate from the separation of the first two bins.
@@ -334,36 +336,32 @@ def corr_to_clarray(
         xsort = np.sort(xarray)
         xhalf = np.abs(xsort[1] - xsort[0]) / 2.0 if xwidth is None else xwidth / 2.0
         xint = 2 ** xromb + 1
-        xspace = 2.0 * xhalf / 2 ** xromb
+
+        # Get the quadrature points and weights.
+        x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
+        x_r *= xhalf
+        x_w /= x_wsum
 
         # Calculate the extended z-array with the extra intervals to integrate over
-        xa = (
-            xarray[:, np.newaxis] + np.linspace(-xhalf, xhalf, xint)[np.newaxis, :]
-        ).flatten()
+        xa = (xarray[:, np.newaxis] + x_r[np.newaxis, :]).flatten()
+
     else:
         xa = xarray
-
-    x1 = xa[np.newaxis, :, np.newaxis]
-    x2 = xa[np.newaxis, np.newaxis, :]
 
     # Split the set of theta values to fill into groups of length ~50 and process each,
     # this is helps reduce memory usage which otherwise we be massively inflated by the
     # extra points we integrate over
     for msec in np.array_split(np.arange(M), M // 50):
 
-        ms = mu[msec][:, np.newaxis, np.newaxis]
-
-        # This a the cosine rule but rewritten in a numerically stable form
-        rc = ((x1 - x2) ** 2 + 2 * x1 * x2 * (1 - ms)) ** 0.5
+        rc = coord.cosine_rule(mu[msec], xa, xa)
         corr1 = corr(rc)
 
-        # If zromb then we need to integrate over the redshift bins which we do by
-        # fixed order romberg
+        # If xromb then we need to integrate over the redshift bins which we do using
+        # Gauss-Legendre quadrature implemented as a matrix multiply
         if xromb > 0:
-            corr1 = corr1.reshape(-1, xlen, xint, xlen, xint)
-            corr1 = si.romb(corr1, dx=xspace, axis=4)
-            corr1 = si.romb(corr1, dx=xspace, axis=2)
-            corr1 /= (2 * xhalf) ** 2  # Normalise
+            corr1 = corr1.reshape(-1, xint)
+            corr1 = np.matmul(corr1, x_w).reshape(-1, xlen, xint, xlen)
+            corr1 = np.matmul(corr1.transpose(0, 1, 3, 2), x_w)
 
         corr_array[msec, :, :] = corr1
 
