@@ -133,7 +133,7 @@ class CalculateCorrelations(task.SingleTask):
 
         func = InterpolatedFunction()
 
-        func.add_function("corr0", k0, c0, type="sinh", x_t=k0[1], f_t=1e-12)
+        func.add_function("corr0", k0, c0, type="sinh", x_t=k0[1], f_t=1e-3)
         func.add_function("corr2", k2, c2, type="sinh", x_t=k2[1], f_t=1e-6)
         func.add_function("corr4", k4, c4, type="sinh", x_t=k4[1], f_t=1e2)
 
