@@ -50,10 +50,7 @@ class CalculateCorrelations(task.SingleTask):
     minlogr = config.Property(proptype=float, default=-1)
     maxlogr = config.Property(proptype=float, default=5)
     switchlogr = config.Property(proptype=float, default=1)
-    log_threshold = config.Property(proptype=float, default=1)
     samples_per_decade = config.Property(proptype=int, default=1000)
-
-    run = False
 
     def setup(self):
 
@@ -92,9 +89,6 @@ class CalculateCorrelations(task.SingleTask):
             potential correlation function (`corr4`) and their cross correlation
             (`corr2`).
         """
-
-        if self.run:
-            raise pipeline.PipelineStopIteration()
 
         # Calculate the correlation functions
         self.log.debug("Generating C_dd(r)")
@@ -137,7 +131,7 @@ class CalculateCorrelations(task.SingleTask):
         func.add_function("corr2", k2, c2, type="sinh", x_t=k2[1], f_t=1e-6)
         func.add_function("corr4", k4, c4, type="sinh", x_t=k4[1], f_t=1e2)
 
-        self.run = True
+        self.done = True
 
         return func
 
@@ -222,7 +216,10 @@ class GenerateInitialLSS(task.SingleTask):
             redshift = units.nu21 / self.frequencies - 1.0
 
         xa = self.cosmology.comoving_distance(redshift)
-        lmax = 3 * self.nside
+
+        # NOTE: it is important not to set this any higher, otherwise power will alias
+        # back down when the map is transformed later on
+        lmax = 3 * self.nside - 1
 
         self.log.debug("Generating C_l(x, x')")
         cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=self.xromb, q=self.leg_q)
@@ -256,12 +253,12 @@ class GenerateInitialLSS(task.SingleTask):
                 redshift=redshift,
             )
 
+        # NOTE: this is to support *future* MPI parallel generation. At the moment this
+        # does not work.
         # Local shape and offset along chi axis
         loff = f.phi.local_offset[0]
         lshape = f.phi.local_shape[0]
 
-        # f.phi[:] = sky[:nz]
-        # f.delta[:] = sky[nz:]
         f.phi[:] = sky[loff : loff + lshape]
         f.delta[:] = sky[nz + loff : nz + loff + lshape]
 
