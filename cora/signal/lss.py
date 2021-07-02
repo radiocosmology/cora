@@ -599,10 +599,16 @@ class BiasedLSSToMap(task.SingleTask):
     ----------
     use_mean_21cmT : bool
         Multiply map by mean 21cm temperature as a function of z (default: False).
+    use_prefactor : float
+        Scale by an arbitrary prefactor.
+    lognormal : bool
+        Use a lognormal transform to guarantee that the density is always positive (i.e.
+        delta > -1).
     """
 
     use_mean_21cmT = config.Property(proptype=int, default=False)
     map_prefactor = config.Property(proptype=float, default=1.0)
+    lognormal = config.Property(proptype=bool, default=False)
 
     def process(self, biased_lss) -> Map:
         """Generate a realisation of the LSS initial conditions.
@@ -630,7 +636,11 @@ class BiasedLSSToMap(task.SingleTask):
         m = Map(
             freq=freqmap, polarisation=True, axes_from=biased_lss, attrs_from=biased_lss
         )
-        m.map[:, 0, :] = biased_lss.delta[:, :]
+
+        if self.lognormal:
+            lognormal_transform(biased_lss.delta[:], out=m.map[:, 0], axis=1)
+        else:
+            m.map[:, 0, :] = biased_lss.delta[:, :]
 
         # Multiply map by specific prefactor, if desired
         if self.map_prefactor != 1:
