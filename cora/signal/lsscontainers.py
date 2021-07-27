@@ -8,7 +8,7 @@ from cora.util import units, cubicspline as cs
 
 from draco.core import containers
 
-from .lssutil import FloatArrayLike
+from ..util.nputil import FloatArrayLike
 
 
 class InterpolatedFunction(memh5.BasicCont):

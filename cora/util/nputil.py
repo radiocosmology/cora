@@ -1,7 +1,12 @@
 """Utility functions to help with pure numpy stuff."""
+from typing import TypeVar
 
 import numpy as np
 import scipy.linalg as la
+
+
+# Type variable for ArrayLike arguments
+FloatArrayLike = TypeVar("FloatArrayLike", float, np.ndarray)
 
 
 def save_ndarray_list(fname, la):

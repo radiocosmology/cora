@@ -9,9 +9,8 @@ import hankl
 import hankel
 import pyfftlog
 
-from cora.util import bilinearmap, coord
-
-from .lssutil import FloatArrayLike
+from ..util import bilinearmap, coord
+from ..util.nputil import FloatArrayLike
 
 
 def richardson(
