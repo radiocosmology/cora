@@ -194,6 +194,8 @@ def ps_to_corr(
     switchlogr: float = 2,
     samples_per_decade: int = 100,
     fftlog: bool = True,
+    minlogk: float = -5,
+    maxlogk: float = 3,
     **kwargs,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Transform a 3D power spectrum into a correlation function.
@@ -201,7 +203,7 @@ def ps_to_corr(
     Parameters
     ----------
     psfunc
-        The power spectrum function to integrate.
+        The power spectrum function. Takes a single (vector) argument of the wavenumber k.
     minlogr, maxlogr
         The minimum and maximum values of r to calculate (given as log_10(r h /
         Mpc)).
@@ -220,6 +222,10 @@ def ps_to_corr(
     fftlog
         If set, use the FFTlog method with Richardson extrapolation for the large-r
         calculations. If False use the hankel package.
+    minlogk, maxlogk
+        Limits for the direct integration of the power spectrum for small r. The default
+        parameters are suitable for appropriately regularised matter and potential power
+        spectra.
     kwargs
         If using the hankel package there is one parameter available: `h`. If using
         fftlog there are four parameters: `upsample`, `pad_low`, `pad_high`, and
@@ -227,8 +233,8 @@ def ps_to_corr(
 
     Returns
     -------
-    [type]
-        [description]
+    r, corr
+        The correlation function samples and the locations they are calculated at.
     """
 
     # Create a grid with 100 points per decade
@@ -250,9 +256,8 @@ def ps_to_corr(
         )
 
     # Explicitly calculate and insert the zero lag correlation
-    # TODO: remove the hardcoded limits
     rlow = np.insert(rlow, 0, 0.0)
-    Flow = _corr_direct(psfunc, -5, 3, rlow)
+    Flow = _corr_direct(psfunc, minlogk, maxlogk, rlow)
 
     ra = np.concatenate([rlow, rhigh])
     Fr = np.concatenate([Flow, Fhigh])
@@ -381,12 +386,12 @@ def ps_to_aps_flat(
 ) -> Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
     """Calculate a multi-distance angular power spectrum from a 3D power spectrum.
 
-    This takes a flat sky limit.
+    This uses a flat sky limit. See equation 21 of arXiv:astro-ph/0605546.
 
     Parameters
     ----------
     psfunc
-        The power spectrum function.
+        The power spectrum function. Takes a single (vector) argument of the wavenumber k.
     c
         The cosmology object.
     n_k
@@ -397,7 +402,9 @@ def ps_to_aps_flat(
     Returns
     -------
     aps
-        A function which can calculate the power spectrum :math:`C_l(\chi_1, \chi_2)`
+        A function which can calculate the power spectrum :math:`C_l(\chi_1, \chi_2)`.
+        Takes three broadcastable arguments `aps(l, chi1, chi2)` for the multipole `l`,
+        and the two comoving distances `chi1` and `chi2`.
     """
     kperpmin = 1e-4
     kperpmax = 40.0
