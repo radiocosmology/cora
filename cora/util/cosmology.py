@@ -12,7 +12,8 @@ import numpy as np
 from scipy import integrate as si
 
 # Package imports
-from cora.util import units as u
+from .nputil import FloatArrayLike
+from . import units as u
 
 
 @dataclass
@@ -147,7 +148,7 @@ class Cosmology(object):
     def to_dict(self) -> dict:
         return asdict(self)
 
-    def H(self, z: float = 0.0):
+    def H(self, z: FloatArrayLike = 0.0) -> FloatArrayLike:
         """The Hubble parameter at redshift z.
 
         Return the Hubble parameter in SI units (s^-1), regardless of
@@ -155,13 +156,13 @@ class Cosmology(object):
 
         Parameters
         ----------
-        z : scalar, optional
+        z
             The redshift to calculate the Hubble parameter
             at. Defaults to z = 0.
 
         Returns
         -------
-        H : scalar
+        H
             The Hubble parameter.
         """
 
@@ -181,19 +182,19 @@ class Cosmology(object):
         # Convert to SI
         return H * 1000.0 / u.mega_parsec
 
-    def comoving_distance(self, z):
+    def comoving_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The comoving distance to redshift z.
 
         This routine is vectorized.
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The comoving distance to each redshift.
         """
 
@@ -203,7 +204,7 @@ class Cosmology(object):
 
         return _intf_0_z(f, z) / self._unit_distance
 
-    def proper_distance(self, z):
+    def proper_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The proper distance to an event at redshift z.
 
         The proper distance can be ill defined. In this case we mean
@@ -213,12 +214,12 @@ class Cosmology(object):
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The proper distance to each redshift.
         """
 
@@ -235,7 +236,7 @@ class Cosmology(object):
 
         return x
 
-    def angular_distance(self, z):
+    def angular_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The angular diameter distance to redshift z.
 
         Not to be confused with the `proper_distance`. This is the
@@ -245,44 +246,44 @@ class Cosmology(object):
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The angular diameter distance to each redshift.
         """
 
         return self.proper_distance(z) / (1 + z)
 
-    def luminosity_distance(self, z):
+    def luminosity_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The luminosity distance to redshift z. This
         routine is vectorized.
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The luminosity distance to each redshift.
         """
         return self.proper_distance(z) * (1 + z)
 
-    def lookback_time(self, z):
+    def lookback_time(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The lookback time out to redshift z.
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        time : array_like
+        time
             The lookback time to each redshift.
         """
 
@@ -293,7 +294,7 @@ class Cosmology(object):
         return _intf_0_z(f, z) / self._unit_time
 
     @property
-    def _unit_distance(self):
+    def _unit_distance(self) -> float:
         # Select the appropriate distance unit
         if self.units == "astro":
             return u.mega_parsec
@@ -305,7 +306,7 @@ class Cosmology(object):
         raise RuntimeError("Units not known")
 
     @property
-    def _unit_time(self):
+    def _unit_time(self) -> float:
         # Select the appropriate time unit
         if self.units == "astro":
             return u.mega_year

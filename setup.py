@@ -60,7 +60,7 @@ pm_ext = Extension(
 
 # Load the requirements list
 with open("requirements.txt", "r") as fh:
-    requires = fh.read().split()
+    requires = fh.readlines()
 
 # Load the description
 with open("README.rst", "r") as fh:
@@ -75,7 +75,7 @@ setup(
     ext_modules=cythonize([cs_ext, bm_ext, cr_ext, pm_ext]),
     python_requires=">=3.7",
     install_requires=requires,
-    extras_requires={
+    extras_require={
         "lss": [
             "draco @ git+https://github.com/radiocosmology/draco.git",
             "hankel",

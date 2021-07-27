@@ -24,7 +24,7 @@ from draco.core.containers import Map
 
 from .lsscontainers import InterpolatedFunction, InitialLSS, BiasedLSS
 from . import lssutil
-from .lssutil import FloatArrayLike
+from ..util.nputil import FloatArrayLike
 from . import corrfunc
 
 

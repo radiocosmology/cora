@@ -1,17 +1,15 @@
-from typing import Callable, Union, TypeVar, Tuple, Optional
+from typing import Callable, Union, Tuple, Optional
 
 import numpy as np
 
 import healpy
 
 from caput import config
-from cora.util import cubicspline as cs
-from cora.util import hputil
 from draco.util import tools
 
-
-# Type variable for ArrayLike arguments
-FloatArrayLike = TypeVar("FloatArrayLike", float, np.ndarray)
+from ..util import cubicspline as cs
+from ..util import hputil
+from ..util.nputil import FloatArrayLike
 
 
 def linspace(x: Union[dict, list]) -> np.ndarray:
