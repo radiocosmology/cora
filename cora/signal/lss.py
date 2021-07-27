@@ -37,14 +37,10 @@ class CalculateCorrelations(task.SingleTask):
         The minimum and maximum values of r to calculate (given as log_10(r h /
         Mpc)). Defaults: -1, 5
     switchlogr : float
-        The scale below which to directly integrate. Above this the `hankel` package
-        integration is used. Default: 2
-    log_threshold : float
-        Below this level in the correlation function use a linear interpolation. This
-        should be set to be around the level where the correlation function starts to
-        switch sign. Default: 1
+        The scale below which to directly integrate. Above this an FFT log scheme is
+        used (see `corrfunc.ps_to_corr` for details). Default: 1
     samples_per_decade : int
-        How many samples per decade to calculate. Default: 100
+        How many samples per decade to calculate. Default: 1000
     """
 
     minlogr = config.Property(proptype=float, default=-1)
@@ -165,7 +161,7 @@ class GenerateInitialLSS(task.SingleTask):
     nside = config.Property(proptype=int)
     redshift = config.Property(proptype=lssutil.linspace, default=None)
     frequencies = config.Property(proptype=lssutil.linspace, default=None)
-    num = config.Property(proptype=int, default=1)
+    num_sims = config.Property(proptype=int, default=1)
     start_seed = config.Property(proptype=int, default=0)
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
@@ -201,10 +197,16 @@ class GenerateInitialLSS(task.SingleTask):
             The LSS initial conditions.
         """
 
+        if self.comm.size > 1:
+            raise RuntimeError(
+                "This task is not MPI parallel at the moment, but is running "
+                f"in an MPI job of size {self.comm.size}"
+            )
+
         # Stop if we've already generated enough simulated fields
-        if self.num == 0:
+        if self.num_sims == 0:
             raise pipeline.PipelineStopIteration()
-        self.num -= 1
+        self.num_sims -= 1
 
         corr0 = self.correlation_functions.get_function("corr0")
         corr2 = self.correlation_functions.get_function("corr2")
@@ -351,8 +353,7 @@ class GenerateBiasedFieldBase(task.SingleTask):
         # Apply any second order bias
         try:
             b2 = self._bias_2(z)
-            # NOTE: should this average be over redshift shells, not the full volume?
-            d2m = (f.delta[:] ** 2).mean()
+            d2m = (f.delta[:] ** 2).mean(axis=1)[:, np.newaxis]
             biased_field.delta[:] += (D ** 2 * b2)[:, np.newaxis] * (
                 f.delta[:] ** 2 - d2m
             )
@@ -378,19 +379,19 @@ class GenerateBiasedFieldBase(task.SingleTask):
 
 
 class GenerateConstantBias(GenerateBiasedFieldBase):
-    """Generate a field with a constant linear bias.
+    """Generate a field with a constant linear Lagrangian bias.
 
     Attributes
     ----------
     bias : float
-        The Lagrangian bias. At first order this is the related to the Eulerian bias
+        The *Lagrangian* bias. At first order this is the related to the Eulerian bias
         by :math:`b_L = b_E - 1`.
     """
 
-    bias = config.Property(proptype=float, default=0.0)
+    bias_L = config.Property(proptype=float, default=0.0)
 
     def _bias_1(self, z: FloatArrayLike) -> FloatArrayLike:
-        return np.ones_like(z) * self.bias
+        return np.ones_like(z) * self.bias_L
 
 
 class DynamicsBase(task.SingleTask):
@@ -450,7 +451,6 @@ class DynamicsBase(task.SingleTask):
             The redshift of each slice. This changes if the field is on the lightcone
             or not.
         """
-        # redshift_array = units.nu21 / self.freqs_full - 1.
         c = biased_field.cosmology
 
         nside = healpy.npix2nside(biased_field.delta.shape[1])
@@ -471,7 +471,16 @@ class DynamicsBase(task.SingleTask):
 
 
 class ZeldovichDynamics(DynamicsBase):
-    """Generate a simulated LSS field using Zel'dovich dynamics."""
+    """Generate a simulated LSS field using Zel'dovich dynamics.
+
+    Attributes
+    ----------
+    sph : bool
+        Use a Smoothed Particle Hydrodynamics (SPH) type scheme for computing the final
+        field after applying the displacements. This treats the mass as compressible
+        clouds which change size with the local density. See `za_density_sph` for
+        details.
+    """
 
     sph = config.Property(proptype=bool, default=True)
 
@@ -521,7 +530,6 @@ class ZeldovichDynamics(DynamicsBase):
 
         # Calculate the Zel'dovich displaced field and assign directly into the output
         # container
-        # za_density(vpsi, biased_field.delta[:], nside, chi, out=final_field.delta[:])
         delta_m = (initial_field.delta[:] * D[:, np.newaxis]).view(np.ndarray)
         delta_bias = biased_field.delta[:].view(np.ndarray)
 
@@ -703,7 +711,6 @@ def za_density_grid(
     _assert_shape(out, (nchi, npix), "out")
 
     nside = healpy.npix2nside(npix)
-
     angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
 
     # Extend the chi bins to add another cell at each end
@@ -716,8 +723,6 @@ def za_density_grid(
     # Array to hold the density obtained from the ZA approximation
     if out is None:
         out = np.zeros((nchi, npix), dtype=delta_bias.dtype)
-
-    angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
 
     for ii in range(nchi):
 
@@ -735,7 +740,7 @@ def za_density_grid(
             nside, new_angpos[0], new_angpos[1]
         )
 
-        # Find
+        # Find the enclosing chi bins
         chi_ext_ind = np.digitize(new_chi, chi_ext)
         chi0 = chi_ext[(chi_ext_ind - 1) % (nchi + 2)]
         chi1 = chi_ext[chi_ext_ind % (nchi + 2)]
