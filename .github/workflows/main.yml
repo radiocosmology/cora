@@ -38,6 +38,7 @@ jobs:
 
     - name: Install apt dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install -y libhdf5-serial-dev libopenmpi-dev openmpi-bin libgsl-dev
 
     - name: Set up Python ${{ matrix.python-version }}
@@ -66,6 +67,7 @@ jobs:
 
     - name: Install apt dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install -y libhdf5-serial-dev libopenmpi-dev openmpi-bin libgsl-dev
 
     - name: Install pip dependencies
