@@ -117,7 +117,59 @@ class InterpolatedFunction(memh5.BasicCont):
             dset.attrs[key] = val
 
 
-class FZXContainer(containers.ContainerBase):
+class CosmologyContainer(containers.ContainerBase):
+    """A baseclass for a container that is referenced to a background Cosmology.
+
+    Parameters
+    ----------
+    cosmology
+        An explicit cosmology instance or dict representation. If not set, the cosmology
+        *must* get set via `attrs_from`.
+    """
+
+    def __init__(self, cosmology: Union[Cosmology, dict, None] = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        cosmo_dict = self._resolve_args(cosmology, **kwargs)
+        self.attrs["cosmology"] = cosmo_dict
+
+    @staticmethod
+    def _resolve_args(
+        cosmology: Union[Cosmology, dict, None] = None,
+        attrs_from: Optional[containers.ContainerBase] = None,
+        **kwargs,
+    ):
+        """Try and extract a Cosmology dict representation from the parameters.
+
+        Useful as subclasses sometimes need access *before* the full class is setup.
+        """
+        # Insert the Cosmological parameters
+        if cosmology is None:
+            if attrs_from is not None and "cosmology" in attrs_from.attrs:
+                cosmology = attrs_from.attrs["cosmology"]
+            else:
+                raise ValueError("A cosmology must be supplied.")
+        elif not isinstance(cosmology, (Cosmology, dict)):
+            raise TypeError("cosmology argument must be a Cosmology instance.")
+
+        if isinstance(cosmology, Cosmology):
+            cosmology = cosmology.to_dict()
+
+        return cosmology
+
+    _cosmology_instance = None
+
+    @property
+    def cosmology(self):
+        """The background cosmology."""
+
+        if self._cosmology_instance is None:
+            self._cosmology_instance = Cosmology(**self.attrs["cosmology"])
+
+        return self._cosmology_instance
+
+
+class FZXContainer(CosmologyContainer):
     """Container with a comoving radial axis.
 
     This can be specified either directly with a grid in comoving distance, or in
@@ -127,9 +179,6 @@ class FZXContainer(containers.ContainerBase):
 
     Parameters
     ----------
-    cosmology
-        A dictionary of params supplied to `Cosmology.init_physical` to create a
-        `Cosmology` object.
     freq
         The radial axis given as 21cm line frequencies.
     redshift
@@ -143,7 +192,6 @@ class FZXContainer(containers.ContainerBase):
 
     def __init__(
         self,
-        cosmology: Union[Cosmology, dict, None] = None,
         freq: Optional[np.ndarray] = None,
         redshift: Optional[np.ndarray] = None,
         *args,
@@ -151,16 +199,7 @@ class FZXContainer(containers.ContainerBase):
     ):
 
         # Insert the Cosmological parameters
-        if cosmology is None:
-            if "attrs_from" in kwargs and "cosmology" in kwargs["attrs_from"].attrs:
-                cosmology = kwargs["attrs_from"].attrs["cosmology"]
-            else:
-                raise ValueError("A cosmology must be supplied.")
-        elif not isinstance(cosmology, (Cosmology, dict)):
-            raise TypeError("cosmology argument must be a Cosmology instance.")
-
-        if isinstance(cosmology, dict):
-            cosmology = Cosmology(**cosmology)
+        cosmology = Cosmology(**CosmologyContainer._resolve_args(**kwargs))
 
         # If none of the high priority radial axes are set directly, see if any exist
         # in an axes_from object
@@ -194,18 +233,6 @@ class FZXContainer(containers.ContainerBase):
 
         # Set the cosmology and radial axis attributes
         self.attrs["primary_radial_axis"] = radial_axis
-        self.attrs["cosmology"] = cosmology.to_dict()
-
-    _cosmology_instance = None
-
-    @property
-    def cosmology(self):
-        """The background cosmology."""
-
-        if self._cosmology_instance is None:
-            self._cosmology_instance = Cosmology(**self.attrs["cosmology"])
-
-        return self._cosmology_instance
 
     @property
     def chi(self):
