@@ -84,7 +84,7 @@ setup(
         ],
     },
     package_data={
-        "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat"],
+        "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat", "data/ps*.h5"],
         "cora.foreground": ["data/skydata.npz", "data/combinedps.dat"],
     },
     entry_points="""
