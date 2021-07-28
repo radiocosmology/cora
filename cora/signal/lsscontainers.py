@@ -256,6 +256,95 @@ class FZXContainer(CosmologyContainer):
         return self.index_map["freq"]
 
 
+class MatterPowerSpectrum(CosmologyContainer, InterpolatedFunction):
+    """A container to hold a matter power spectrum.
+
+    This object can evaluate a power spectrum at specified wavenumbers (in h / Mpc
+    units) and redshifts.
+
+    Parameters
+    ----------
+    k
+        Wavenumbers the power spectrum samples are at (in h / Mpc).
+    ps
+        Power spectrum samples.
+    ps_redshift
+        The redshift the samples are calculated at. Default is z=0.
+    """
+
+    def __init__(
+        self,
+        k: FloatArrayLike,
+        ps: FloatArrayLike,
+        *args,
+        ps_redshift: float = 0.0,
+        **kwargs,
+    ):
+
+        # Initialise the base classes (which sets the cosmology etc)
+        super().__init__(*args, **kwargs)
+
+        # This shouldn't be necessary, but due to a bug in `draco` where ContainerBase
+        # does not correctly call its superconstructor we need to do this explicitly
+        self._finish_setup()
+
+        # Add the interpolated function
+        self.add_function("powerspectrum", k, ps, type="log")
+        self.attrs["ps_redshift"] = ps_redshift
+
+    def powerspectrum(
+        self, k: FloatArrayLike, z: FloatArrayLike = 0.0
+    ) -> FloatArrayLike:
+        """Calculate the power spectrum at given wavenumber and redshift.
+
+        Parameters
+        ----------
+        k
+            The wavenumber (in h / Mpc) to get the power spectrum at.
+        z : optional
+            The redshift to calculate the power spectrum at (default z=0).
+
+        Returns
+        -------
+        ps
+            The power spectrum.
+        """
+        c = self.cosmology
+        Dratio = c.growth_factor(z) / c.growth_factor(self._ps_redshift)
+        return self.get_function("powerspectrum")(k) * Dratio ** 2
+
+    def powerspectrum_at_z(
+        self, z: FloatArrayLike
+    ) -> Callable[[FloatArrayLike], FloatArrayLike]:
+        """Return a function which gives the power spectrum at fixed redshift.
+
+        Parameters
+        ----------
+        z
+            The redshift to fix the power spectrum at.
+
+        Returns
+        -------
+        psfunc
+            A function which calculates the power spectrum at given wavenumbers.
+        """
+
+        def _ps(k):
+            return self.powerspectrum(k, z)
+
+        return _ps
+
+    @property
+    def _ps_redshift(self):
+        return self.attrs["ps_redshift"]
+
+
+class CorrelationFunction(CosmologyContainer, InterpolatedFunction):
+    """A container to store correlation functions."""
+    # TODO: at the moment this has no special functionality, but should eventually
+    # provide specific access to the correlation functions as well as redshift scaling
+
+
 class InitialLSS(FZXContainer, containers.HealpixContainer):
     """Container for holding initial LSS fields used for simulation.
 
