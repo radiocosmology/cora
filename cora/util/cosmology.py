@@ -132,7 +132,7 @@ class Cosmology(object):
         rhoc = 3.0 * H_si ** 2 * u.c_sl ** 2 / (8.0 * np.pi * u.G_n)
         rhorad = u.a_rad * TCMB ** 4
         rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
-        omkh2 = omk * h**2
+        omkh2 = omk * h ** 2
 
         omega_b = ombh2 / h ** 2
         omega_c = omch2 / h ** 2

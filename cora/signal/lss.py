@@ -1,35 +1,37 @@
-from typing import Tuple, Optional
+from pathlib import Path
+from typing import Optional, Tuple
+
+import healpy
+import numpy as np
+
+from caput import config, pipeline
 from cora.core import skysim
-from cora.util import cosmology
-from cora.util import hputil
+from cora.util import hputil, units
+from cora.util.cosmology import Cosmology
 from cora.util.pmesh import (
-    calculate_positions,
     _bin_delta,
     _pixel_weights,
     _radial_weights,
+    calculate_positions,
 )
-
-import numpy as np
-
-import healpy
-
-from caput import config
-from caput import pipeline
-
-from cora.util.cosmology import Cosmology, growth_factor
-from cora.util import units
-
 from draco.core import task
 from draco.core.containers import Map
 
-from .lsscontainers import InterpolatedFunction, InitialLSS, BiasedLSS
-from . import lssutil
 from ..util.nputil import FloatArrayLike
-from . import corrfunc
+from . import corrfunc, lssutil
+from .lsscontainers import (
+    BiasedLSS,
+    CorrelationFunction,
+    InitialLSS,
+    MatterPowerSpectrum,
+)
 
 
 class CalculateCorrelations(task.SingleTask):
     """Calculate the density and potential correlation functions from a power spectrum.
+
+    To reproduce something close to the old cora results, set `powerspectrum` to be
+    `cora-orig` and `ksmooth` as 5.
 
     Attributes
     ----------
@@ -41,41 +43,68 @@ class CalculateCorrelations(task.SingleTask):
         used (see `corrfunc.ps_to_corr` for details). Default: 1
     samples_per_decade : int
         How many samples per decade to calculate. Default: 1000
+    powerspectrum : str
+        If a power spectrum object is not passed directly to the setup, then this
+        parameter is used to read a precalculated power spectrum. One of: cora-orig,
+        planck2018_z1.0_halofit-mead-feedback, planck2018_z1.0_halofit-mead,
+        planck2018_z1.0_halofit-original, planck2018_z1.0_halofit-takahashi,
+        planck2018_z1.0_linear. The default is planck2018_z1.0_halofit-mead.
+    ksmooth : float
+        Apply a Gaussian suppression to the power spectrum with sigma=ksmooth. Default
+        is `None`, i.e. no Gaussian suppression. To reproduce the old behaviour in cora
+        set this to 5.0.
+    logkcut_low, logkcut_high : float
+        Apply power-law cutoffs at low and high-k to regularise the power spectrum.
+        These values give the locations of the cutoffs in log_10(k Mpc / h). By default
+        they are at -4 and 1.
     """
 
     minlogr = config.Property(proptype=float, default=-1)
     maxlogr = config.Property(proptype=float, default=5)
     switchlogr = config.Property(proptype=float, default=1)
     samples_per_decade = config.Property(proptype=int, default=1000)
+    ksmooth = config.Property(proptype=float, default=None)
+    logkcut_low = config.Property(proptype=float, default=-4)
+    logkcut_high = config.Property(proptype=float, default=4)
 
-    def setup(self):
+    # Power spectra that can be used
+    _powerspectra = [
+        "cora-orig",
+        "planck2018_z1.0_halofit-mead-feedback",
+        "planck2018_z1.0_halofit-mead",
+        "planck2018_z1.0_halofit-original",
+        "planck2018_z1.0_halofit-takahashi",
+        "planck2018_z1.0_linear",
+    ]
+    powerspectrum = config.enum(_powerspectra, default="planck2018_z1.0_halofit-mead")
 
-        # TODO: get PS function in a better way
-        # TODO: ensure we are scaled to the correct redshift
-        from . import corr21cm
+    def setup(self, powerspectrum: Optional[MatterPowerSpectrum] = None):
 
-        cr = corr21cm.Corr21cm()
-        self.power_spectrum = cr.ps_vv
-        self.ps_redshift = cr.ps_redshift
-        self.cosmology = cr.cosmology
+        if powerspectrum is None:
+            fpath = Path(__file__).parent / "data" / f"ps_{self.powerspectrum}.h5"
+            self.log.info(f"Loading power spectrum file {fpath}")
+            powerspectrum = MatterPowerSpectrum.from_file(fpath)
+
+        self._ps = powerspectrum
 
     def _ps_n(self, n):
-        # Get the power spectrum multiplied by k**-n and a low-k cutoff
 
+        ks = 1e10 if self.ksmooth is None else self.ksmooth
+
+        # Get the power spectrum multiplied by k**-n and a the low and high cutoffs,
+        # plus a Gaussian suppression to be compatible with cora
         def _ps(k):
-            Dr = cosmology.growth_factor(0.0, self.cosmology) / cosmology.growth_factor(
-                self.ps_redshift, self.cosmology
-            )
             return (
-                Dr ** 2
-                * lssutil.cutoff(k, -4, 1, 0.2, 6)
-                * self.power_spectrum(k)
+                lssutil.cutoff(k, self.logkcut_low, 1, 0.2, 6)
+                * lssutil.cutoff(k, self.logkcut_high, -1, 0.5, 4)
+                * np.exp(-0.5 * (k / ks) ** 2)
+                * self._ps.powerspectrum(k, 0.0)
                 * k ** -n
             )
 
         return _ps
 
-    def process(self) -> InterpolatedFunction:
+    def process(self) -> CorrelationFunction:
         """Calculate the correlation functions.
 
         Returns
@@ -121,7 +150,7 @@ class CalculateCorrelations(task.SingleTask):
             richardson_n=9,
         )
 
-        func = InterpolatedFunction()
+        func = CorrelationFunction(attrs_from=self._ps)
 
         func.add_function("corr0", k0, c0, type="sinh", x_t=k0[1], f_t=1e-3)
         func.add_function("corr2", k2, c2, type="sinh", x_t=k2[1], f_t=1e-6)
@@ -166,7 +195,7 @@ class GenerateInitialLSS(task.SingleTask):
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
 
-    def setup(self, correlation_functions: InterpolatedFunction):
+    def setup(self, correlation_functions: CorrelationFunction):
         """Setup the task.
 
         Parameters
@@ -174,14 +203,8 @@ class GenerateInitialLSS(task.SingleTask):
         correlation_functions
             The pre-calculated correlation functions.
         """
-
-        # TODO: get PS function in a better way
-        # TODO: ensure we are scaled to the correct redshift
-        from . import corr21cm
-
-        cr = corr21cm.Corr21cm()
-        self.cosmology = cr.cosmology
         self.correlation_functions = correlation_functions
+        self.cosmology = correlation_functions.cosmology
 
         if self.redshift is None and self.frequencies is None:
             raise RuntimeError("Redshifts or frequencies must be specified!")
@@ -576,7 +599,7 @@ class LinearDynamics(DynamicsBase):
         final_field = BiasedLSS(axes_from=biased_field, attrs_from=biased_field)
 
         # Get growth factor:
-        D = cosmology.growth_factor(za, c) / cosmology.growth_factor(0, c)
+        D = c.growth_factor(za) / c.growth_factor(0)
 
         # Copy over biased field
         final_field.delta[:] = biased_field.delta[:]
