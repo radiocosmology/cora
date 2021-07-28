@@ -98,8 +98,8 @@ class Cosmology(object):
         ombh2: float = 0.02242,
         omch2: float = 0.11933,
         H0: float = 67.66,
-        omkh2: float = 0.0,
-        t0=2.7255,
+        omk: float = 0.0,
+        TCMB=2.7255,
         nnu=3.046,
     ) -> "Cosmology":
         r"""Initialise a new cosmology from the physical parameters.
@@ -116,9 +116,9 @@ class Cosmology(object):
             The fractional dark matter density times h^2 (h = H_0 / 100).
         H0 : scalar, optional
             The Hubble constant
-        omkh2 : scalar, optional
-            The curvature fraction times h^2.
-        t0 : scalar, optional
+        omk : scalar, optional
+            The curvature fraction.
+        TCMB : scalar, optional
             The CMB temperature (used to calculate the radiation density).
         nnu : scalar, optional
             The number of massless neutrinos. Used to set the neutrino density.
@@ -130,8 +130,9 @@ class Cosmology(object):
         h = H0 / 100.0
         H_si = H0 * 1000.0 / u.mega_parsec
         rhoc = 3.0 * H_si ** 2 * u.c_sl ** 2 / (8.0 * np.pi * u.G_n)
-        rhorad = u.a_rad * t0 ** 4
+        rhorad = u.a_rad * TCMB ** 4
         rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
+        omkh2 = omk * h**2
 
         omega_b = ombh2 / h ** 2
         omega_c = omch2 / h ** 2
