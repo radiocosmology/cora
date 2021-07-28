@@ -341,6 +341,7 @@ class MatterPowerSpectrum(CosmologyContainer, InterpolatedFunction):
 
 class CorrelationFunction(CosmologyContainer, InterpolatedFunction):
     """A container to store correlation functions."""
+
     # TODO: at the moment this has no special functionality, but should eventually
     # provide specific access to the correlation functions as well as redshift scaling
 
