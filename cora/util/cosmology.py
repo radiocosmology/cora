@@ -23,7 +23,8 @@ class Cosmology(object):
     Defines a cosmology and allows calculation of a few simple
     quantities (notably distance measures and lookback time).
 
-    Default params from Planck+WP+highL+BAO (http://arxiv.org/pdf/1303.5076v1.pdf).
+    Default params from final Planck params: Planck+TT,TE,EE+lowE+lensing+BAO
+    (https://arxiv.org/pdf/1807.06209.pdf).
 
     Attributes
     ----------
@@ -61,16 +62,17 @@ class Cosmology(object):
     units: str = "cosmo"
 
     # Standard density parameters
-    omega_b: float = 0.0483
-    omega_c: float = 0.2589
-    omega_l: float = 0.6914
+    # NOTE: that omega_l is adjusted slightly from the Planck value to make Omega_k = 0
+    omega_b: float = 0.04897
+    omega_c: float = 0.26067
+    omega_l: float = 0.69036
 
     # Density parameters more relevant for the early Universe
     omega_g: float = 0.0
     omega_n: float = 0.0
 
     # H_0 given in km/s / Mpc
-    H0: float = 67.77
+    H0: float = 67.66
 
     # Dark energy parameters
     w_0: float = -1.0
@@ -93,11 +95,11 @@ class Cosmology(object):
     @classmethod
     def from_physical(
         cls,
-        ombh2: float = 0.022161,
-        omch2: float = 0.11889,
-        H0: float = 67.77,
+        ombh2: float = 0.02242,
+        omch2: float = 0.11933,
+        H0: float = 67.66,
         omkh2: float = 0.0,
-        t0=2.726,
+        t0=2.7255,
         nnu=3.046,
     ) -> "Cosmology":
         r"""Initialise a new cosmology from the physical parameters.
