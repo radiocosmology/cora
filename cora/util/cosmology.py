@@ -319,6 +319,84 @@ class Cosmology(object):
 
         raise RuntimeError("Units not known")
 
+    def growth_factor(self, z: FloatArrayLike) -> FloatArrayLike:
+        """Approximation for the matter growth factor.
+
+        Uses a Pade approximation.
+
+        Parameters
+        ----------
+        z
+            Redshift to calculate at.
+
+        Returns
+        -------
+        growth_factor
+
+        Notes
+        -----
+        See [1]_.
+
+        References
+        ----------
+        .. [1] http://arxiv.org/abs/1012.2671
+        """
+
+        if np.abs(self.omega_k) > 1e-3:
+            raise RuntimeError(
+                f"Calculation only valid in a flat universe. Omega_k = {self.omega_k}"
+            )
+
+        x = ((1.0 / self.omega_m) - 1.0) / (1.0 + z) ** 3
+
+        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
+        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+
+        d = (1.0 + x) ** 0.5 / (1.0 + z) * num / den
+
+        return d
+
+    def growth_rate(self, z: FloatArrayLike) -> FloatArrayLike:
+        """Approximation for the matter growth rate.
+
+        From explicit differentiation of the Pade approximation for
+        the growth factor.
+
+        Parameters
+        ----------
+        z
+            Redshift to calculate at.
+
+        Returns
+        -------
+        growth_rate
+
+        Notes
+        -----
+        See [2]_.
+
+        References
+        ----------
+        .. [2] http://arxiv.org/abs/1012.2671
+        """
+
+        if np.abs(self.omega_k) > 1e-3:
+            raise RuntimeError(
+                f"Calculation only valid in a flat universe. Omega_k = {self.omega_k}"
+            )
+
+        x = ((1.0 / self.omega_m) - 1.0) / (1.0 + z) ** 3
+
+        dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x ** 2)
+        dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x ** 2)
+
+        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
+        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+
+        f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
+
+        return f
+
 
 def _intf_0_z(f, z):
     # Use an ODE integrator to carry out integrals up to certain redshifts.
@@ -347,82 +425,6 @@ def _intf_0_z(f, z):
     x.ravel()[sort_ind] = si.odeint(_yp, 0.0, za)[1:, 0]
 
     return x
-
-
-def growth_factor(z, c=None):
-    r"""Approximation for the matter growth factor.
-
-    Uses a Pade approximation.
-
-    Parameters
-    ----------
-    z : array_like
-        Redshift to calculate at.
-
-    Returns
-    -------
-    growth_factor : array_like
-
-    Notes
-    -----
-    See [1]_.
-
-    References
-    ----------
-    .. [1] http://arxiv.org/abs/1012.2671
-    """
-
-    if c is None:
-        c = Cosmology()
-
-    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z) ** 3
-
-    num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-    den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
-
-    d = (1.0 + x) ** 0.5 / (1.0 + z) * num / den
-
-    return d
-
-
-def growth_rate(z, c):
-    r"""Approximation for the matter growth rate.
-
-    From explicit differentiation of the Pade approximation for
-    the growth factor.
-
-    Parameters
-    ----------
-    z : array_like
-        Redshift to calculate at.
-
-    Returns
-    -------
-    growth_factor : array_like
-
-    Notes
-    -----
-    See [2]_.
-
-    References
-    ----------
-    .. [2] http://arxiv.org/abs/1012.2671
-    """
-
-    if c is None:
-        c = Cosmology()
-
-    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z) ** 3
-
-    dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x ** 2)
-    dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x ** 2)
-
-    num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-    den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
-
-    f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
-
-    return f
 
 
 def sound_horizon(c=None):

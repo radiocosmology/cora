@@ -334,7 +334,7 @@ class GenerateBiasedFieldBase(task.SingleTask):
         biased_field.delta[:] = 0.0
 
         z = f.redshift if self.lightcone else self.redshift * np.ones_like(f.chi)
-        D = growth_factor(z, f.cosmology) / growth_factor(0, f.cosmology)
+        D = f.cosmology.growth_factor(z) / f.cosmology.growth_factor(0)
 
         # Apply any first order bias
         try:
@@ -508,7 +508,7 @@ class ZeldovichDynamics(DynamicsBase):
         vpsi = lssutil.gradient(initial_field.phi[:], chi)
 
         # Apply growth factor:
-        D = cosmology.growth_factor(za, c) / cosmology.growth_factor(0, c)
+        D = c.growth_factor(za) / c.growth_factor(0)
         vpsi *= D[np.newaxis, :, np.newaxis]
 
         theta, _ = hputil.ang_positions(nside).T
@@ -521,7 +521,7 @@ class ZeldovichDynamics(DynamicsBase):
 
         # Add the extra radial displacement to get into redshift space
         if self.redshift_space:
-            fr = cosmology.growth_rate(za, c)
+            fr = c.growth_rate(za)
             vpsi[0] *= (1 + fr)[:, np.newaxis]
 
         # Create the final field container
@@ -589,7 +589,7 @@ class LinearDynamics(DynamicsBase):
         )
 
         if self.redshift_space:
-            fr = cosmology.growth_rate(za, c)
+            fr = c.growth_rate(za)
             vterm = lssutil.diff2(
                 initial_field.phi[:], chi[loff : loff + lshape], axis=0
             )
