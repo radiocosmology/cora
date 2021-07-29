@@ -15,7 +15,6 @@ cdef extern from "math.h":
 
 cimport libc.math
 
-dbltype = np.int
 ctypedef np.float64_t dbltype_t
 
 
@@ -110,22 +109,21 @@ cdef class Interpolater(object):
         return self.value(x)
 
     @cython.boundscheck(False)
-    def value_array(self, double[::1]x):
+    def value_array(self, x):
 
-        cdef double[:] xr
-        cdef double[:] rr
 
         cdef Py_ssize_t i, nr
 
-        xr = np.asarray(x).ravel()
-        rr = np.empty_like(xr)
+        cdef double[::1] xr = np.ravel(x, order='C')
+        r = np.empty_like(x)
+        cdef double[::1] rr = r.ravel()
 
         nr = xr.size
 
         for i in prange(nr, nogil=True):
             rr[i] = self.value_cdef(xr[i])
 
-        return np.asarray(rr).reshape(np.asarray(x).shape)
+        return r
 
 
     @cython.cdivision(True)
@@ -191,21 +189,13 @@ cdef class Interpolater(object):
         cdef Py_ssize_t length = n - 2
         cdef Py_ssize_t i
 
-        al_raw = np.zeros(length, dtype=np.float64)
-        bt_raw = np.zeros(length, dtype=np.float64)
-        gm_raw = np.zeros(length, dtype=np.float64)
-        f_raw = np.zeros(length, dtype=np.float64)
-        z_raw = np.zeros(length, dtype=np.float64)
-        l_raw = np.zeros(length, dtype=np.float64)
-        m_raw = np.zeros(length, dtype=np.float64)
-
-        cdef double[:] al = al_raw
-        cdef double[:] bt = bt_raw
-        cdef double[:] gm = gm_raw
-        cdef double[:] f = f_raw 
-        cdef double[:] z = z_raw 
-        cdef double[:] l = l_raw 
-        cdef double[:] m = m_raw 
+        cdef double[::1] al = np.zeros(length, dtype=np.float64)
+        cdef double[::1] bt = np.zeros(length, dtype=np.float64)
+        cdef double[::1] gm = np.zeros(length, dtype=np.float64)
+        cdef double[::1] f = np.zeros(length, dtype=np.float64)
+        cdef double[::1] z = np.zeros(length, dtype=np.float64)
+        cdef double[::1] l = np.zeros(length, dtype=np.float64)
+        cdef double[::1] m = np.zeros(length, dtype=np.float64)
 
         self.__y2_ = np.zeros(n, dtype=np.float64)
         cdef double[:] y2 = self.__y2_
