@@ -417,6 +417,86 @@ class GenerateConstantBias(GenerateBiasedFieldBase):
         return np.ones_like(z) * self.bias_L
 
 
+class GeneratePolynomialBias(GenerateBiasedFieldBase):
+    r"""Generate a field with a polynomial bias model.
+
+    .. math::
+        b_1(z) = \sum_{n=0}^N c_n (z - z_{eff})^n
+
+    Attributes
+    ----------
+    z_eff : float
+        The effective redshift of the bias model for the field.
+    bias_coeff : list
+        The *Lagrangian* bias coefficients. At first order this is the related to the
+        Eulerian bias by subtracting one from the Eulerian bias 0th coefficient.
+    model : {"eboss_qso", "eboss_lrg", "eboss_elg"}, optional
+        Pick a predetermined set of coefficients and z_eff. This is lower priority than
+        explicitly setting the parameters above.
+
+    Notes
+    -----
+    This task includes three explicit models for the BOSS/eBOSS tracers: quasars, LRGs
+    and ELGs.
+
+    For the quasars we use the modelling of Laurent et al. 2017 [1]_, which fits a
+    quadratic function of redshift to the measured bias from subsamples of the eBOSS
+    quasar data (equations 5.2 and 5.3).
+
+    For the LRGs there are bias estimates across a range of redshifts within Zhai et al.
+    2017 [2]_ combining BOSS and eBOSS data along with a HOD scheme for modelling the
+    bias. They don't give an explicit fit to the data, so here we construct a quadratic
+    approximation to their BOSS+eBOSS model within the top panel of Figure 12 (red
+    dotted line).
+
+    For the ELGs there do not seem to be any estimates of the redshift dependence of the
+    bias estimates. We combine the single estimate from de Mattia et al. 2020 [3]_ (b_E
+    = 1.5 at z_eff = 0.85) along with the redshift dependence derived from simulations
+    in Merson et al. 2019 [4]_ (db/dz ~ 0.7).
+
+    References
+    ----------
+    .. [1] https://arxiv.org/abs/1705.04718
+    .. [2] https://arxiv.org/abs/1607.05383
+    .. [3] https://arxiv.org/abs/2007.09008
+    .. [4] https://arxiv.org/abs/1903.02030
+    """
+
+    _models = {
+        "eboss_qso": (1.55, [1.38, 1.42, 0.278]),
+        "eboss_lrg": (0.40, [1.03, 0.862, 0.131]),
+        "eboss_elg": (0.85, [0.5, 0.7]),
+    }
+
+    z_eff = config.Property(proptype=float, default=None)
+    bias_coeff = config.list_type(type_=float, default=None)
+    model = config.enum(list(_models.keys()), default=None)
+
+    def setup(self):
+        """Verify the config parameters."""
+
+        if self.z_eff is None:
+            if self.model is not None:
+                self.z_eff = self._models[self.model][0]
+            else:
+                raise config.CaputConfigError("z_eff is not set.")
+
+        if self.bias_coeff is None:
+            if self.model is not None:
+                self.bias_coeff = self._models[self.model][1]
+            else:
+                raise config.CaputConfigError("bias_coeff is not set.")
+
+    def _bias_1(self, z: FloatArrayLike) -> FloatArrayLike:
+
+        # Evalulate the polynomial bias model
+        bias = np.sum(
+            [c * (z - self.z_eff) ** n for n, c in enumerate(self.bias_coeff)], axis=0
+        )
+
+        return bias
+
+
 class DynamicsBase(task.SingleTask):
     """Base class for generating final fields from biased fields.
 
