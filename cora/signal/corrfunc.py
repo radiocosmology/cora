@@ -334,6 +334,13 @@ def corr_to_clarray(
 
     # If xromb > 0 we need to integrate over the radial bin width, start by modifying
     # the array of distances to add extra points over which we'll integrate
+    #
+    # NOTE: the integration scheme over radial bins evaluates a point at C(r=0) which
+    # can have an outsized influence for very blue input power spectra because the
+    # number of samples in the integration is quite small and the correlation function
+    # can diverge quite strongly as r->0. While this could make a difference in the
+    # point variance, in practice this doesn't seem to make much difference to the
+    # *output* maps as it the transform from theta -> l seems to wash it out
     if xromb > 0:
         # Calculate the half bin width
         # TODO: make this more accurate for non-uniform bin spacings
