@@ -345,6 +345,13 @@ class CorrelationFunction(CosmologyContainer, InterpolatedFunction):
     # TODO: at the moment this has no special functionality, but should eventually
     # provide specific access to the correlation functions as well as redshift scaling
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # This whole constructor shouldn't be necessary, but due to a bug in `draco`
+        # where ContainerBase does not correctly call its superconstructor we need to do
+        # this explicitly
+        self._finish_setup()
+
 
 class InitialLSS(FZXContainer, containers.HealpixContainer):
     """Container for holding initial LSS fields used for simulation.
