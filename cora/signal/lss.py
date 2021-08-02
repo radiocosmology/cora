@@ -95,7 +95,7 @@ class CalculateCorrelations(task.SingleTask):
         # plus a Gaussian suppression to be compatible with cora
         def _ps(k):
             return (
-                lssutil.cutoff(k, self.logkcut_low, 1, 0.2, 6)
+                lssutil.cutoff(k, self.logkcut_low, 1, 0.5, 6)
                 * lssutil.cutoff(k, self.logkcut_high, -1, 0.5, 4)
                 * np.exp(-0.5 * (k / ks) ** 2)
                 * self._ps.powerspectrum(k, 0.0)
