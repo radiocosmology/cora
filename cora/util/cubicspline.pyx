@@ -8,12 +8,7 @@ cimport cython
 
 from cython.parallel import prange
 
-# Import functions from math.h
-cdef extern from "math.h":
-    double exp(double x)
-    double log(double x)
-
-cimport libc.math
+from libc.math cimport exp, log, sinh, asinh
 
 ctypedef np.float64_t dbltype_t
 
@@ -256,7 +251,6 @@ cdef class Interpolater(object):
         return a
 
 
-
 cdef class LogInterpolater(Interpolater):
     """Perform a cubic spline interpolation in log-space."""
 
@@ -274,23 +268,75 @@ cdef class LogInterpolater(Interpolater):
         if isinstance(x, np.ndarray):
             return self.value_log_array(x)
 
-        return libc.math.exp(self.value_cdef(libc.math.log(x)))
+        return exp(self.value_cdef(log(x)))
 
 
     @cython.boundscheck(False)
     def value_log_array(self, x):
 
-        cdef double[:] xr
-        cdef double[:] rr
+        cdef double[::1] xr = np.ravel(x, order='C')
+        r = np.empty_like(x)
+        cdef double[:] rr = r.ravel()
 
         cdef Py_ssize_t i, nr
-
-        xr = x.ravel()
-        rr = np.empty_like(xr)
 
         nr = xr.size
 
         for i in prange(nr, nogil=True):
-            rr[i] = libc.math.exp(self.value_cdef(libc.math.log(xr[i])))
+            rr[i] = exp(self.value_cdef(log(xr[i])))
 
-        return np.asarray(rr).reshape(x.shape)
+        return r
+
+
+cdef class SinhInterpolater(Interpolater):
+    """Perform a cubic spline interpolation in a sinh scaled space.
+
+    The interpolation is done within the space of `arcsinh(x / x_t)` and `arcsinh(f /
+    f_t)`, this gives an effective log interpolation for absolute values greater than
+    the threshold and linear when less than the threshold. This allows an effective
+    log interpolation which will handle zero and negative values.
+
+    Parameters
+    ----------
+    data : np.ndarray[:, 2]
+        The data points packed as [[x0, f0], ...].
+    x_t
+        The sinc threshold value for the positions.
+    f_t
+        The function value threshold.
+    """
+
+    cdef double x_t
+    cdef double f_t
+
+    def __init__(self, data, x_t, f_t):
+        self.x_t = x_t
+        self.f_t = f_t
+
+        thresholds = np.array([x_t, f_t], dtype=np.float64)
+        Interpolater.__init__(self, np.arcsinh(data / thresholds))
+
+    def value(self, x):
+        """ Return the value of the log-interpolated function."""
+        if isinstance(x, np.ndarray):
+            return self.value_sinh_array(x)
+
+        return self.f_t * sinh(self.value_cdef(asinh(x / self.x_t)))
+
+
+    @cython.boundscheck(False)
+    def value_sinh_array(self, x):
+
+        cdef np.ndarray[dbltype_t, ndim=1] xr = np.ravel(x, order='C')
+        r = np.empty_like(x)
+        cdef np.ndarray[dbltype_t, ndim=1] rr = r.ravel()
+
+        cdef Py_ssize_t i, nr
+
+
+        nr = xr.size
+
+        for i in prange(nr, nogil=True):
+            rr[i] = self.f_t * sinh(self.value_cdef(asinh(xr[i] / self.x_t)))
+
+        return r

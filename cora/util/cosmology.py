@@ -12,7 +12,8 @@ import numpy as np
 from scipy import integrate as si
 
 # Package imports
-from cora.util import units as u
+from .nputil import FloatArrayLike
+from . import units as u
 
 
 @dataclass
@@ -22,7 +23,8 @@ class Cosmology(object):
     Defines a cosmology and allows calculation of a few simple
     quantities (notably distance measures and lookback time).
 
-    Default params from Planck+WP+highL+BAO (http://arxiv.org/pdf/1303.5076v1.pdf).
+    Default params from final Planck params: Planck+TT,TE,EE+lowE+lensing+BAO
+    (https://arxiv.org/pdf/1807.06209.pdf).
 
     Attributes
     ----------
@@ -60,16 +62,17 @@ class Cosmology(object):
     units: str = "cosmo"
 
     # Standard density parameters
-    omega_b: float = 0.0483
-    omega_c: float = 0.2589
-    omega_l: float = 0.6914
+    # NOTE: that omega_l is adjusted slightly from the Planck value to make Omega_k = 0
+    omega_b: float = 0.04897
+    omega_c: float = 0.26067
+    omega_l: float = 0.69036
 
     # Density parameters more relevant for the early Universe
     omega_g: float = 0.0
     omega_n: float = 0.0
 
     # H_0 given in km/s / Mpc
-    H0: float = 67.77
+    H0: float = 67.66
 
     # Dark energy parameters
     w_0: float = -1.0
@@ -92,11 +95,11 @@ class Cosmology(object):
     @classmethod
     def from_physical(
         cls,
-        ombh2: float = 0.022161,
-        omch2: float = 0.11889,
-        H0: float = 67.77,
-        omkh2: float = 0.0,
-        t0=2.726,
+        ombh2: float = 0.02242,
+        omch2: float = 0.11933,
+        H0: float = 67.66,
+        omk: float = 0.0,
+        TCMB=2.7255,
         nnu=3.046,
     ) -> "Cosmology":
         r"""Initialise a new cosmology from the physical parameters.
@@ -113,9 +116,9 @@ class Cosmology(object):
             The fractional dark matter density times h^2 (h = H_0 / 100).
         H0 : scalar, optional
             The Hubble constant
-        omkh2 : scalar, optional
-            The curvature fraction times h^2.
-        t0 : scalar, optional
+        omk : scalar, optional
+            The curvature fraction.
+        TCMB : scalar, optional
             The CMB temperature (used to calculate the radiation density).
         nnu : scalar, optional
             The number of massless neutrinos. Used to set the neutrino density.
@@ -127,8 +130,9 @@ class Cosmology(object):
         h = H0 / 100.0
         H_si = H0 * 1000.0 / u.mega_parsec
         rhoc = 3.0 * H_si ** 2 * u.c_sl ** 2 / (8.0 * np.pi * u.G_n)
-        rhorad = u.a_rad * t0 ** 4
+        rhorad = u.a_rad * TCMB ** 4
         rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
+        omkh2 = omk * h ** 2
 
         omega_b = ombh2 / h ** 2
         omega_c = omch2 / h ** 2
@@ -147,7 +151,7 @@ class Cosmology(object):
     def to_dict(self) -> dict:
         return asdict(self)
 
-    def H(self, z: float = 0.0):
+    def H(self, z: FloatArrayLike = 0.0) -> FloatArrayLike:
         """The Hubble parameter at redshift z.
 
         Return the Hubble parameter in SI units (s^-1), regardless of
@@ -155,13 +159,13 @@ class Cosmology(object):
 
         Parameters
         ----------
-        z : scalar, optional
+        z
             The redshift to calculate the Hubble parameter
             at. Defaults to z = 0.
 
         Returns
         -------
-        H : scalar
+        H
             The Hubble parameter.
         """
 
@@ -181,19 +185,19 @@ class Cosmology(object):
         # Convert to SI
         return H * 1000.0 / u.mega_parsec
 
-    def comoving_distance(self, z):
+    def comoving_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The comoving distance to redshift z.
 
         This routine is vectorized.
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The comoving distance to each redshift.
         """
 
@@ -203,7 +207,7 @@ class Cosmology(object):
 
         return _intf_0_z(f, z) / self._unit_distance
 
-    def proper_distance(self, z):
+    def proper_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The proper distance to an event at redshift z.
 
         The proper distance can be ill defined. In this case we mean
@@ -213,12 +217,12 @@ class Cosmology(object):
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The proper distance to each redshift.
         """
 
@@ -235,7 +239,7 @@ class Cosmology(object):
 
         return x
 
-    def angular_distance(self, z):
+    def angular_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The angular diameter distance to redshift z.
 
         Not to be confused with the `proper_distance`. This is the
@@ -245,44 +249,44 @@ class Cosmology(object):
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The angular diameter distance to each redshift.
         """
 
         return self.proper_distance(z) / (1 + z)
 
-    def luminosity_distance(self, z):
+    def luminosity_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The luminosity distance to redshift z. This
         routine is vectorized.
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        dist : array_like
+        dist
             The luminosity distance to each redshift.
         """
         return self.proper_distance(z) * (1 + z)
 
-    def lookback_time(self, z):
+    def lookback_time(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The lookback time out to redshift z.
 
         Parameters
         ----------
-        z : array_like
+        z
             The redshift(s) to calculate at.
 
         Returns
         -------
-        time : array_like
+        time
             The lookback time to each redshift.
         """
 
@@ -293,7 +297,7 @@ class Cosmology(object):
         return _intf_0_z(f, z) / self._unit_time
 
     @property
-    def _unit_distance(self):
+    def _unit_distance(self) -> float:
         # Select the appropriate distance unit
         if self.units == "astro":
             return u.mega_parsec
@@ -305,7 +309,7 @@ class Cosmology(object):
         raise RuntimeError("Units not known")
 
     @property
-    def _unit_time(self):
+    def _unit_time(self) -> float:
         # Select the appropriate time unit
         if self.units == "astro":
             return u.mega_year
@@ -315,6 +319,84 @@ class Cosmology(object):
             return 1.0
 
         raise RuntimeError("Units not known")
+
+    def growth_factor(self, z: FloatArrayLike) -> FloatArrayLike:
+        """Approximation for the matter growth factor.
+
+        Uses a Pade approximation.
+
+        Parameters
+        ----------
+        z
+            Redshift to calculate at.
+
+        Returns
+        -------
+        growth_factor
+
+        Notes
+        -----
+        See [1]_.
+
+        References
+        ----------
+        .. [1] http://arxiv.org/abs/1012.2671
+        """
+
+        if np.abs(self.omega_k) > 1e-3:
+            raise RuntimeError(
+                f"Calculation only valid in a flat universe. Omega_k = {self.omega_k}"
+            )
+
+        x = ((1.0 / self.omega_m) - 1.0) / (1.0 + z) ** 3
+
+        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
+        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+
+        d = (1.0 + x) ** 0.5 / (1.0 + z) * num / den
+
+        return d
+
+    def growth_rate(self, z: FloatArrayLike) -> FloatArrayLike:
+        """Approximation for the matter growth rate.
+
+        From explicit differentiation of the Pade approximation for
+        the growth factor.
+
+        Parameters
+        ----------
+        z
+            Redshift to calculate at.
+
+        Returns
+        -------
+        growth_rate
+
+        Notes
+        -----
+        See [2]_.
+
+        References
+        ----------
+        .. [2] http://arxiv.org/abs/1012.2671
+        """
+
+        if np.abs(self.omega_k) > 1e-3:
+            raise RuntimeError(
+                f"Calculation only valid in a flat universe. Omega_k = {self.omega_k}"
+            )
+
+        x = ((1.0 / self.omega_m) - 1.0) / (1.0 + z) ** 3
+
+        dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x ** 2)
+        dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x ** 2)
+
+        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
+        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+
+        f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
+
+        return f
 
 
 def _intf_0_z(f, z):
@@ -344,82 +426,6 @@ def _intf_0_z(f, z):
     x.ravel()[sort_ind] = si.odeint(_yp, 0.0, za)[1:, 0]
 
     return x
-
-
-def growth_factor(z, c=None):
-    r"""Approximation for the matter growth factor.
-
-    Uses a Pade approximation.
-
-    Parameters
-    ----------
-    z : array_like
-        Redshift to calculate at.
-
-    Returns
-    -------
-    growth_factor : array_like
-
-    Notes
-    -----
-    See [1]_.
-
-    References
-    ----------
-    .. [1] http://arxiv.org/abs/1012.2671
-    """
-
-    if c is None:
-        c = Cosmology()
-
-    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z) ** 3
-
-    num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-    den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
-
-    d = (1.0 + x) ** 0.5 / (1.0 + z) * num / den
-
-    return d
-
-
-def growth_rate(z, c):
-    r"""Approximation for the matter growth rate.
-
-    From explicit differentiation of the Pade approximation for
-    the growth factor.
-
-    Parameters
-    ----------
-    z : array_like
-        Redshift to calculate at.
-
-    Returns
-    -------
-    growth_factor : array_like
-
-    Notes
-    -----
-    See [2]_.
-
-    References
-    ----------
-    .. [2] http://arxiv.org/abs/1012.2671
-    """
-
-    if c is None:
-        c = Cosmology()
-
-    x = ((1.0 / c.omega_m) - 1.0) / (1.0 + z) ** 3
-
-    dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x ** 2)
-    dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x ** 2)
-
-    num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-    den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
-
-    f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
-
-    return f
 
 
 def sound_horizon(c=None):

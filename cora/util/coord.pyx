@@ -287,6 +287,47 @@ def great_circle_points(sph1, sph2, npoints):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+def cosine_rule(double[::1] mu, double[::1] x1, double[::1] x2):
+    """Calculate the distance between a grid of points.
+
+    This is a somewhat niche implementation intended to help calculate multi-distance
+    angular power spectra.
+
+    Parameters
+    ----------
+    mu
+        Angular separation in cos(theta)
+    x1, x2
+        Distance of the first and second points.
+
+    Returns
+    -------
+    r : np.ndarray[:, :, :]
+        The separation of the points for all combinations of mu, x1, x2.
+    """
+
+    cdef int nm = len(mu)
+    cdef int n1 = len(x1)
+    cdef int n2 = len(x2)
+
+    cdef double[:, :, ::1] rview
+
+    r = np.zeros((nm, n1, n2), dtype=np.float64)
+
+    rview = r
+
+    cdef int i, j, k
+
+    for i in prange(nm, nogil=True):
+        for j in range(n1):
+            for k in range(n2):
+                rview[i, j, k] = ((x1[j] - x2[k]) ** 2 + 2 * x1[j] * x2[k] * (1 - mu[i])) ** 0.5
+
+    return r
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
 cdef inline void _s2c(double theta, double phi, double cart[3]) nogil:
     # Worker function for calculating the cartesian version of a unit vector in
     # spherical polars

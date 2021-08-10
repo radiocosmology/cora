@@ -17,9 +17,9 @@ if ("CORA_NO_OPENMP" in os.environ) or (
     re.search("gcc", sysconfig.get_config_var("CC")) is None
 ):
     print("Not using OpenMP")
-    args = []
+    args = ["-std=c99"]
 else:
-    args = ["-fopenmp"]
+    args = ["-std=c99", "-fopenmp"]
 
 
 # Cubic spline extension
@@ -49,9 +49,18 @@ cr_ext = Extension(
     extra_link_args=args,
 )
 
+# particle-mesh gridding extension
+pm_ext = Extension(
+    "cora.util.pmesh",
+    ["cora/util/pmesh.pyx"],
+    include_dirs=[np.get_include()],
+    extra_compile_args=args,
+    extra_link_args=args,
+)
+
 # Load the requirements list
 with open("requirements.txt", "r") as fh:
-    requires = fh.read().split()
+    requires = fh.readlines()
 
 # Load the description
 with open("README.rst", "r") as fh:
@@ -63,11 +72,19 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(),
-    ext_modules=cythonize([cs_ext, bm_ext, cr_ext]),
+    ext_modules=cythonize([cs_ext, bm_ext, cr_ext, pm_ext]),
     python_requires=">=3.7",
     install_requires=requires,
+    extras_require={
+        "lss": [
+            "draco @ git+https://github.com/radiocosmology/draco.git",
+            "hankel",
+            "hankl",
+            "pyfftlog",
+        ],
+    },
     package_data={
-        "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat"],
+        "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat", "data/ps*.h5"],
         "cora.foreground": ["data/skydata.npz", "data/combinedps.dat"],
     },
     entry_points="""
