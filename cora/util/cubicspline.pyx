@@ -1,4 +1,3 @@
-# cython: language_level=3
 """Module for interpolating sampled functions."""
 
 import numpy as np
@@ -11,7 +10,6 @@ from cython.parallel import prange
 
 from libc.math cimport exp, log, sinh, asinh
 
-dbltype = int
 ctypedef np.float64_t dbltype_t
 
 
@@ -84,7 +82,7 @@ cdef class Interpolater(object):
         if(np.isinf(data).any() or np.isnan(data).any()):
             raise InterpolationException("Some values invalid.")
 
-        self.__data_ = np.ascontiguousarray(data)
+        self.__data_ = np.ascontiguousarray(data).astype(np.float64, copy=False)
         self.__gen_spline_()
 
         self._data_p = <double *>self.__data_.data
@@ -108,20 +106,19 @@ cdef class Interpolater(object):
     @cython.boundscheck(False)
     def value_array(self, x):
 
-        cdef np.ndarray[dbltype_t, ndim=1] xr
-        cdef np.ndarray[dbltype_t, ndim=1] rr
 
         cdef Py_ssize_t i, nr
 
-        xr = x.ravel()
-        rr = np.empty_like(xr)
+        cdef double[::1] xr = np.ravel(x, order='C')
+        r = np.empty_like(x)
+        cdef double[::1] rr = r.ravel()
 
         nr = xr.size
 
         for i in prange(nr, nogil=True):
             rr[i] = self.value_cdef(xr[i])
 
-        return rr.reshape(x.shape)
+        return r
 
 
     @cython.cdivision(True)
@@ -177,28 +174,32 @@ cdef class Interpolater(object):
         return (a * data[2*kl+1] + b * data[2*kh+1]
                 + c * y2[kl] + d * y2[kh])
 
-
+    @cython.boundscheck(False)  # Deactivate bounds checking
+    @cython.wraparound(False)   # Deactivate negative indexing.
     def __gen_spline_(self):
         # Solve for the second derivative matrix to generate the
         # splines.
 
-        n = self.__data_.shape[0]
+        cdef Py_ssize_t n = self.__data_.shape[0]
+        cdef Py_ssize_t length = n - 2
+        cdef Py_ssize_t i
 
-        al = np.zeros(n-2)
-        bt = np.zeros(n-2)
-        gm = np.zeros(n-2)
-        f = np.zeros(n-2)
-        z = np.zeros(n-2)
-        l = np.zeros(n-2)
-        m = np.zeros(n-2)
+        cdef double[::1] al = np.zeros(length, dtype=np.float64)
+        cdef double[::1] bt = np.zeros(length, dtype=np.float64)
+        cdef double[::1] gm = np.zeros(length, dtype=np.float64)
+        cdef double[::1] f = np.zeros(length, dtype=np.float64)
+        cdef double[::1] z = np.zeros(length, dtype=np.float64)
+        cdef double[::1] l = np.zeros(length, dtype=np.float64)
+        cdef double[::1] m = np.zeros(length, dtype=np.float64)
 
-        self.__y2_ = np.zeros(n)
+        self.__y2_ = np.zeros(n, dtype=np.float64)
+        cdef double[:] y2 = self.__y2_
 
         # Fill out matrices (al diagonal, bt lower, gm upper).
-        y = self.__data_[:,1]
-        x = self.__data_[:,0]
+        cdef double[:] y = self.__data_[:,1]
+        cdef double[:] x = self.__data_[:,0]
 
-        for i in xrange(0, n-2):
+        for i in xrange(length):
 
             f[i] = (y[i+2] - y[i+1]) / (x[i+2] - x[i+1]) - (y[i+1] - y[i]) / (x[i+1] - x[i])
 
@@ -212,13 +213,13 @@ cdef class Interpolater(object):
         l[0] = al[0]
         m[0] = gm[0] / al[0]
 
-        for i in xrange(1, n-2):
+        for i in xrange(1, length):
             l[i] = al[i] - bt[i] * m[i-1]
             m[i] = gm[i] / l[i]
 
         # Solve L.z = f
         z[0] = f[0] / l[0]
-        for i in xrange(1, n-2):
+        for i in xrange(1, length):
             z[i] = (f[i] - bt[i] * z[i-1]) / l[i]
 
         # Solve U.x = z
@@ -226,8 +227,8 @@ cdef class Interpolater(object):
             z[i] = z[i] - m[i] * z[i+1]
 
         # Set second derivatives.
-        for i in xrange(1,n-1):
-            self.__y2_[i] = z[i-1]
+        for i in xrange(1,length + 1):
+            y2[i] = z[i-1]
 
     def data(self):
         """Return the data array."""
@@ -273,20 +274,18 @@ cdef class LogInterpolater(Interpolater):
     @cython.boundscheck(False)
     def value_log_array(self, x):
 
-        cdef np.ndarray[dbltype_t, ndim=1] xr
-        cdef np.ndarray[dbltype_t, ndim=1] rr
+        cdef double[::1] xr = np.ravel(x, order='C')
+        r = np.empty_like(x)
+        cdef double[:] rr = r.ravel()
 
         cdef Py_ssize_t i, nr
-
-        xr = x.ravel()
-        rr = np.empty_like(xr)
 
         nr = xr.size
 
         for i in prange(nr, nogil=True):
             rr[i] = exp(self.value_cdef(log(xr[i])))
 
-        return rr.reshape(x.shape)
+        return r
 
 
 cdef class SinhInterpolater(Interpolater):
@@ -328,17 +327,16 @@ cdef class SinhInterpolater(Interpolater):
     @cython.boundscheck(False)
     def value_sinh_array(self, x):
 
-        cdef np.ndarray[dbltype_t, ndim=1] xr
-        cdef np.ndarray[dbltype_t, ndim=1] rr
+        cdef np.ndarray[dbltype_t, ndim=1] xr = np.ravel(x, order='C')
+        r = np.empty_like(x)
+        cdef np.ndarray[dbltype_t, ndim=1] rr = r.ravel()
 
         cdef Py_ssize_t i, nr
 
-        xr = x.ravel()
-        rr = np.empty_like(xr)
 
         nr = xr.size
 
         for i in prange(nr, nogil=True):
             rr[i] = self.f_t * sinh(self.value_cdef(asinh(xr[i] / self.x_t)))
 
-        return rr.reshape(x.shape)
+        return r
