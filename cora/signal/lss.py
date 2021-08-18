@@ -875,6 +875,216 @@ def za_density_grid(
     return out
 
 
+class FingersOfGod(task.SingleTask):
+    r"""Apply a smoothing to approximate the effects of Fingers of God.
+
+    This applies an exponential smoothing kernel which is equivalent to a *squared
+    Lorentzian* suppression in power spectrum space which is a reasonably common model.
+
+    Attributes
+    ----------
+    alpha_FoG : float
+        A parameter to control the strength of the effect by adjusting the smoothing
+        scale. A value of 1 (default) applies the nominal smoothing, 0 turns the
+        smoothing off entirely, and any other values adjust the scale appropriately.
+    model : {'HI', 'LRG', 'ELG', 'QSO'}
+        Use an inbuilt model for the Fingers of God smoothing. If `None` (default), a
+        specific model is expected to be set via `FoG_coeff` and `z_eff`.
+    FoG_coeff : list
+        A list of coefficient in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`. If
+        `None` default, a `model` must be set.
+    z_eff : float
+        The effective redshift of the polynomial expansion.
+
+    Notes
+    -----
+    There are builtin models for three tracers: Quasars, LRGs, and ELGs. For these a
+    measurement from actual data has been used to provide an overall normalisation and a
+    satellite-HOD-weighted average over `sigma_v(M)` has been used to provide a redshift
+    dependence (the output of this calculation is renormalised by the measurement).
+
+    For LRGs we use a measurement from Gil-Marin et al. 2021 [1]_ and the HOD from Zhai
+    et al. 2017 [2]_.
+
+    For ELGs we use a measurement from de Mattia et al. 2021 [3]_ and the `HOD-3` HOD
+    from Avila et al. 2020 [4]_.
+
+    For QSOs we use a measurement from Neveux et al. 2021 [5]_. However, this combines
+    an estimate of the redshift error smearing and Fingers of God into a single
+    quantity, modelled by a *single* Lorentzian. We have converted these numbers into
+    our own modelling scheme. For the HOD we use the `4KDE+15eBOSS` QSO HOD from
+    Eftekharzadeh et al. 2020 [6]_.
+
+    For HI we use the S+B LP model from Sarkar & Bharadwaj 2019 [7]_, with a
+    :math:`\sqrt{2}` factor to approximately account for the fact they model with a
+    single, not squared, Lorentzian. This model seems to be roughly in the middle of
+    predictions made in the literature.
+
+    References
+    ----------
+    .. [1] https://arxiv.org/abs/2007.08994
+    .. [2] https://arxiv.org/abs/1607.05383
+    .. [3] https://arxiv.org/abs/2007.09008
+    .. [4] https://arxiv.org/abs/2007.09012
+    .. [5] https://arxiv.org/abs/2007.08999
+    .. [6] https://arxiv.org/abs/1812.05760
+    .. [7] https://arxiv.org/abs/1906.07032
+    """
+
+    _models = {
+        "HI": (1.0, [1.930, -1.479, 0.814]),
+        "LRG": (0.70, [3.642, -0.469, -0.183]),
+        "ELG": (0.85, [2.787, -0.780, 0.078]),
+        "QSO": (1.48, [1.119, -0.007, -0.117]),
+    }
+
+    model = config.enum(list(_models.keys()), default=None)
+
+    alpha_FoG = config.Property(proptype=float, default=1.0)
+
+    FoG_coeff = config.list_type(type_=float, default=None)
+    z_eff = config.Property(proptype=float, default=None)
+
+    def setup(self):
+        """Verify the config parameters."""
+
+        if self.z_eff is None:
+            if self.model is not None:
+                self.z_eff = self._models[self.model][0]
+            else:
+                raise config.CaputConfigError("z_eff is not set.")
+
+        if self.FoG_coeff is None:
+            if self.model is not None:
+                self.FoG_coeff = self._models[self.model][1]
+            else:
+                raise config.CaputConfigError("FoG_coeff is not set.")
+
+    def process(self, field: BiasedLSS) -> BiasedLSS:
+        """Apply the FoG effect.
+
+        Parameters
+        ----------
+        field
+            The input field.
+
+        Returns
+        -------
+        smoothed_field
+            The field with the smoothing applied.
+        """
+
+        # Just return the input if FoGs are effectively turned off
+        if self.alpha_FoG == 0.0:
+            return field
+
+        # Get the growth factor and smoothing scales
+        D = field.cosmology.growth_factor(field.redshift)
+        sigmaP = self._sigmaP(field.redshift)
+
+        K = exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
+
+        smoothed_field = BiasedLSS(axes_from=field, attrs_from=field)
+
+        # Apply the smoothing kernel and directly assign into output field
+        np.matmul(K, field.delta[:], out=smoothed_field.delta[:])
+
+        return smoothed_field
+
+    def _sigmaP(self, z: FloatArrayLike) -> FloatArrayLike:
+        """Get the velocity dispersion at a given redshift.
+
+        Parameters
+        ----------
+        z
+            The redshift to calculate at.
+
+        Returns
+        -------
+        sigmav
+            The velocity dispersion in Mpc/h.
+        """
+
+        # Evalulate the polynomial bias model to get the default bias
+        return np.sum(
+            [c * (z - self.z_eff) ** n for n, c in enumerate(self.FoG_coeff)], axis=0
+        )
+
+
+def exponential_FoG_kernel(
+    chi: np.ndarray, sigmaP: FloatArrayLike, D: FloatArrayLike
+) -> np.ndarray:
+    r"""Get a smoothing kernel for approximating Fingers of God.
+
+    Parameters
+    ----------
+    chi
+        Radial distance of the bins.
+    sigmaP
+        The smooth parameter for each radial bin.
+    D
+        The growth factor for each radial bin.
+
+    Returns
+    -------
+    kernel
+        A `len(chi) x len(chi)` matrix that applies the smoothing.
+
+    Notes
+    -----
+    This generates an exponential smoothing matrix, which is the Fourier conjugate of a
+    Lorentzian attenuation of the form :math:`(1 + k_\parallel^2 \sigma_P^2 / 2)^{-1}`
+    applied to the density contrast in k-space.
+
+    It accounts for the finite bin width by integrating the continuous kernel over the
+    width of each radial bin.
+
+    It also accounts for the growth factor already applied to each radial bin by
+    dividing out the growth factor pre-smoothing, and then re-applying it after
+    smoothing.
+    """
+
+    if not isinstance(sigmaP, np.ndarray):
+        sigmaP = np.ones_like(chi) * sigmaP
+
+    if not isinstance(D, np.ndarray):
+        D = np.ones_like(chi) * D
+
+    # This is the main parameter of the exponential kernel and comes from the FT of the
+    # canonically defined Lorentzian
+    a = 2 ** 0.5 / sigmaP
+    ar = a[:, np.newaxis]
+
+    # Get an average bin width for the radial axis
+    dchi = np.median(np.diff(chi))
+
+    chi_sep = np.abs(chi[:, np.newaxis] - chi[np.newaxis, :])
+
+    def sinhc(x):
+        return np.sinh(x) / x
+
+    # Create a matrix to apply the smoothing with an exponential kernel.
+    # NOTE: because of the finite radial bins we should calculate the average
+    # contribution over the width of each bin. That gives rise to the sinhc terms which
+    # slightly boost the weights of the non-zero bins
+    K = np.exp(-ar * chi_sep) * sinhc(ar * dchi / 2.0)
+
+    # The zero-lag bins are a special case because of the reflection about zero
+    # Here the weight is slightly less than if we evaluated exactly at zero
+    np.fill_diagonal(K, np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4))
+
+    # Normalise each row to ensure conservation of mass
+    K /= np.sum(K, axis=1)[:, np.newaxis]
+
+    # Remove any already applied growth factor
+    K /= D[np.newaxis, :]
+
+    # Re-apply the growth factor for each redshift bin
+    K *= D[:, np.newaxis]
+
+    return K
+
+
 def lognormal_transform(
     field: np.ndarray, out: Optional[np.ndarray] = None, axis: int = None
 ) -> np.ndarray:
