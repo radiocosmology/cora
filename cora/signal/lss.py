@@ -27,6 +27,17 @@ from .lsscontainers import (
 )
 
 
+# Power spectra that can be used
+_POWERSPECTRA = [
+    "cora-orig",
+    "planck2018_z1.0_halofit-mead-feedback",
+    "planck2018_z1.0_halofit-mead",
+    "planck2018_z1.0_halofit-original",
+    "planck2018_z1.0_halofit-takahashi",
+    "planck2018_z1.0_linear",
+]
+
+
 class CalculateCorrelations(task.SingleTask):
     """Calculate the density and potential correlation functions from a power spectrum.
 
@@ -66,17 +77,7 @@ class CalculateCorrelations(task.SingleTask):
     ksmooth = config.Property(proptype=float, default=None)
     logkcut_low = config.Property(proptype=float, default=-4)
     logkcut_high = config.Property(proptype=float, default=4)
-
-    # Power spectra that can be used
-    _powerspectra = [
-        "cora-orig",
-        "planck2018_z1.0_halofit-mead-feedback",
-        "planck2018_z1.0_halofit-mead",
-        "planck2018_z1.0_halofit-original",
-        "planck2018_z1.0_halofit-takahashi",
-        "planck2018_z1.0_linear",
-    ]
-    powerspectrum = config.enum(_powerspectra, default="planck2018_z1.0_halofit-mead")
+    powerspectrum = config.enum(_POWERSPECTRA, default="planck2018_z1.0_halofit-mead")
 
     def setup(self, powerspectrum: Optional[MatterPowerSpectrum] = None):
 
@@ -159,6 +160,70 @@ class CalculateCorrelations(task.SingleTask):
         self.done = True
 
         return func
+
+
+class BlendNonLinearPowerSpectrum(task.SingleTask):
+    """Generate a controllable mix between a linear and non-linear power spectrum.
+
+    Blends a linear and non-linear power spectrum by linear interpolating in
+    :math:`\log(P(k))`.
+
+    Attributes
+    ----------
+    alpha_NL : float
+        Controls the mix between the linear and non-linear PS. 0 is purely linear, 1
+        (default) gives the non-linear power spectrum.
+    powerspectrum_linear : str
+        The name of the linear power spectrum.
+    powerspectrum_nonlinear : str
+        The name of the non-linear power spectrum.
+    """
+
+    alpha_NL = config.Property(proptype=float, default=1.0)
+    powerspectrum_linear = config.enum(_POWERSPECTRA, default="planck2018_z1.0_linear")
+    powerspectrum_nonlinear = config.enum(
+        _POWERSPECTRA, default="planck2018_z1.0_halofit-mead"
+    )
+
+    def process(self) -> MatterPowerSpectrum:
+        """Construct the blended power spectrum.
+
+        Returns
+        -------
+        blended_ps
+            The blended power spectrum.
+        """
+
+        basepath = Path(__file__).parent / "data"
+        ps_linear = MatterPowerSpectrum.from_file(
+            basepath / f"ps_{self.powerspectrum_linear}.h5"
+        )
+        ps_nonlinear = MatterPowerSpectrum.from_file(
+            basepath / f"ps_{self.powerspectrum_nonlinear}.h5"
+        )
+
+        if ps_linear._ps_redshift != ps_nonlinear._ps_redshift:
+            raise RuntimeError(
+                "Linear and non-linear PS do not have matching redshifts."
+            )
+
+        if not np.array_equal(
+            ps_linear.index_map["x_powerspectrum"][:],
+            ps_nonlinear.index_map["x_powerspectrum"][:],
+        ):
+            raise RuntimeError("Linear and non-linear PS do not have matching k axes.")
+
+        psl = ps_linear.datasets["powerspectrum"][:]
+        psnl = ps_nonlinear.datasets["powerspectrum"][:]
+
+        ps_linear.datasets["powerspectrum"][:] = (
+            psl ** (1 - self.alpha_NL) * psnl ** self.alpha_NL
+        )
+        ps_linear.attrs["tag"] = f"psblend_alphaNL_{self.alpha_NL}"
+
+        self.done = True
+
+        return ps_linear
 
 
 class GenerateInitialLSS(task.SingleTask):
