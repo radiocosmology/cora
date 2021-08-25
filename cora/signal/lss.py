@@ -796,11 +796,32 @@ class BiasedLSSToMap(task.SingleTask):
     lognormal : bool
         Use a lognormal transform to guarantee that the density is always positive (i.e.
         delta > -1).
+    omega_HI_model : {'Crighton2015', 'SKA', 'uniform'}
+        The model to use for Omega_HI. See `Notes` for details.
+    omega_HI : float
+        The value for Omega_HI to use when `omega_HI_model` is set to uniform.
+
+    Notes
+    -----
+    We use two models for the evolution of Omega_HI. A fit from Crighton et al. 2015
+    [1]_ (`Crighton2015`) and a fit from the SKA WG whitepaper [2]_ (`SKA`) as well as
+    allowing a constant in redshift value to be set (`uniform`), with default value
+    taken from Switzer et al. 2013 [3]_ assuming :math:`b_{HI}=1`.
+
+    References
+    ----------
+
+    .. [1]: https://arxiv.org/abs/1506.02037
+    .. [2]: https://arxiv.org/abs/1811.02743
+    .. [3]: https://arxiv.org/abs/1304.3712
     """
 
     use_mean_21cmT = config.Property(proptype=int, default=False)
     map_prefactor = config.Property(proptype=float, default=1.0)
     lognormal = config.Property(proptype=bool, default=False)
+    omega_HI_model = config.enum(
+        ["Crighton2015", "SKA", "uniform"], default="Crighton2015"
+    )
     omega_HI = config.Property(proptype=float, default=0.6e-3)
 
     def process(self, biased_lss: BiasedLSS) -> Map:
@@ -842,13 +863,17 @@ class BiasedLSSToMap(task.SingleTask):
 
         # If desired, multiply by Tb(z)
         if self.use_mean_21cmT:
-            from . import corr21cm
 
-            cr = corr21cm.Corr21cm()
+            z = biased_lss.redshift
 
-            T_b = mean_21cm_temperature(
-                biased_lss.cosmology, biased_lss.redshift, self.omega_HI
-            )
+            if self.omega_HI_model == "uniform":
+                omega_HI = self.omega_HI
+            elif self.omega_HI_model == "Crighton2015":
+                omega_HI = 4e-4 * (1 + z) ** 0.6
+            else:  # self.omega_HI_model == "SKA":
+                omega_HI = 4.8e-4 + 3.9e-4 * z - 6.5e-5 * z ** 2
+
+            T_b = mean_21cm_temperature(biased_lss.cosmology, z, omega_HI)
 
             loff = m.map.local_offset[0]
             lshape = m.map.local_shape[0]
