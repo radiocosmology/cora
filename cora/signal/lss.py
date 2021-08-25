@@ -498,6 +498,10 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
     model : {"eboss_qso", "eboss_lrg", "eboss_elg"}, optional
         Pick a predetermined set of coefficients and z_eff. This is lower priority than
         explicitly setting the parameters above.
+    alpha_b : float
+        Apply a scaling that increase the *Eulerian* bias by a factor `alpha_b`.
+        Although that this scales the Eulerian bias may be confusing, this is useful to
+        generating combinations that isolate certain terms in a cross power spectrum.
 
     Notes
     -----
@@ -543,6 +547,7 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
     z_eff = config.Property(proptype=float, default=None)
     bias_coeff = config.list_type(type_=float, default=None)
     model = config.enum(list(_models.keys()), default=None)
+    alpha_b = config.Property(proptype=float, default=1.0)
 
     def setup(self):
         """Verify the config parameters."""
@@ -561,10 +566,14 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
 
     def _bias_1(self, z: FloatArrayLike) -> FloatArrayLike:
 
-        # Evalulate the polynomial bias model
+        # Evalulate the polynomial bias model to get the default bias
         bias = np.sum(
             [c * (z - self.z_eff) ** n for n, c in enumerate(self.bias_coeff)], axis=0
         )
+
+        # Modify the bias to account for the scaling coefficient. This is a no-op if
+        # alpha=1 (default)
+        bias = self.alpha_b * bias + self.alpha_b - 1.0
 
         return bias
 
