@@ -519,18 +519,25 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
     = 1.5 at z_eff = 0.85) along with the redshift dependence derived from simulations
     in Merson et al. 2019 [4]_ (db/dz ~ 0.7).
 
+    It also includes a model for the HI bias. This is a 5th order polynomial fit to the
+    data from [5]_ which is itself a fit to the simulations in [6]_ and [7]_.
+
     References
     ----------
     .. [1] https://arxiv.org/abs/1705.04718
     .. [2] https://arxiv.org/abs/1607.05383
     .. [3] https://arxiv.org/abs/2007.09008
     .. [4] https://arxiv.org/abs/1903.02030
+    .. [5] https://github.com/slosar/PUMANoise/blob/b17b30ec84c6e55d8/castorina.py
+    .. [6] https://arxiv.org/abs/1609.05157
+    .. [7] https://arxiv.org/abs/1804.09180
     """
 
     _models = {
         "eboss_qso": (1.55, [1.38, 1.42, 0.278]),
         "eboss_lrg": (0.40, [1.03, 0.862, 0.131]),
         "eboss_elg": (0.85, [0.5, 0.7]),
+        "HI": (1.0, [0.489, 0.460, -0.118, 0.0678, -0.0128, 0.0009]),
     }
 
     z_eff = config.Property(proptype=float, default=None)
