@@ -792,18 +792,19 @@ class BiasedLSSToMap(task.SingleTask):
     use_mean_21cmT = config.Property(proptype=int, default=False)
     map_prefactor = config.Property(proptype=float, default=1.0)
     lognormal = config.Property(proptype=bool, default=False)
+    omega_HI = config.Property(proptype=float, default=0.6e-3)
 
-    def process(self, biased_lss) -> Map:
+    def process(self, biased_lss: BiasedLSS) -> Map:
         """Generate a realisation of the LSS initial conditions.
 
         Parameters
         ----------
-        biased_lss : BiasedLSS
+        biased_lss
             Input BiasedLSS container.
 
         Returns
         -------
-        out_map : Map
+        out_map
             Output Map container.
         """
 
@@ -836,9 +837,13 @@ class BiasedLSSToMap(task.SingleTask):
 
             cr = corr21cm.Corr21cm()
 
+            T_b = mean_21cm_temperature(
+                biased_lss.cosmology, biased_lss.redshift, self.omega_HI
+            )
+
             loff = m.map.local_offset[0]
             lshape = m.map.local_shape[0]
-            m.map[:, 0] *= cr.T_b(biased_lss.redshift)[loff : loff + lshape, np.newaxis]
+            m.map[:, 0] *= T_b[loff : loff + lshape, np.newaxis]
 
         return m
 
@@ -1321,3 +1326,43 @@ def za_density_sph(
     out[:] -= 1.0
 
     return out
+
+
+def mean_21cm_temperature(
+    c: Cosmology, z: FloatArrayLike, omega_HI: FloatArrayLike
+) -> FloatArrayLike:
+    """Mean 21cm brightness temperature at a given redshift.
+
+    Temperature is in K.
+
+    Parameters
+    ----------
+    c
+        The Cosmology to use.
+    z
+        Redshift to calculate at.
+    omega_HI
+        The HI fraction at each redshift.
+
+    Returns
+    -------
+    T_b
+        Brightness temperature at each redshift.
+    """
+    # The prefactor T0 below is independent of cosmology (consisting only of fundamental
+    # constants and the A_10 Einstein coefficient).
+    #
+    # This constant correspond to the 0.39 mK prefactor used in the GBT analyses and the
+    # former default in cora:
+    # T0 = 181.9e-3
+    # however, the previous method incorporated a factor of `h` into itself, which
+    # meant the cosmology was applied inconsistently.
+    #
+    # We now use the value below, which is calculated using recent values of A_10 from
+    # http://articles.adsabs.harvard.edu/pdf/1994ApJ...423..522G
+    T0 = 191.06
+
+    h = c.H0 / 100.0
+
+    T_b = T0 * (c.H(0) / c.H(z)) * (1 + z) ** 2 * h * omega_HI
+    return T_b
