@@ -15,6 +15,7 @@ from cora.util.pmesh import (
     calculate_positions,
 )
 from draco.core import task
+from draco.util.random import RandomTask
 from draco.core.containers import Map
 
 from ..util.nputil import FloatArrayLike
@@ -1127,6 +1128,91 @@ class FingersOfGod(task.SingleTask):
         return np.sum(
             [c * (z - self.z_eff) ** n for n, c in enumerate(self.FoG_coeff)], axis=0
         )
+
+
+class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
+    """Add a correlated shot noise contribution to each input map.
+
+    The shot noise realisation is deterministically generated from the LSS field, so all
+    tasks receiving the same `InitialLSS` object as a requirement will generate the same
+    shot noise realisation.
+
+    Attributes
+    ----------
+    n_eff : float
+        The effective number density in sources per Mpc^3.
+    """
+
+    n_eff = config.Property(proptype=float)
+
+    def setup(self, lss: InitialLSS):
+        """Set up a common seed from the LSS field.
+
+        Parameters
+        ----------
+        lss
+            Common InitialLSS field to use for seeding.
+        """
+        import zlib
+
+        # Get a subset of the data in bytes
+        lss_subset = lss.delta[:, :100].copy().tobytes()
+
+        # If the seed was not set, hash the input LSS and use that
+        if self.seed is None:
+            self.seed = zlib.adler32(lss_subset)
+
+    def process(self, input_field: BiasedLSS) -> BiasedLSS:
+        """Add correlated shot noise to the input field.
+
+        Paramters
+        ---------
+        input_field
+            The incoming field to add shot noise to. Modified in-place.
+
+        Returns
+        -------
+        output_field
+            The field with shot noise. This is the same object as `input_field`.
+        """
+        pixarea = healpy.nside2pixarea(input_field.nside)
+
+        volume = (
+            pixarea * input_field.chi[:] ** 2 * _calculate_width(input_field.chi[:])
+        )
+
+        std = (volume * self.n_eff) ** 0.5
+        shot_noise = self.rng.normal(
+            scale=std[np.newaxis, :], size=input_field.delta.shape
+        )
+        input_field.delta[:] += shot_noise
+
+        return input_field
+
+
+def _calculate_width(centres: np.ndarray) -> np.ndarray:
+    """Estimate the width of a set of contiguous bin from their centres.
+
+    Parameters
+    ----------
+    centres
+        The array of the bin centre positions.
+
+    Returns
+    -------
+    widths
+        The estimate bin widths. Entries are always positive.
+    """
+    widths = np.zeros(len(centres))
+
+    # Estimate the interior bin widths by assuming the second derivative of the bin widths is small
+    widths[1:-1] = (centres[2:] - centres[:-2]) / 2.0
+
+    # Estimate the edge widths by determining where the bin boundaries using the interior widths
+    widths[0] = 2 * (centres[1] - (widths[1] / 2.0) - centres[0])
+    widths[-1] = 2 * (centres[-1] - (widths[-2] / 2.0) - centres[-2])
+
+    return np.abs(widths)
 
 
 def exponential_FoG_kernel(
