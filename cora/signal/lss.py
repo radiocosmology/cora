@@ -1259,8 +1259,8 @@ def exponential_FoG_kernel(
     a = 2 ** 0.5 / sigmaP
     ar = a[:, np.newaxis]
 
-    # Get an average bin width for the radial axis
-    dchi = np.median(np.diff(chi))
+    # Get bin widths for the radial axis
+    dchi = _calculate_width(chi)[np.newaxis, :]
 
     chi_sep = np.abs(chi[:, np.newaxis] - chi[np.newaxis, :])
 
