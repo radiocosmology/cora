@@ -1014,17 +1014,20 @@ class FingersOfGod(task.SingleTask):
     satellite-HOD-weighted average over `sigma_v(M)` has been used to provide a redshift
     dependence (the output of this calculation is renormalised by the measurement).
 
-    For LRGs we use a measurement from Gil-Marin et al. 2021 [1]_ and the HOD from Zhai
-    et al. 2017 [2]_.
+    For LRGs we use a measurement from Gil-Marin et al. 2021 [1]_. The baseline model
+    uses a HOD from Alam et al. 2020 [8]_, and the alt model from Zhai et al. 2017 [2]_.
 
-    For ELGs we use a measurement from de Mattia et al. 2021 [3]_ and the `HOD-3` HOD
-    from Avila et al. 2020 [4]_.
+    For ELGs we use a measurement from de Mattia et al. 2021 [3]_. The baseline model
+    uses the HMQ HOD from Alam et al. 2020 [8]_ and alt model the `HOD-3` HOD from Avila
+    et al. 2020 [4]_.
 
-    For QSOs we use a measurement from Neveux et al. 2021 [5]_. However, this combines
-    an estimate of the redshift error smearing and Fingers of God into a single
-    quantity, modelled by a *single* Lorentzian. We have converted these numbers into
-    our own modelling scheme. For the HOD we use the `4KDE+15eBOSS` QSO HOD from
-    Eftekharzadeh et al. 2020 [6]_.
+    For QSOs we use a measurement from Zarrouk et al. 2018 [5]_ that attempts to
+    separate the physical FoG damping from the damping caused by redshift errors. Their
+    damping is modelled by a Gaussian, and we have converted their stated damping scale
+    into one that is roughly equivalent for a double Lorentzian. We have taken the
+    average of the values from their 3-multipole and 3-wedge HOD values. The baseline
+    HOD is also from Alam et al. [8]_, and the alt model uses the `4KDE+15eBOSS` QSO HOD
+    from Eftekharzadeh et al. 2020 [6]_.
 
     For HI we use the S+B LP model from Sarkar & Bharadwaj 2019 [7]_, with a
     :math:`\sqrt{2}` factor to approximately account for the fact they model with a
@@ -1037,16 +1040,20 @@ class FingersOfGod(task.SingleTask):
     .. [2] https://arxiv.org/abs/1607.05383
     .. [3] https://arxiv.org/abs/2007.09008
     .. [4] https://arxiv.org/abs/2007.09012
-    .. [5] https://arxiv.org/abs/2007.08999
+    .. [5] https://arxiv.org/abs/1801.03062
     .. [6] https://arxiv.org/abs/1812.05760
     .. [7] https://arxiv.org/abs/1906.07032
+    .. [8] https://arxiv.org/abs/1910.05095
     """
 
     _models = {
         "HI": (1.0, [1.930, -1.479, 0.814]),
-        "LRG": (0.70, [3.642, -0.469, -0.183]),
-        "ELG": (0.85, [2.787, -0.780, 0.078]),
-        "QSO": (1.48, [1.119, -0.007, -0.117]),
+        "LRG": (0.70, [3.642, 0.019, -0.194]),
+        "ELG": (0.85, [2.787, -0.774, 0.083]),
+        "QSO": (1.48, [1.119, -0.138, -0.058]),
+        "LRGalt": (0.70, [3.642, -0.469, -0.183]),
+        "ELGalt": (0.85, [2.787, -0.780, 0.078]),
+        "QSOalt": (1.48, [1.119, -0.007, -0.117]),
     }
 
     model = config.enum(list(_models.keys()), default=None)
