@@ -1156,10 +1156,20 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
     Attributes
     ----------
     n_eff : float
-        The effective number density in sources per Mpc^3.
+        The effective number density in sources per (Mpc / h)^3.
+    log_M_HI_g : float
+        Set the shot noise level by specifying the log10 of the average HI mass per
+        tracer galaxy in solar mass units. This is overriden if `n_eff` is set
+        explicitly.
+    omega_HI_model : str
+        The model to use for Omega_HI when applying the mean 21cm temperature. See
+        :func:`omega_HI` for the list of valid models and details. Default is
+        `Crighton2015`.
     """
 
-    n_eff = config.Property(proptype=float)
+    n_eff = config.Property(proptype=float, default=None)
+    log_M_HI_g = config.Property(proptype=float, default=None)
+    omega_HI_model = config.enum(_omega_HI_models, default="Crighton2015")
 
     def setup(self, lss: InitialLSS):
         """Set up a common seed from the LSS field.
@@ -1177,6 +1187,25 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         # If the seed was not set, hash the input LSS and use that
         if self.seed is None:
             self.seed = zlib.adler32(lss_subset)
+
+        if self.n_eff is not None:
+            self._n_eff_z = np.ones_like(lss.chi) * self.n_eff
+        elif self.log_M_HI_g is not None:
+
+            h = lss.cosmology.H0 / 100
+            H0_SI = lss.cosmology.H(0)  # H_0 in s^-1
+            omHI = omega_HI(lss.redshift, model=self.omega_HI_model)
+            M_HI_g = (10 ** self.log_M_HI_g) * units.solar_mass  # in kg
+
+            # First compute M_HI / rho_HI(z) in SI units (m^3)
+            self._n_eff_z = 8 * np.pi * units.G * M_HI_g / (3.0 * omHI * H0_SI ** 2)
+            # Then convert to h^-3 Mpc^3
+            self._n_eff_z *= h ** 3 / units.mega_parsec ** 3
+            # Finally take inverse, which yields the equivalent n_eff for the input M_HI
+            self._n_eff_z = 1 / self._n_eff_z
+
+        else:
+            raise RuntimeError("One of `n_eff` or `log_M_HI_g` must be set.")
 
     def process(self, input_field: BiasedLSS) -> BiasedLSS:
         """Add correlated shot noise to the input field.
@@ -1197,9 +1226,9 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
             pixarea * input_field.chi[:] ** 2 * _calculate_width(input_field.chi[:])
         )
 
-        std = (volume * self.n_eff) ** 0.5
+        std = (volume * self._n_eff_z) ** -0.5
         shot_noise = self.rng.normal(
-            scale=std[np.newaxis, :], size=input_field.delta.shape
+            scale=std[:, np.newaxis], size=input_field.delta.shape
         )
         input_field.delta[:] += shot_noise
 
