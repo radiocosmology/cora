@@ -1532,7 +1532,7 @@ def mean_21cm_temperature(
     #
     # We now use the value below, which is calculated using recent values of A_10 from
     # http://articles.adsabs.harvard.edu/pdf/1994ApJ...423..522G
-    T0 = 191.06
+    T0 = 191.06e-3
 
     h = c.H0 / 100.0
 
