@@ -12,7 +12,7 @@ from ..util import hputil
 from ..util.nputil import FloatArrayLike
 
 
-def linspace(x: Union[dict, list]) -> np.ndarray:
+def linspace(x: Union[dict, list, np.ndarray]) -> np.ndarray:
     """A config parser that generates a linearly spaced set of values.
 
     This feeds the parameters directly into numpy linspace.
@@ -22,17 +22,23 @@ def linspace(x: Union[dict, list]) -> np.ndarray:
     x
         If a dict, this requires `start`, `stop`, and `num` keys, while there is an
         optional `endpoint` key. If a list the elements are interpreted as `[start,
-        stop, num, endpoint]` where `endpoint` is again optional.
+        stop, num, endpoint]` where `endpoint` is again optional. If an array, it is
+        just returned as is (this is useful for configuring a pipeline in Python rather
+        than YAML).
 
     Returns
     -------
     linspace
         A linearly spaced numpy array.
     """
-    if not isinstance(x, (dict, list)):
-        raise config.CaputConfigError(f"Require a dict or list type. Got a {type(x)}.")
+    if not isinstance(x, (dict, list, np.ndarray)):
+        raise config.CaputConfigError(
+            f"Require a dict, list or array type. Got a {type(x)}."
+        )
 
-    if isinstance(x, dict):
+    if isinstance(x, np.ndarray):
+        return x
+    elif isinstance(x, dict):
         start = x["start"]
         stop = x["stop"]
         num = x["num"]
