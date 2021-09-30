@@ -19,7 +19,7 @@ from draco.util.random import RandomTask
 from draco.core.containers import Map
 
 from ..util.nputil import FloatArrayLike
-from . import corrfunc, lssutil
+from . import corrfunc, lssutil, lssmodels
 from .lsscontainers import (
     BiasedLSS,
     CorrelationFunction,
@@ -496,81 +496,44 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
     bias_coeff : list
         The *Lagrangian* bias coefficients. At first order this is the related to the
         Eulerian bias by subtracting one from the Eulerian bias 0th coefficient.
-    model : {"eboss_qso", "eboss_lrg", "eboss_elg"}, optional
+    model : str, optional
         Pick a predetermined set of coefficients and z_eff. This is lower priority than
-        explicitly setting the parameters above.
+        explicitly setting the parameters above. See `lssmodels.bias` for available
+        models and details.
     alpha_b : float
         Apply a scaling that increase the *Eulerian* bias by a factor `alpha_b`.
         Although that this scales the Eulerian bias may be confusing, this is useful to
         generating combinations that isolate certain terms in a cross power spectrum.
-
-    Notes
-    -----
-    This task includes three explicit models for the BOSS/eBOSS tracers: quasars, LRGs
-    and ELGs.
-
-    For the quasars we use the modelling of Laurent et al. 2017 [1]_, which fits a
-    quadratic function of redshift to the measured bias from subsamples of the eBOSS
-    quasar data (equations 5.2 and 5.3).
-
-    For the LRGs there are bias estimates across a range of redshifts within Zhai et al.
-    2017 [2]_ combining BOSS and eBOSS data along with a HOD scheme for modelling the
-    bias. They don't give an explicit fit to the data, so here we construct a quadratic
-    approximation to their BOSS+eBOSS model within the top panel of Figure 12 (red
-    dotted line).
-
-    For the ELGs there do not seem to be any estimates of the redshift dependence of the
-    bias estimates. We combine the single estimate from de Mattia et al. 2020 [3]_ (b_E
-    = 1.5 at z_eff = 0.85) along with the redshift dependence derived from simulations
-    in Merson et al. 2019 [4]_ (db/dz ~ 0.7).
-
-    It also includes a model for the HI bias. This is a 5th order polynomial fit to the
-    data from [5]_ which is itself a fit to the simulations in [6]_ and [7]_.
-
-    References
-    ----------
-    .. [1] https://arxiv.org/abs/1705.04718
-    .. [2] https://arxiv.org/abs/1607.05383
-    .. [3] https://arxiv.org/abs/2007.09008
-    .. [4] https://arxiv.org/abs/1903.02030
-    .. [5] https://github.com/slosar/PUMANoise/blob/b17b30ec84c6e55d8/castorina.py
-    .. [6] https://arxiv.org/abs/1609.05157
-    .. [7] https://arxiv.org/abs/1804.09180
     """
-
-    _models = {
-        "eboss_qso": (1.55, [1.38, 1.42, 0.278]),
-        "eboss_lrg": (0.40, [1.03, 0.862, 0.131]),
-        "eboss_elg": (0.85, [0.5, 0.7]),
-        "HI": (1.0, [0.489, 0.460, -0.118, 0.0678, -0.0128, 0.0009]),
-    }
 
     z_eff = config.Property(proptype=float, default=None)
     bias_coeff = config.list_type(type_=float, default=None)
-    model = config.enum(list(_models.keys()), default=None)
+    model = config.enum(lssmodels.bias.models, default=None)
     alpha_b = config.Property(proptype=float, default=1.0)
 
     def setup(self):
         """Verify the config parameters."""
 
-        if self.z_eff is None:
-            if self.model is not None:
-                self.z_eff = self._models[self.model][0]
-            else:
-                raise config.CaputConfigError("z_eff is not set.")
+        if self.z_eff is not None and self.bias_coeff is not None:
 
-        if self.bias_coeff is None:
-            if self.model is not None:
-                self.bias_coeff = self._models[self.model][1]
-            else:
-                raise config.CaputConfigError("bias_coeff is not set.")
+            def b(z):
+                return lssmodels.PolyModelSet.evaluate_poly(
+                    z, self.z_eff, self.bias_coeff
+                )
+
+            self._bias = b
+
+        elif self.model is not None:
+            self._bias = lssmodels.bias[self.model]
+        else:
+            raise config.CaputConfigError(
+                "Either `model` must be set, or `z_eff` and `bias_coeff`"
+            )
 
     def _bias_1(self, z: FloatArrayLike) -> FloatArrayLike:
 
-        # Evalulate the polynomial bias model to get the default bias
-        bias = np.sum(
-            [c * (z - self.z_eff) ** n for n, c in enumerate(self.bias_coeff)], axis=0
-        )
+        # Evaluate the polynomial bias model to get the default bias
+        bias = self._bias(z)
 
         # Modify the bias to account for the scaling coefficient. This is a no-op if
         # alpha=1 (default)
@@ -785,46 +748,6 @@ class LinearDynamics(DynamicsBase):
         return final_field
 
 
-# List the models that are available for validation by the classes
-_omega_HI_models = ["Crighton2015", "SKA", "uniform"]
-
-
-def omega_HI(
-    z: FloatArrayLike, model: Literal["Crighton2015", "SKA", "uniform"] = "Crighton2015"
-):
-    """Calculate the HI fraction at specified redshifts.
-
-    Parameters
-    ----------
-    z
-        The redshifts to calculate at.
-    model
-        The model to use for Omega_HI. See `Notes` for details.
-
-    Notes
-    -----
-    We use two models for the evolution of Omega_HI. A fit from Crighton et al. 2015
-    [1]_ (`Crighton2015`) and a fit from the SKA WG whitepaper [2]_ (`SKA`) as well as
-    allowing a constant in redshift value to be set (`uniform`), with a value
-    taken from Switzer et al. 2013 [3]_ assuming :math:`b_{HI}=1`.
-
-    References
-    ----------
-    .. [1]: https://arxiv.org/abs/1506.02037
-    .. [2]: https://arxiv.org/abs/1811.02743
-    .. [3]: https://arxiv.org/abs/1304.3712
-    """
-
-    if model == "uniform":
-        return np.ones_like(z) * 0.6e-3
-    elif model == "Crighton2015":
-        return 4e-4 * (1 + z) ** 0.6
-    elif model == "SKA":
-        return 4.8e-4 + 3.9e-4 * z - 6.5e-5 * z ** 2
-    else:
-        raise ValueError(f"Unsupported model={model}.")
-
-
 class BiasedLSSToMap(task.SingleTask):
     """Convert a BiasedLSS object into a Map object.
 
@@ -839,14 +762,14 @@ class BiasedLSSToMap(task.SingleTask):
         delta > -1).
     omega_HI_model : str
         The model to use for Omega_HI when applying the mean 21cm temperature. See
-        :func:`omega_HI` for the list of valid models and details. Default is
+        `lssmodels.omega_HI` for the list of valid models and details. Default is
         `Crighton2015`.
     """
 
     use_mean_21cmT = config.Property(proptype=int, default=False)
     map_prefactor = config.Property(proptype=float, default=1.0)
     lognormal = config.Property(proptype=bool, default=False)
-    omega_HI_model = config.enum(_omega_HI_models, default="Crighton2015")
+    omega_HI_model = config.enum(lssmodels.omega_HI.models, default="Crighton2015")
 
     def process(self, biased_lss: BiasedLSS) -> Map:
         """Generate a realisation of the LSS initial conditions.
@@ -889,7 +812,7 @@ class BiasedLSSToMap(task.SingleTask):
         if self.use_mean_21cmT:
 
             z = biased_lss.redshift
-            omHI = omega_HI(z, model=self.omega_HI_model)
+            omHI = lssmodels.omega_HI.evaluate(z, model=self.omega_HI_model)
             T_b = mean_21cm_temperature(biased_lss.cosmology, z, omHI)
 
             loff = m.map.local_offset[0]
@@ -1015,65 +938,17 @@ class FingersOfGod(task.SingleTask):
         A parameter to control the strength of the effect by adjusting the smoothing
         scale. A value of 1 (default) applies the nominal smoothing, 0 turns the
         smoothing off entirely, and any other values adjust the scale appropriately.
-    model : {'HI', 'LRG', 'ELG', 'QSO'}
+    model : str, optional
         Use an inbuilt model for the Fingers of God smoothing. If `None` (default), a
-        specific model is expected to be set via `FoG_coeff` and `z_eff`.
+        specific model is expected to be set via `FoG_coeff` and `z_eff`. See
+        `lssmodels.sigma_P` for available models and details about them.
     FoG_coeff : list
         A list of coefficient in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`. If
         `None` default, a `model` must be set.
     z_eff : float
         The effective redshift of the polynomial expansion.
-
-    Notes
-    -----
-    There are builtin models for three tracers: Quasars, LRGs, and ELGs. For these a
-    measurement from actual data has been used to provide an overall normalisation and a
-    satellite-HOD-weighted average over `sigma_v(M)` has been used to provide a redshift
-    dependence (the output of this calculation is renormalised by the measurement).
-
-    For LRGs we use a measurement from Gil-Marin et al. 2021 [1]_. The baseline model
-    uses a HOD from Alam et al. 2020 [8]_, and the alt model from Zhai et al. 2017 [2]_.
-
-    For ELGs we use a measurement from de Mattia et al. 2021 [3]_. The baseline model
-    uses the HMQ HOD from Alam et al. 2020 [8]_ and alt model the `HOD-3` HOD from Avila
-    et al. 2020 [4]_.
-
-    For QSOs we use a measurement from Zarrouk et al. 2018 [5]_ that attempts to
-    separate the physical FoG damping from the damping caused by redshift errors. Their
-    damping is modelled by a Gaussian, and we have converted their stated damping scale
-    into one that is roughly equivalent for a double Lorentzian. We have taken the
-    average of the values from their 3-multipole and 3-wedge HOD values. The baseline
-    HOD is also from Alam et al. [8]_, and the alt model uses the `4KDE+15eBOSS` QSO HOD
-    from Eftekharzadeh et al. 2020 [6]_.
-
-    For HI we use the S+B LP model from Sarkar & Bharadwaj 2019 [7]_, with a
-    :math:`\sqrt{2}` factor to approximately account for the fact they model with a
-    single, not squared, Lorentzian. This model seems to be roughly in the middle of
-    predictions made in the literature.
-
-    References
-    ----------
-    .. [1] https://arxiv.org/abs/2007.08994
-    .. [2] https://arxiv.org/abs/1607.05383
-    .. [3] https://arxiv.org/abs/2007.09008
-    .. [4] https://arxiv.org/abs/2007.09012
-    .. [5] https://arxiv.org/abs/1801.03062
-    .. [6] https://arxiv.org/abs/1812.05760
-    .. [7] https://arxiv.org/abs/1906.07032
-    .. [8] https://arxiv.org/abs/1910.05095
     """
-
-    _models = {
-        "HI": (1.0, [1.930, -1.479, 0.814]),
-        "LRG": (0.70, [3.642, 0.019, -0.194]),
-        "ELG": (0.85, [2.787, -0.774, 0.083]),
-        "QSO": (1.48, [1.119, -0.138, -0.058]),
-        "LRGalt": (0.70, [3.642, -0.469, -0.183]),
-        "ELGalt": (0.85, [2.787, -0.780, 0.078]),
-        "QSOalt": (1.48, [1.119, -0.007, -0.117]),
-    }
-
-    model = config.enum(list(_models.keys()), default=None)
+    model = config.enum(lssmodels.sigma_P.models, default=None)
 
     alpha_FoG = config.Property(proptype=float, default=1.0)
 
@@ -1083,17 +958,21 @@ class FingersOfGod(task.SingleTask):
     def setup(self):
         """Verify the config parameters."""
 
-        if self.z_eff is None:
-            if self.model is not None:
-                self.z_eff = self._models[self.model][0]
-            else:
-                raise config.CaputConfigError("z_eff is not set.")
+        if self.z_eff is not None and self.FoG_coeff is not None:
 
-        if self.FoG_coeff is None:
-            if self.model is not None:
-                self.FoG_coeff = self._models[self.model][1]
-            else:
-                raise config.CaputConfigError("FoG_coeff is not set.")
+            def s(z):
+                return lssmodels.PolyModelSet.evaluate_poly(
+                    z, self.z_eff, self.FoG_coeff
+                )
+
+            self._sigma_P = s
+
+        elif self.model is not None:
+            self._sigma_P = lssmodels.sigma_P[self.model]
+        else:
+            raise config.CaputConfigError(
+                "Either `model` must be set, or `z_eff` and `FoG_coeff`"
+            )
 
     def process(self, field: BiasedLSS) -> BiasedLSS:
         """Apply the FoG effect.
@@ -1115,7 +994,7 @@ class FingersOfGod(task.SingleTask):
 
         # Get the growth factor and smoothing scales
         D = field.cosmology.growth_factor(field.redshift)
-        sigmaP = self._sigmaP(field.redshift)
+        sigmaP = self._sigma_P(field.redshift)
 
         K = exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
 
@@ -1125,25 +1004,6 @@ class FingersOfGod(task.SingleTask):
         np.matmul(K, field.delta[:], out=smoothed_field.delta[:])
 
         return smoothed_field
-
-    def _sigmaP(self, z: FloatArrayLike) -> FloatArrayLike:
-        """Get the velocity dispersion at a given redshift.
-
-        Parameters
-        ----------
-        z
-            The redshift to calculate at.
-
-        Returns
-        -------
-        sigmav
-            The velocity dispersion in Mpc/h.
-        """
-
-        # Evalulate the polynomial bias model to get the default bias
-        return np.sum(
-            [c * (z - self.z_eff) ** n for n, c in enumerate(self.FoG_coeff)], axis=0
-        )
 
 
 class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
@@ -1163,13 +1023,13 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         explicitly.
     omega_HI_model : str
         The model to use for Omega_HI when applying the mean 21cm temperature. See
-        :func:`omega_HI` for the list of valid models and details. Default is
+        `lssmodels.omega_HI` for the list of valid models and details. Default is
         `Crighton2015`.
     """
 
     n_eff = config.Property(proptype=float, default=None)
     log_M_HI_g = config.Property(proptype=float, default=None)
-    omega_HI_model = config.enum(_omega_HI_models, default="Crighton2015")
+    omega_HI_model = config.enum(lssmodels.omega_HI.models, default="Crighton2015")
 
     def setup(self, lss: InitialLSS):
         """Set up a common seed from the LSS field.
@@ -1194,7 +1054,7 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
 
             h = lss.cosmology.H0 / 100
             H0_SI = lss.cosmology.H(0)  # H_0 in s^-1
-            omHI = omega_HI(lss.redshift, model=self.omega_HI_model)
+            omHI = lssmodels.omega_HI.evaluate(lss.redshift, model=self.omega_HI_model)
             M_HI_g = (10 ** self.log_M_HI_g) * units.solar_mass  # in kg
 
             # First compute M_HI / rho_HI(z) in SI units (m^3)
@@ -1250,10 +1110,12 @@ def _calculate_width(centres: np.ndarray) -> np.ndarray:
     """
     widths = np.zeros(len(centres))
 
-    # Estimate the interior bin widths by assuming the second derivative of the bin widths is small
+    # Estimate the interior bin widths by assuming the second derivative of the bin
+    # widths is small
     widths[1:-1] = (centres[2:] - centres[:-2]) / 2.0
 
-    # Estimate the edge widths by determining where the bin boundaries using the interior widths
+    # Estimate the edge widths by determining where the first bin boundaries is using
+    # the width of the next bin
     widths[0] = 2 * (centres[1] - (widths[1] / 2.0) - centres[0])
     widths[-1] = 2 * (centres[-1] - (widths[-2] / 2.0) - centres[-2])
 
