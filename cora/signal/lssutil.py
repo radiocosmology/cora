@@ -484,3 +484,156 @@ def transfer(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     cl_xy = healpy.anafast(x, y, pol=False)
 
     return cl_xy / cl_yy
+
+
+def calculate_width(centres: np.ndarray) -> np.ndarray:
+    """Estimate the width of a set of contiguous bin from their centres.
+
+    Parameters
+    ----------
+    centres
+        The array of the bin centre positions.
+
+    Returns
+    -------
+    widths
+        The estimate bin widths. Entries are always positive.
+    """
+    widths = np.zeros(len(centres))
+
+    # Estimate the interior bin widths by assuming the second derivative of the bin
+    # widths is small
+    widths[1:-1] = (centres[2:] - centres[:-2]) / 2.0
+
+    # Estimate the edge widths by determining where the first bin boundaries is using
+    # the width of the next bin
+    widths[0] = 2 * (centres[1] - (widths[1] / 2.0) - centres[0])
+    widths[-1] = 2 * (centres[-1] - (widths[-2] / 2.0) - centres[-2])
+
+    return np.abs(widths)
+
+
+def exponential_FoG_kernel(
+    chi: np.ndarray, sigmaP: FloatArrayLike, D: FloatArrayLike
+) -> np.ndarray:
+    r"""Get a smoothing kernel for approximating Fingers of God.
+
+    Parameters
+    ----------
+    chi
+        Radial distance of the bins.
+    sigmaP
+        The smooth parameter for each radial bin.
+    D
+        The growth factor for each radial bin.
+
+    Returns
+    -------
+    kernel
+        A `len(chi) x len(chi)` matrix that applies the smoothing.
+
+    Notes
+    -----
+    This generates an exponential smoothing matrix, which is the Fourier conjugate of a
+    Lorentzian attenuation of the form :math:`(1 + k_\parallel^2 \sigma_P^2 / 2)^{-1}`
+    applied to the density contrast in k-space.
+
+    It accounts for the finite bin width by integrating the continuous kernel over the
+    width of each radial bin.
+
+    It also accounts for the growth factor already applied to each radial bin by
+    dividing out the growth factor pre-smoothing, and then re-applying it after
+    smoothing.
+    """
+
+    if not isinstance(sigmaP, np.ndarray):
+        sigmaP = np.ones_like(chi) * sigmaP
+
+    if not isinstance(D, np.ndarray):
+        D = np.ones_like(chi) * D
+
+    # This is the main parameter of the exponential kernel and comes from the FT of the
+    # canonically defined Lorentzian
+    a = 2 ** 0.5 / sigmaP
+    ar = a[:, np.newaxis]
+
+    # Get bin widths for the radial axis
+    dchi = calculate_width(chi)[np.newaxis, :]
+
+    chi_sep = np.abs(chi[:, np.newaxis] - chi[np.newaxis, :])
+
+    def sinhc(x):
+        return np.sinh(x) / x
+
+    # Create a matrix to apply the smoothing with an exponential kernel.
+    # NOTE: because of the finite radial bins we should calculate the average
+    # contribution over the width of each bin. That gives rise to the sinhc terms which
+    # slightly boost the weights of the non-zero bins
+    K = np.exp(-ar * chi_sep) * sinhc(ar * dchi / 2.0)
+
+    # The zero-lag bins are a special case because of the reflection about zero
+    # Here the weight is slightly less than if we evaluated exactly at zero
+    np.fill_diagonal(K, np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4))
+
+    # Normalise each row to ensure conservation of mass
+    K /= np.sum(K, axis=1)[:, np.newaxis]
+
+    # Remove any already applied growth factor
+    K /= D[np.newaxis, :]
+
+    # Re-apply the growth factor for each redshift bin
+    K *= D[:, np.newaxis]
+
+    return K
+
+
+def lognormal_transform(
+    field: np.ndarray, out: Optional[np.ndarray] = None, axis: int = None
+) -> np.ndarray:
+    """Transform to a lognormal field with the same first order two point statistics.
+
+    Parameters
+    ----------
+    field
+        Input field.
+    out
+        Array to write the output into. If not supplied a new array is created.
+    axis
+        Calculate the normalising variance along this given axis. If not specified
+        all axes are averaged over.
+
+    Returns
+    -------
+    out
+        The field the output was written into.
+    """
+
+    if out is None:
+        out = np.zeros_like(field)
+    elif field.shape != out.shape or field.dtype != out.dtype:
+        raise ValueError("Given output array is incompatible.")
+
+    if field is not out:
+        out[:] = field
+
+    var = field.var(axis=axis, keepdims=True)
+    out -= var / 2.0
+
+    np.exp(out, out=out)
+    out -= 1
+
+    return out
+
+
+def assert_shape(arr, shape, name):
+
+    if arr.ndim != len(shape):
+        raise ValueError(
+            f"Array {name} has wrong number of dimensions (got {arr.ndim}, "
+            f"expected {len(shape)}"
+        )
+
+    if arr.shape != shape:
+        raise ValueError(
+            f"Array {name} has the wrong shape (got {arr.shape}, expected {shape}"
+        )

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional, Tuple
+from typing import Optional, Tuple
 
 import healpy
 import numpy as np
@@ -450,7 +450,7 @@ class GenerateBiasedFieldBase(task.SingleTask):
             self.log.debug("No second order bias to apply.")
 
         if self.lognormal:
-            lognormal_transform(
+            lssutil.lognormal_transform(
                 biased_field.delta[:],
                 out=biased_field.delta[:],
                 axis=(1 if self.lightcone else None),
@@ -799,7 +799,7 @@ class BiasedLSSToMap(task.SingleTask):
         )
 
         if self.lognormal:
-            lognormal_transform(biased_lss.delta[:], out=m.map[:, 0], axis=1)
+            lssutil.lognormal_transform(biased_lss.delta[:], out=m.map[:, 0], axis=1)
         else:
             m.map[:, 0, :] = biased_lss.delta[:, :]
 
@@ -859,10 +859,10 @@ def za_density_grid(
     nchi, npix = delta_bias.shape
 
     # Validate all the array shapes
-    _assert_shape(psi, (3, nchi, npix), "psi")
-    _assert_shape(delta_m, (nchi, npix), "delta_m")
-    _assert_shape(chi, (nchi,), "chi")
-    _assert_shape(out, (nchi, npix), "out")
+    lssutil.assert_shape(psi, (3, nchi, npix), "psi")
+    lssutil.assert_shape(delta_m, (nchi, npix), "delta_m")
+    lssutil.assert_shape(chi, (nchi,), "chi")
+    lssutil.assert_shape(out, (nchi, npix), "out")
 
     nside = healpy.npix2nside(npix)
     angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
@@ -996,7 +996,7 @@ class FingersOfGod(task.SingleTask):
         D = field.cosmology.growth_factor(field.redshift)
         sigmaP = self._sigma_P(field.redshift)
 
-        K = exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
+        K = lssutil.exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
 
         smoothed_field = BiasedLSS(axes_from=field, attrs_from=field)
 
@@ -1073,7 +1073,9 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         pixarea = healpy.nside2pixarea(input_field.nside)
 
         volume = (
-            pixarea * input_field.chi[:] ** 2 * _calculate_width(input_field.chi[:])
+            pixarea
+            * input_field.chi[:] ** 2
+            * lssutil.calculate_width(input_field.chi[:])
         )
 
         std = (volume * self._n_eff_z) ** -0.5
@@ -1083,159 +1085,6 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         input_field.delta[:] += shot_noise
 
         return input_field
-
-
-def _calculate_width(centres: np.ndarray) -> np.ndarray:
-    """Estimate the width of a set of contiguous bin from their centres.
-
-    Parameters
-    ----------
-    centres
-        The array of the bin centre positions.
-
-    Returns
-    -------
-    widths
-        The estimate bin widths. Entries are always positive.
-    """
-    widths = np.zeros(len(centres))
-
-    # Estimate the interior bin widths by assuming the second derivative of the bin
-    # widths is small
-    widths[1:-1] = (centres[2:] - centres[:-2]) / 2.0
-
-    # Estimate the edge widths by determining where the first bin boundaries is using
-    # the width of the next bin
-    widths[0] = 2 * (centres[1] - (widths[1] / 2.0) - centres[0])
-    widths[-1] = 2 * (centres[-1] - (widths[-2] / 2.0) - centres[-2])
-
-    return np.abs(widths)
-
-
-def exponential_FoG_kernel(
-    chi: np.ndarray, sigmaP: FloatArrayLike, D: FloatArrayLike
-) -> np.ndarray:
-    r"""Get a smoothing kernel for approximating Fingers of God.
-
-    Parameters
-    ----------
-    chi
-        Radial distance of the bins.
-    sigmaP
-        The smooth parameter for each radial bin.
-    D
-        The growth factor for each radial bin.
-
-    Returns
-    -------
-    kernel
-        A `len(chi) x len(chi)` matrix that applies the smoothing.
-
-    Notes
-    -----
-    This generates an exponential smoothing matrix, which is the Fourier conjugate of a
-    Lorentzian attenuation of the form :math:`(1 + k_\parallel^2 \sigma_P^2 / 2)^{-1}`
-    applied to the density contrast in k-space.
-
-    It accounts for the finite bin width by integrating the continuous kernel over the
-    width of each radial bin.
-
-    It also accounts for the growth factor already applied to each radial bin by
-    dividing out the growth factor pre-smoothing, and then re-applying it after
-    smoothing.
-    """
-
-    if not isinstance(sigmaP, np.ndarray):
-        sigmaP = np.ones_like(chi) * sigmaP
-
-    if not isinstance(D, np.ndarray):
-        D = np.ones_like(chi) * D
-
-    # This is the main parameter of the exponential kernel and comes from the FT of the
-    # canonically defined Lorentzian
-    a = 2 ** 0.5 / sigmaP
-    ar = a[:, np.newaxis]
-
-    # Get bin widths for the radial axis
-    dchi = _calculate_width(chi)[np.newaxis, :]
-
-    chi_sep = np.abs(chi[:, np.newaxis] - chi[np.newaxis, :])
-
-    def sinhc(x):
-        return np.sinh(x) / x
-
-    # Create a matrix to apply the smoothing with an exponential kernel.
-    # NOTE: because of the finite radial bins we should calculate the average
-    # contribution over the width of each bin. That gives rise to the sinhc terms which
-    # slightly boost the weights of the non-zero bins
-    K = np.exp(-ar * chi_sep) * sinhc(ar * dchi / 2.0)
-
-    # The zero-lag bins are a special case because of the reflection about zero
-    # Here the weight is slightly less than if we evaluated exactly at zero
-    np.fill_diagonal(K, np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4))
-
-    # Normalise each row to ensure conservation of mass
-    K /= np.sum(K, axis=1)[:, np.newaxis]
-
-    # Remove any already applied growth factor
-    K /= D[np.newaxis, :]
-
-    # Re-apply the growth factor for each redshift bin
-    K *= D[:, np.newaxis]
-
-    return K
-
-
-def lognormal_transform(
-    field: np.ndarray, out: Optional[np.ndarray] = None, axis: int = None
-) -> np.ndarray:
-    """Transform to a lognormal field with the same first order two point statistics.
-
-    Parameters
-    ----------
-    field
-        Input field.
-    out
-        Array to write the output into. If not supplied a new array is created.
-    axis
-        Calculate the normalising variance along this given axis. If not specified
-        all axes are averaged over.
-
-    Returns
-    -------
-    out
-        The field the output was written into.
-    """
-
-    if out is None:
-        out = np.zeros_like(field)
-    elif field.shape != out.shape or field.dtype != out.dtype:
-        raise ValueError("Given output array is incompatible.")
-
-    if field is not out:
-        out[:] = field
-
-    var = field.var(axis=axis, keepdims=True)
-    out -= var / 2.0
-
-    np.exp(out, out=out)
-    out -= 1
-
-    return out
-
-
-def _assert_shape(arr, shape, name):
-
-    if arr.ndim != len(shape):
-        raise ValueError(
-            f"Array {name} has wrong number of dimensions (got {arr.ndim}, "
-            f"expected {len(shape)}"
-        )
-
-    if arr.shape != shape:
-        raise ValueError(
-            f"Array {name} has the wrong shape (got {arr.shape}, expected {shape}"
-        )
 
 
 def za_density_sph(
@@ -1269,10 +1118,10 @@ def za_density_sph(
     nside = healpy.npix2nside(npix)
 
     # Validate all the array shapes
-    _assert_shape(psi, (3, nchi, npix), "psi")
-    _assert_shape(delta_m, (nchi, npix), "delta_m")
-    _assert_shape(chi, (nchi,), "chi")
-    _assert_shape(out, (nchi, npix), "out")
+    lssutil.assert_shape(psi, (3, nchi, npix), "psi")
+    lssutil.assert_shape(delta_m, (nchi, npix), "delta_m")
+    lssutil.assert_shape(chi, (nchi,), "chi")
+    lssutil.assert_shape(out, (nchi, npix), "out")
 
     # Set the nominal smoothing scales at mean density
     sigma_chi = np.mean(np.abs(np.diff(chi))) / 2
