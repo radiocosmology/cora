@@ -813,7 +813,7 @@ class BiasedLSSToMap(task.SingleTask):
 
             z = biased_lss.redshift
             omHI = lssmodels.omega_HI.evaluate(z, model=self.omega_HI_model)
-            T_b = mean_21cm_temperature(biased_lss.cosmology, z, omHI)
+            T_b = lssmodels.mean_21cm_temperature(biased_lss.cosmology, z, omHI)
 
             loff = m.map.local_offset[0]
             lshape = m.map.local_shape[0]
@@ -1051,19 +1051,9 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         if self.n_eff is not None:
             self._n_eff_z = np.ones_like(lss.chi) * self.n_eff
         elif self.log_M_HI_g is not None:
-
-            h = lss.cosmology.H0 / 100
-            H0_SI = lss.cosmology.H(0)  # H_0 in s^-1
-            omHI = lssmodels.omega_HI.evaluate(lss.redshift, model=self.omega_HI_model)
-            M_HI_g = (10 ** self.log_M_HI_g) * units.solar_mass  # in kg
-
-            # First compute M_HI / rho_HI(z) in SI units (m^3)
-            self._n_eff_z = 8 * np.pi * units.G * M_HI_g / (3.0 * omHI * H0_SI ** 2)
-            # Then convert to h^-3 Mpc^3
-            self._n_eff_z *= h ** 3 / units.mega_parsec ** 3
-            # Finally take inverse, which yields the equivalent n_eff for the input M_HI
-            self._n_eff_z = 1 / self._n_eff_z
-
+            self._n_eff_z = lssmodels.log_M_HI_g_to_n_eff(
+                self.log_M_HI_g, lss.cosmology, lss.redshift, self.omega_HI_model
+            )
         else:
             raise RuntimeError("One of `n_eff` or `log_M_HI_g` must be set.")
 
@@ -1360,43 +1350,3 @@ def za_density_sph(
     out[:] -= 1.0
 
     return out
-
-
-def mean_21cm_temperature(
-    c: Cosmology, z: FloatArrayLike, omega_HI: FloatArrayLike
-) -> FloatArrayLike:
-    """Mean 21cm brightness temperature at a given redshift.
-
-    Temperature is in K.
-
-    Parameters
-    ----------
-    c
-        The Cosmology to use.
-    z
-        Redshift to calculate at.
-    omega_HI
-        The HI fraction at each redshift.
-
-    Returns
-    -------
-    T_b
-        Brightness temperature at each redshift.
-    """
-    # The prefactor T0 below is independent of cosmology (consisting only of fundamental
-    # constants and the A_10 Einstein coefficient).
-    #
-    # This constant correspond to the 0.39 mK prefactor used in the GBT analyses and the
-    # former default in cora:
-    # T0 = 181.9e-3
-    # however, the previous method incorporated a factor of `h` into itself, which
-    # meant the cosmology was applied inconsistently.
-    #
-    # We now use the value below, which is calculated using recent values of A_10 from
-    # http://articles.adsabs.harvard.edu/pdf/1994ApJ...423..522G
-    T0 = 191.06e-3
-
-    h = c.H0 / 100.0
-
-    T_b = T0 * (c.H(0) / c.H(z)) * (1 + z) ** 2 * h * omega_HI
-    return T_b
