@@ -4,6 +4,8 @@ from typing import Callable, Optional, Union, List
 import numpy as np
 
 from .lssutil import FloatArrayLike
+from ..util.cosmology import Cosmology
+from ..util import units
 
 
 class PolyModelSet:
@@ -230,3 +232,81 @@ class sigma_P(PolyModelSet):
         "ELGalt": (0.85, [2.787, -0.780, 0.078]),
         "QSOalt": (1.48, [1.119, -0.007, -0.117]),
     }
+
+
+def mean_21cm_temperature(
+    c: Cosmology, z: FloatArrayLike, omega_HI: FloatArrayLike
+) -> FloatArrayLike:
+    """Mean 21cm brightness temperature at a given redshift.
+
+    Temperature is in K.
+
+    Parameters
+    ----------
+    c
+        The Cosmology to use.
+    z
+        Redshift to calculate at.
+    omega_HI
+        The HI fraction at each redshift.
+
+    Returns
+    -------
+    T_b
+        Brightness temperature at each redshift.
+    """
+    # The prefactor T0 below is independent of cosmology (consisting only of fundamental
+    # constants and the A_10 Einstein coefficient).
+    #
+    # This constant correspond to the 0.39 mK prefactor used in the GBT analyses and the
+    # former default in cora:
+    # T0 = 181.9e-3
+    # however, the previous method incorporated a factor of `h` into itself, which
+    # meant the cosmology was applied inconsistently.
+    #
+    # We now use the value below, which is calculated using recent values of A_10 from
+    # http://articles.adsabs.harvard.edu/pdf/1994ApJ...423..522G
+    T0 = 191.06e-3
+
+    h = c.H0 / 100.0
+
+    T_b = T0 * (c.H(0) / c.H(z)) * (1 + z) ** 2 * h * omega_HI
+    return T_b
+
+
+def log_M_HI_g_to_n_eff(
+    log_M_HI_g: float,
+    c: Cosmology,
+    z: FloatArrayLike,
+    model: Optional[str] = None,
+) -> FloatArrayLike:
+    """Calculate the effective number density for correlated shot noise.
+
+    Parameters
+    ----------
+    log_M_HI_g
+        The average HI mass per tracer galaxy. Specified as the log-10 of the mass in
+        solar mass units.
+    c
+        A cosmology object.
+    z
+        The redshift to calculate at.
+    model
+        The model for omega_HI.
+
+    Returns
+    -------
+    n_eff
+        The effective number density in (Mpc/h)^-3.
+    """
+    h = c.H0 / 100
+    H0_SI = c.H(0)  # H_0 in s^-1
+    omHI = omega_HI.evaluate(z, model=model)
+    M_HI_g = (10 ** log_M_HI_g) * units.solar_mass  # in kg
+
+    # First compute M_HI / rho_HI(z) in SI units (m^3)
+    n_eff = (3.0 * omHI * H0_SI ** 2) / (8 * np.pi * units.G * M_HI_g)
+    # Then convert to h^-3 Mpc^3
+    n_eff *= units.mega_parsec ** 3 / h ** 3
+
+    return n_eff
