@@ -396,7 +396,8 @@ def gaussianfg(fstate, nside, pol, filename):
 @map_options
 @click.option("--ra", type=float, help="RA (in degrees) for source to add.", default=0)
 @click.option("--dec", type=float, help="DEC (in degrees) of source to add.", default=0)
-def singlesource(fstate, nside, pol, filename, ra, dec):
+@click.option("--amp", type=float, help="Pixel value to assign to source.", default=1.0)
+def singlesource(fstate, nside, pol, filename, ra, dec, amp):
     """Generate a test map with a single source (amplitude I=1) at the given position."""
     import healpy
 
@@ -405,7 +406,7 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
 
     map_ = np.zeros((nfreq, npol, 12 * nside ** 2), dtype=np.float64)
 
-    map_[:, 0, healpy.ang2pix(nside, ra, dec, lonlat=True)] = 1.0
+    map_[:, 0, healpy.ang2pix(nside, ra, dec, lonlat=True)] = amp
 
     # Save map
     write_map(filename, map_, fstate.frequencies, fstate.freq_width, pol != "none")
