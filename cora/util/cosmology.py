@@ -146,6 +146,7 @@ class Cosmology(object):
             omega_l=omega_l,
             omega_g=omega_g,
             omega_n=omega_n,
+            H0=H0,
         )
 
     def to_dict(self) -> dict:
