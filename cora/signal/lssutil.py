@@ -365,7 +365,7 @@ def pk_flat(
     kperp = l / chi_mean
     kpar = 2 * np.pi * n / L
 
-    cln *= L * chi_mean ** 2
+    cln *= L * chi_mean**2
 
     if window:
         Wk = np.sinc(kpar * dx / (2 * np.pi))
@@ -554,7 +554,7 @@ def exponential_FoG_kernel(
 
     # This is the main parameter of the exponential kernel and comes from the FT of the
     # canonically defined Lorentzian
-    a = 2 ** 0.5 / sigmaP
+    a = 2**0.5 / sigmaP
     ar = a[:, np.newaxis]
 
     # Get bin widths for the radial axis

@@ -311,7 +311,7 @@ class MatterPowerSpectrum(CosmologyContainer, InterpolatedFunction):
         """
         c = self.cosmology
         Dratio = c.growth_factor(z) / c.growth_factor(self._ps_redshift)
-        return self.get_function("powerspectrum")(k) * Dratio ** 2
+        return self.get_function("powerspectrum")(k) * Dratio**2
 
     def powerspectrum_at_z(
         self, z: FloatArrayLike

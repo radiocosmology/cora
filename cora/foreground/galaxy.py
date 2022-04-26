@@ -112,7 +112,7 @@ class ConstrainedGalaxy(maps.Sky3d):
             healpy.smoothing(self._haslam, sigma=np.radians(0.5), verbose=False), 16
         )
         self._amp_map = healpy.smoothing(
-            healpy.ud_grade(vm ** 0.5, 512), sigma=np.radians(2.0), verbose=False
+            healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0), verbose=False
         )
 
     def _load_data(self):
@@ -265,7 +265,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         # Generate random maps in the Fourier conjugate of phi. This is
         # equivalent to generating random uncorrelated phi maps and FFting
         # into the conjugate.
-        map2 = np.zeros((12 * self.nside ** 2, nphi), dtype=np.complex128)
+        map2 = np.zeros((12 * self.nside**2, nphi), dtype=np.complex128)
         print("SHTing to give random maps")
         for i in range(nphi):
             w = np.random.standard_normal((lmax + 1, 2 * lmax + 1, 2)).view(
@@ -280,7 +280,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         # We need to FFT back into phi, but as scipy does not have an inplace
         # transform, we can do this in blocks, replacing as we go.
-        chunksize = self.nside ** 2
+        chunksize = self.nside**2
         nchunk = 12
 
         for ci in range(nchunk):
@@ -309,7 +309,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
             dx = dfreq / freq
 
-            alpha = 2.0 * phi * 3e2 ** 2 / freq ** 2
+            alpha = 2.0 * phi * 3e2**2 / freq**2
 
             return np.exp(1.0j * alpha) * np.sinc(alpha * dx / np.pi)
 
@@ -330,7 +330,7 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         del map4a
 
-        map5 = np.zeros((self.nu_num, 4, 12 * self.nside ** 2), dtype=np.float64)
+        map5 = np.zeros((self.nu_num, 4, 12 * self.nside**2), dtype=np.float64)
 
         print("Scaling by T")
         # Unflatten the intensity by multiplying by the unpolarised realisation

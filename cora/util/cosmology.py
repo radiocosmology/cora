@@ -129,16 +129,16 @@ class Cosmology(object):
         """
         h = H0 / 100.0
         H_si = H0 * 1000.0 / u.mega_parsec
-        rhoc = 3.0 * H_si ** 2 * u.c_sl ** 2 / (8.0 * np.pi * u.G_n)
-        rhorad = u.a_rad * TCMB ** 4
+        rhoc = 3.0 * H_si**2 * u.c_sl**2 / (8.0 * np.pi * u.G_n)
+        rhorad = u.a_rad * TCMB**4
         rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
-        omkh2 = omk * h ** 2
+        omkh2 = omk * h**2
 
-        omega_b = ombh2 / h ** 2
-        omega_c = omch2 / h ** 2
+        omega_b = ombh2 / h**2
+        omega_c = omch2 / h**2
         omega_g = rhorad / rhoc
         omega_n = rhonu / rhoc
-        omega_l = 1.0 - (omkh2 + ombh2 + omch2) / h ** 2 - (omega_g + omega_n)
+        omega_l = 1.0 - (omkh2 + ombh2 + omch2) / h**2 - (omega_g + omega_n)
 
         return cls(
             omega_b=omega_b,
@@ -351,8 +351,8 @@ class Cosmology(object):
 
         x = ((1.0 / self.omega_m) - 1.0) / (1.0 + z) ** 3
 
-        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+        num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
+        den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
 
         d = (1.0 + x) ** 0.5 / (1.0 + z) * num / den
 
@@ -389,11 +389,11 @@ class Cosmology(object):
 
         x = ((1.0 / self.omega_m) - 1.0) / (1.0 + z) ** 3
 
-        dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x ** 2)
-        dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x ** 2)
+        dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x**2)
+        dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x**2)
 
-        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+        num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
+        den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
 
         f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
 
@@ -438,8 +438,8 @@ def sound_horizon(c=None):
     # Calculate the sound horizon in Mpc
     s = (
         44.5
-        * np.log(9.83 / (c.omega_m * h ** 2))
-        / (1.0 + 10.0 * (c.omega_b * h ** 2) ** 0.75) ** 0.5
+        * np.log(9.83 / (c.omega_m * h**2))
+        / (1.0 + 10.0 * (c.omega_b * h**2) ** 0.75) ** 0.5
     )
 
     return s
@@ -455,10 +455,10 @@ def ps_nowiggle(kh, z=0.0, c=None):
     # Change units in Mpc^{-1} not h Mpc^{-1}
     k = kh * h
 
-    omh2 = c.omega_m * h ** 2
+    omh2 = c.omega_m * h**2
     rb = c.omega_b / c.omega_m
     alpha = (
-        1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb ** 2
+        1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb**2
     )
 
     s = sound_horizon(c)
@@ -467,12 +467,12 @@ def ps_nowiggle(kh, z=0.0, c=None):
 
     tcmb_27 = 2.726 / 2.7
 
-    q = k * tcmb_27 ** 2 / (gamma * h)
+    q = k * tcmb_27**2 / (gamma * h)
 
     l0 = np.log(2 * np.exp(1.0) + 1.8 * q)
     c0 = 14.2 + 731.0 / (1.0 + 62.5 * q)
 
-    t = l0 / (l0 + c0 * q ** 2)
+    t = l0 / (l0 + c0 * q**2)
 
     ns = 0.9611
     nbar = ns - 1.0
@@ -487,14 +487,14 @@ def ps_nowiggle(kh, z=0.0, c=None):
         4.0
         / 25
         * (u.c_sl * k / (1000.0 * c.H0)) ** 4
-        * t ** 2
+        * t**2
         * pkp
-        / c.omega_m ** 2
+        / c.omega_m**2
         * growth_factor(z, c) ** 2
     )
 
     # d2k = deltah**2 * (u.c_sl * k / (1000.0 * c.H0))**(3 + ns) * t**2
 
-    pk = d2k * 2 * np.pi ** 2 / kh ** 3  # Change to normal PS
+    pk = d2k * 2 * np.pi**2 / kh**3  # Change to normal PS
 
     return pk

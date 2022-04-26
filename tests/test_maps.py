@@ -14,10 +14,10 @@ def test_galaxy():
     cr.frequencies = fa
 
     unpol = cr.getsky()
-    assert unpol.shape == (32, 12 * nside ** 2)
+    assert unpol.shape == (32, 12 * nside**2)
 
     pol = cr.getpolsky()
-    assert pol.shape == (32, 4, 12 * nside ** 2)
+    assert pol.shape == (32, 4, 12 * nside**2)
 
     # Check fluctuation amplitude for unpol
     ustd = unpol.std(axis=-1)
@@ -40,10 +40,10 @@ def test_pointsource():
     cr.frequencies = fa
 
     unpol = cr.getsky()
-    assert unpol.shape == (32, 12 * nside ** 2)
+    assert unpol.shape == (32, 12 * nside**2)
 
     pol = cr.getpolsky()
-    assert pol.shape == (32, 4, 12 * nside ** 2)
+    assert pol.shape == (32, 4, 12 * nside**2)
 
     # Check fluctuation amplitude for unpol
     ustd = unpol.std(axis=-1)

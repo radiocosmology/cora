@@ -178,7 +178,7 @@ class Cmb(RandomFieldA2):
 
     def powerspectrum(self, karray):
         return np.vectorize(self._powerspectrum_int.value)(
-            (karray ** 2).sum(axis=2) ** 0.5
+            (karray**2).sum(axis=2) ** 0.5
         )
 
 

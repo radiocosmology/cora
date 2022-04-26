@@ -65,7 +65,7 @@ class ForegroundMap(maps.Sky3d):
         ## Construct a lambda function to evalutate the array of
         ## k-vectors.
         rf.powerspectrum = lambda karray: self.angular_ps(
-            (karray ** 2).sum(axis=2) ** 0.5
+            (karray**2).sum(axis=2) ** 0.5
         )
 
         self._ang_field = rf
@@ -149,7 +149,7 @@ class ForegroundSCK(ForegroundMap):
         -------
         acf: array_like
         """
-        return np.exp(-(dlognu ** 2) / (2 * self.zeta ** 2))
+        return np.exp(-(dlognu**2) / (2 * self.zeta**2))
 
     def angular_correlation(self, tarray):
         r"""The 2-point angular correlation function.

@@ -411,7 +411,7 @@ def sphtrans_inv_real_pol(alm, nside):
 
     almp = [pack_alm(alm[0]), pack_alm(alm[1]), pack_alm(alm[2])]
 
-    maps = np.zeros((npol, 12 * nside ** 2), dtype=np.float64)
+    maps = np.zeros((npol, 12 * nside**2), dtype=np.float64)
 
     maps[:3] = np.array(healpy.alm2map(almp, nside, verbose=False))
 

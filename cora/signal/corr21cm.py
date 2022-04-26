@@ -27,7 +27,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             redshift = 1.5
 
             c1 = cs.LogInterpolater.fromfile(psfile)
-            ps = lambda k: np.exp(-0.5 * k ** 2 / self._kstar ** 2) * c1(k)
+            ps = lambda k: np.exp(-0.5 * k**2 / self._kstar**2) * c1(k)
 
         self._sigma_v = sigma_v
 
@@ -132,8 +132,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z) ** 3
 
-        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+        num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
+        den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
 
         d = (1.0 + x) ** 0.5 / (1.0 + z) * num / den
 
@@ -165,11 +165,11 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
         x = ((1.0 / self.cosmology.omega_m) - 1.0) / (1.0 + z) ** 3
 
-        dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x ** 2)
-        dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x ** 2)
+        dnum = 3.0 * x * (1.175 + 0.6127 * x + 0.01607 * x**2)
+        dden = 3.0 * x * (1.857 + 2.042 * x + 0.4590 * x**2)
 
-        num = 1.0 + 1.175 * x + 0.3064 * x ** 2 + 0.005355 * x ** 3
-        den = 1.0 + 1.857 * x + 1.021 * x ** 2 + 0.1530 * x ** 3
+        num = 1.0 + 1.175 * x + 0.3064 * x**2 + 0.005355 * x**3
+        den = 1.0 + 1.857 * x + 1.021 * x**2 + 0.1530 * x**3
 
         f = 1.0 + 1.5 * x / (1.0 + x) + dnum / num - dden / den
 
@@ -323,7 +323,7 @@ def theory_power_spectrum(
     simobj = corr21cm.Corr21cm.like_kiyo_map(zspace_cube)
     pwrspec_input = simobj.get_pwrspec(bin_center)
     if unitless:
-        pwrspec_input *= bin_center ** 3.0 / 2.0 / math.pi / math.pi
+        pwrspec_input *= bin_center**3.0 / 2.0 / math.pi / math.pi
 
     outfile = open(fileout, "w")
     for specdata in zip(bin_left, bin_center, bin_right, pwrspec_input):
