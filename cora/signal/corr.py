@@ -180,10 +180,10 @@ class RedshiftCorrelation(object):
         pf1 = self.prefactor(z1)
         pf2 = self.prefactor(z2)
 
-        k2 = kpar ** 2 + kperp ** 2
-        k = k2 ** 0.5
+        k2 = kpar**2 + kperp**2
+        k = k2**0.5
         mu = kpar / k
-        mu2 = kpar ** 2 / k2
+        mu2 = kpar**2 / k2
 
         if self._vv_only:
             if self.ps_2d:
@@ -194,7 +194,7 @@ class RedshiftCorrelation(object):
             ps = (
                 b1 * b2 * self.ps_dd(k)
                 + mu2 * self.ps_dv(k) * (f1 * b2 + f2 * b1)
-                + mu2 ** 2 * f1 * f2 * self.ps_vv(k)
+                + mu2**2 * f1 * f2 * self.ps_vv(k)
             )
 
         return D1 * D2 * pf1 * pf2 * ps
@@ -270,7 +270,7 @@ class RedshiftCorrelation(object):
         the first.
         """
 
-        r = (pi ** 2 + sigma ** 2) ** 0.5
+        r = (pi**2 + sigma**2) ** 0.5
 
         # Calculate mu with a small constant added to regularise cases
         # of pi = sigma = 0
@@ -571,7 +571,7 @@ class RedshiftCorrelation(object):
 
         def psv(karray):
             """Assume k0 is line of sight"""
-            k = (karray ** 2).sum(axis=3) ** 0.5
+            k = (karray**2).sum(axis=3) ** 0.5
             return self.ps_vv(k) * self.velocity_damping(karray[..., 0])
 
         # Generate an underlying random field realisation of the
@@ -588,7 +588,7 @@ class RedshiftCorrelation(object):
         spacing = rfv._w / rfv._n
         kvec = fftutil.rfftfreqn(rfv._n, spacing / (2 * math.pi))
         print("Construct mu2")
-        mu2arr = kvec[..., 0] ** 2 / (kvec ** 2).sum(axis=3)
+        mu2arr = kvec[..., 0] ** 2 / (kvec**2).sum(axis=3)
         mu2arr.flat[0] = 0.0
         del kvec
 
@@ -807,7 +807,7 @@ class RedshiftCorrelation(object):
 
             def _int_lin(k):
                 return (
-                    k ** 2
+                    k**2
                     * self.ps_vv(k)
                     * (b1 * sphfunc.jl(l, k * x1) - f1 * sphfunc.jl_d2(l, k * x1))
                     * (b2 * sphfunc.jl(l, k * x2) - f2 * sphfunc.jl_d2(l, k * x2))
@@ -917,9 +917,9 @@ class RedshiftCorrelation(object):
             ]
             kpar = np.linspace(0, kparmax, nkpar)[np.newaxis, :]
 
-            k = (kpar ** 2 + kperp ** 2) ** 0.5
+            k = (kpar**2 + kperp**2) ** 0.5
             mu = kpar / k
-            mu2 = kpar ** 2 / k ** 2
+            mu2 = kpar**2 / k**2
 
             if self.ps_2d:
                 self._dd = (
@@ -932,7 +932,7 @@ class RedshiftCorrelation(object):
                 )
 
             self._dv = self._dd * mu2
-            self._vv = self._dd * mu2 ** 2
+            self._vv = self._dd * mu2**2
 
             self._aps_dd = scipy.fftpack.dct(self._dd, type=1) * kparmax / (2 * nkpar)
             self._aps_dv = scipy.fftpack.dct(self._dv, type=1) * kparmax / (2 * nkpar)
@@ -976,7 +976,7 @@ class RedshiftCorrelation(object):
         psdv = _interp2d(self._aps_dv, x, y)
         psvv = _interp2d(self._aps_vv, x, y)
 
-        return (D1 * D2 * pf1 * pf2 / (xc ** 2 * np.pi)) * (
+        return (D1 * D2 * pf1 * pf2 / (xc**2 * np.pi)) * (
             (b1 * b2) * psdd + (f1 * b2 + f2 * b1) * psdv + (f1 * f2) * psvv
         )
 
@@ -997,7 +997,7 @@ def _integrate(r, l, psfunc):
     from ..util import sphfunc
 
     def _integrand_linear(k, r, l, psfunc):
-        return 1.0 / (2 * math.pi ** 2) * k ** 2 * sphfunc.jl(l, k * r) * psfunc(k)
+        return 1.0 / (2 * math.pi**2) * k**2 * sphfunc.jl(l, k * r) * psfunc(k)
 
     def _integrand_log(lk, r, l, psfunc):
         k = np.exp(lk)

@@ -20,7 +20,7 @@ class _LofarGDSE_3D(gaussianfield.RandomField):
     def powerspectrum(self, karray):
         r"""Power law power spectrum"""
 
-        ps = (karray ** 2).sum(axis=3) ** (self.delta / 2.0)
+        ps = (karray**2).sum(axis=3) ** (self.delta / 2.0)
         ps[0, 0, 0] = 0.0
 
         return ps

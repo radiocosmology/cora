@@ -120,8 +120,8 @@ def complex_std_normal(shape, rng=None):
     if rng is None:
         return (
             np.random.standard_normal(shape) + 1.0j * np.random.standard_normal(shape)
-        ) / 2 ** 0.5
+        ) / 2**0.5
     else:
         return (
             rng.standard_normal(shape) + 1.0j * rng.standard_normal(shape)
-        ) / 2 ** 0.5
+        ) / 2**0.5

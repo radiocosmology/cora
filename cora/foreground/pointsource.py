@@ -223,7 +223,7 @@ class PointSourceModel(maps.Map3d):
         if self.flux_min < 0.1:
             print("This is going to take a long time. Try raising the flux limit.")
 
-        npix = 12 * self.nside ** 2
+        npix = 12 * self.nside**2
 
         freq = self.nu_pixels
         nfreq = len(freq)
@@ -246,7 +246,7 @@ class PointSourceModel(maps.Map3d):
         sky = (
             sky
             * 1e-26
-            * units.c ** 2
+            * units.c**2
             / (2 * units.k_B * self.nu_pixels[:, np.newaxis] ** 2 * 1e12 * pxarea)
         )
         return sky
@@ -385,7 +385,7 @@ class DiMatteo(PointSourceModel):
 
         s = flux / self.S_0
 
-        return self.k1 / (s ** self.gamma1 + s ** self.gamma2)
+        return self.k1 / (s**self.gamma1 + s**self.gamma2)
 
     def spectral_realisation(self, flux, freq):
         r"""Power-law spectral function with Gaussian distributed index."""
@@ -476,7 +476,7 @@ class RealPointSources(maps.Map3d):
         freq = self.nu_pixels
         nfreq = len(freq)
 
-        sky = np.zeros((nfreq, 4, 12 * self.nside ** 2), dtype=np.float64)
+        sky = np.zeros((nfreq, 4, 12 * self.nside**2), dtype=np.float64)
 
         for source in self._masked_catalogue:
             theta = np.pi / 2.0 - np.radians(source["DEC"])
@@ -495,7 +495,7 @@ class RealPointSources(maps.Map3d):
 
             x = np.log(freq / self.spectral_pivot)
 
-            flux_I = flux * np.exp(beta * x + gamma * x ** 2)
+            flux_I = flux * np.exp(beta * x + gamma * x**2)
             sky[:, 0, ix] += flux_I
 
             if not (np.isnan(polflux) or np.isnan(polang)):
@@ -508,7 +508,7 @@ class RealPointSources(maps.Map3d):
         sky = (
             sky
             * 1e-26
-            * units.c ** 2
+            * units.c**2
             / (
                 2
                 * units.k_B

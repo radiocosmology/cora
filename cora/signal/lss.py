@@ -101,7 +101,7 @@ class CalculateCorrelations(task.SingleTask):
                 * lssutil.cutoff(k, self.logkcut_high, -1, 0.5, 4)
                 * np.exp(-0.5 * (k / ks) ** 2)
                 * self._ps.powerspectrum(k, 0.0)
-                * k ** -n
+                * k**-n
             )
 
         return _ps
@@ -218,7 +218,7 @@ class BlendNonLinearPowerSpectrum(task.SingleTask):
         psnl = ps_nonlinear.datasets["powerspectrum"][:]
 
         ps_linear.datasets["powerspectrum"][:] = (
-            psl ** (1 - self.alpha_NL) * psnl ** self.alpha_NL
+            psl ** (1 - self.alpha_NL) * psnl**self.alpha_NL
         )
         ps_linear.attrs["tag"] = f"psblend_alphaNL_{self.alpha_NL}"
 
@@ -443,7 +443,7 @@ class GenerateBiasedFieldBase(task.SingleTask):
         try:
             b2 = self._bias_2(z)
             d2m = (f.delta[:] ** 2).mean(axis=1)[:, np.newaxis]
-            biased_field.delta[:] += (D ** 2 * b2)[:, np.newaxis] * (
+            biased_field.delta[:] += (D**2 * b2)[:, np.newaxis] * (
                 f.delta[:] ** 2 - d2m
             )
         except NotImplementedError:

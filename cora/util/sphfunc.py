@@ -88,7 +88,7 @@ def jl_d2(l, z):
     jl0 = jl(l, z)
     jl1 = jl(l + 1, z)
     jl2 = jl(l + 2, z)
-    return jl2 - (2 * l / z) * jl1 + ((l ** 2 - 1) / z ** 2) * jl0
+    return jl2 - (2 * l / z) * jl1 + ((l**2 - 1) / z**2) * jl0
 
 
 def Ylm(l, m, theta, phi):
@@ -157,7 +157,7 @@ def Ylm_spin2(l, m, theta, phi):
     def alpha(sign, l, m, theta):
 
         t = (
-            2 * m ** 2
+            2 * m**2
             - l * (l + 1.0)
             - sign * 2 * m * (l - 1.0) * np.cos(theta)
             + l * (l - 1) * np.cos(theta) ** 2
@@ -169,7 +169,7 @@ def Ylm_spin2(l, m, theta, phi):
 
         t = (
             2
-            * ((2.0 * l + 1.0) / (2.0 * l - 1.0) * (l ** 2 - m ** 2)) ** 0.5
+            * ((2.0 * l + 1.0) / (2.0 * l - 1.0) * (l**2 - m**2)) ** 0.5
             * (sign * m + np.cos(theta))
         )
 
@@ -179,7 +179,7 @@ def Ylm_spin2(l, m, theta, phi):
     y1 = np.where(l <= m, 0.0, Ylm(l - 1, m, theta, phi))
 
     fac = (l - 1) * l * (l + 1) * (l + 2)
-    fac = np.where(l < 2, 0.0, fac ** -0.5)
+    fac = np.where(l < 2, 0.0, fac**-0.5)
 
     y2plus = fac * (alpha(1, l, m, theta) * y0 + beta(1, l, m, theta) * y1)
     y2minus = fac * (alpha(-1, l, m, theta) * y0 + beta(-1, l, m, theta) * y1)
@@ -226,9 +226,9 @@ def _jl_approx_lowz(l, z):
         * (
             1
             + 1.0 / (8 * nutanha)
-            - 5.0 * nu ** 2 / (24 * nutanha ** 3)
-            + 9.0 / (128 * nutanha ** 2)
-            - 231.0 * nu ** 2 / (576 * nutanha ** 4)
+            - 5.0 * nu**2 / (24 * nutanha**3)
+            + 9.0 / (128 * nutanha**2)
+            - 231.0 * nu**2 / (576 * nutanha**4)
         )
         / (2 * (z * nutanha) ** 0.5)
     )
@@ -246,9 +246,9 @@ def _jl_approx_highz(l, z):
     arg = z * sinb - nu * (np.pi / 2 - np.arcsin(nu / z)) - np.pi / 4
 
     return (
-        np.cos(arg) * (1 - 9.0 * cotb ** 2 / (128.0 * nu ** 2))
+        np.cos(arg) * (1 - 9.0 * cotb**2 / (128.0 * nu**2))
         + np.sin(arg) * (cotb / (8 * nu))
-    ) / (z * sinb ** 0.5)
+    ) / (z * sinb**0.5)
 
 
 def _jl_gsl(l, z):

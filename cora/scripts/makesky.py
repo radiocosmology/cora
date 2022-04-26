@@ -403,7 +403,7 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
     nfreq = len(fstate.frequencies)
     npol = 4 if pol == "full" else 1
 
-    map_ = np.zeros((nfreq, npol, 12 * nside ** 2), dtype=np.float64)
+    map_ = np.zeros((nfreq, npol, 12 * nside**2), dtype=np.float64)
 
     map_[:, 0, healpy.ang2pix(nside, ra, dec, lonlat=True)] = 1.0
 

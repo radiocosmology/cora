@@ -57,8 +57,8 @@ def richardson(
         for col_ind in range(1, row_ind + 1):
 
             n = col_ind * base_pow
-            r = (t ** n * newrow[col_ind - 1] - table[row_ind - 1][col_ind - 1]) / (
-                t ** n - 1.0
+            r = (t**n * newrow[col_ind - 1] - table[row_ind - 1][col_ind - 1]) / (
+                t**n - 1.0
             )
 
             newrow.append(r)
@@ -78,7 +78,7 @@ def _corr_direct(psfunc, log_k0, log_k1, r, k=16):
 
     dlk = np.log(ka[0, 1] / ka[0, 0])
 
-    integrand = psfunc(ka) * ka ** 3 / (2 * np.pi ** 2) * np.sinc(ka * ra / np.pi)
+    integrand = psfunc(ka) * ka**3 / (2 * np.pi**2) * np.sinc(ka * ra / np.pi)
 
     return si.romb(integrand) * dlk
 
@@ -129,7 +129,7 @@ def _corr_fftlog(
     fd = fd[mask]
 
     # Apply the final scaling and return
-    return rd, fd / rd / (8 * np.pi ** 3) ** 0.5
+    return rd, fd / rd / (8 * np.pi**3) ** 0.5
 
 
 def _corr_hankel(func, logrmin, logrmax, samples_per_decade, h=1e-5):
@@ -161,7 +161,7 @@ def _corr_hankl_richardson(
     # Calculate the correlation function upsampling by a factor 2**ii
     def _work(ii):
 
-        u = 2 ** ii
+        u = 2**ii
         k = np.logspace(-rhigh, -rlow, n * u, endpoint=False)
 
         r, xi = hankl.P2xi(k, func(k), 0, lowring=False)
@@ -346,7 +346,7 @@ def corr_to_clarray(
         # TODO: make this more accurate for non-uniform bin spacings
         xsort = np.sort(xarray)
         xhalf = np.abs(xsort[1] - xsort[0]) / 2.0 if xwidth is None else xwidth / 2.0
-        xint = 2 ** xromb + 1
+        xint = 2**xromb + 1
 
         # Get the quadrature points and weights.
         x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
@@ -421,12 +421,12 @@ def ps_to_aps_flat(
     kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[:, np.newaxis]
     kpar = np.linspace(0, kparmax, nkpar)[np.newaxis, :]
 
-    k = (kpar ** 2 + kperp ** 2) ** 0.5
+    k = (kpar**2 + kperp**2) ** 0.5
     mu = kpar / k
 
     # Calculate the power spectrum on a 2D grid and FFT the line of sight axis to turn
     # it into something like a separation
-    dd = psfunc(k) * k ** n_k * mu ** n_mu
+    dd = psfunc(k) * k**n_k * mu**n_mu
     aps_dd = dct(dd, type=1) * kparmax / (2 * nkpar)
 
     def _interp2d(arr, x, y):
@@ -454,7 +454,7 @@ def ps_to_aps_flat(
             * (nkperp - 1)
         )
         y = rpar / (np.pi / kparmax)
-        clzz = _interp2d(aps_dd, x, y) / (xc ** 2 * np.pi)
+        clzz = _interp2d(aps_dd, x, y) / (xc**2 * np.pi)
 
         return clzz
 
