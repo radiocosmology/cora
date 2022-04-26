@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from pytest import approx
 
 from cora.util import cubicspline
 
@@ -7,7 +8,7 @@ from cora.util import cubicspline
 def test_usage():
     """Test wrong usage."""
 
-    # too little points
+    # too few points
     x = np.arange(3)
     y = np.asarray([0, 10, 20], dtype=np.float64)
     with pytest.raises(cubicspline.InterpolationException):
@@ -60,15 +61,16 @@ def test_linear(interpolater):
     p = interpolater(data)
 
     if interpolater == cubicspline.Interpolater:
-        assert p(-1) == -10
-        assert p(0) == 0
-    assert pytest.approx(p.value(0.5), 5)
-    assert pytest.approx(p(1) == 10)
-    assert pytest.approx(p(1.75) == 17.5)
-    assert pytest.approx(p(2) == 20)
-    assert pytest.approx(p(2.2) == 22)
-    assert pytest.approx(p(3) == 30)
-    assert pytest.approx(p(4) == 40)
+        assert p(-1) == approx(-10)
+        assert p(0) == approx(0)
+
+    assert p.value(0.5) == approx(5)
+    assert p(1) == approx(10)
+    assert p(1.75) == approx(17.5)
+    assert p(2) == approx(20)
+    assert p(2.2) == approx(22)
+    assert p(3) == approx(30)
+    assert p(4) == approx(40)
 
 
 @pytest.mark.parametrize(
@@ -112,9 +114,11 @@ def test_polynomial_edge():
     y = np.array([f(i) for i in x])
     interpolater = cubicspline.Interpolater(x, y)
 
-    # To estimate an error boundary for this test, use cubicspline from scipy w/o enforcing boundary conditions:
+    # To estimate an error boundary for this test, use cubicspline from scipy w/o
+    # enforcing boundary conditions:
     # import scipy
-    # scinterpolater = scipy.interpolate.CubicSpline(x, f(x), bc_type="natural")  # same type as cora
+    # ## same type as cora
+    # scinterpolater = scipy.interpolate.CubicSpline(x, f(x), bc_type="natural")
     error_scipy = np.asarray([1.46e-05, 4.21e-06, 1.71e-06])
 
     for x_, err in zip(np.asarray([0.00101, 0.01111, 0.0001]), error_scipy):
