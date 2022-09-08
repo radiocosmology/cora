@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: cora
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+doi: "10.5281/zenodo.5949194"
+repository-code: "https://github.com/radiocosmology/cora"
+abstract: >-
+  A package for simulating skies for 21cm Intensity Mapping, with a lot of bonus utility
+  code for dealing with Healpix maps and spherical co-ordinates.
+license: MIT
+authors:
+- given-names: "J. Richard"
+  family-names: "Shaw"
+  affiliation: "University of British Columbia"
+  orcid: "https://orcid.org/0000-0002-4543-4588"
+
+- given-names: "Rick"
+  family-names: "Nitsche"
+  affiliation: "University of British Columbia"
+
+- given-names: "Simon"
+  family-names: "Foreman"
+  affiliation: "Arizona State University"
+  orcid: "https://orcid.org/0000-0002-0190-2271"
+
+- given-names: "Anja"
+  family-names: "Boskovic"
+  affiliation: "University of British Columbia"
