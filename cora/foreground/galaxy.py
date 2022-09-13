@@ -108,11 +108,9 @@ class ConstrainedGalaxy(maps.Sky3d):
 
         self._load_data()
 
-        vm = map_variance(
-            healpy.smoothing(self._haslam, sigma=np.radians(0.5), verbose=False), 16
-        )
+        vm = map_variance(healpy.smoothing(self._haslam, sigma=np.radians(0.5)), 16)
         self._amp_map = healpy.smoothing(
-            healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0), verbose=False
+            healpy.ud_grade(vm**0.5, 512), sigma=np.radians(2.0)
         )
 
     def _load_data(self):
@@ -161,8 +159,8 @@ class ConstrainedGalaxy(maps.Sky3d):
         fg = skysim.mkfullsky(cla, self.nside)
 
         # Find the smoothed fluctuations on each scale
-        sub408 = healpy.smoothing(fg[0], fwhm=np.radians(1.0), verbose=False)
-        sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8), verbose=False)
+        sub408 = healpy.smoothing(fg[0], fwhm=np.radians(1.0))
+        sub1420 = healpy.smoothing(fg[1], fwhm=np.radians(5.8))
 
         # Make a multifrequency map constrained to look like the smoothed maps
         # depending on the spectral_map apply constraints at upper and lower
@@ -177,10 +175,8 @@ class ConstrainedGalaxy(maps.Sky3d):
         am = healpy.ud_grade(self._amp_map, self.nside)
 
         # Bump up the variance of the fluctuations according to the variance map
-        vm = healpy.smoothing(fg[0], sigma=np.radians(0.5), verbose=False)
-        vm = healpy.smoothing(
-            map_variance(vm, 16) ** 0.5, sigma=np.radians(2.0), verbose=False
-        )
+        vm = healpy.smoothing(fg[0], sigma=np.radians(0.5))
+        vm = healpy.smoothing(map_variance(vm, 16) ** 0.5, sigma=np.radians(2.0))
         mv = vm.mean()
 
         # Construct the fluctuations map
@@ -235,9 +231,7 @@ class ConstrainedGalaxy(maps.Sky3d):
         # Load and smooth the Faraday rotation map to get an estimate for the
         # width of the distribution
         sigma_phi = healpy.ud_grade(
-            healpy.smoothing(
-                np.abs(self._faraday), fwhm=np.radians(10.0), verbose=False
-            ),
+            healpy.smoothing(np.abs(self._faraday), fwhm=np.radians(10.0)),
             self.nside,
         )
 

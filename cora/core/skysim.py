@@ -180,6 +180,6 @@ def mkconstrained(corr, constraints, nside):
     hpmaps = np.empty((numz, healpy.nside2npix(nside)))
 
     for i in range(numz):
-        hpmaps[i] = healpy.alm2map(cv[i], nside, verbose=False)
+        hpmaps[i] = healpy.alm2map(cv[i], nside)
 
     return hpmaps
