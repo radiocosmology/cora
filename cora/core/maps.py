@@ -40,7 +40,7 @@ class Map2d(object):
         return np.array([self.x_width, self.y_width], dtype=np.float64) * units.degree
 
     def _num_array(self):
-        return np.array([self.x_num, self.y_num], dtype=np.int)
+        return np.array([self.x_num, self.y_num], dtype=int)
 
     @property
     def x_pixels(self):
@@ -137,7 +137,7 @@ class Map3d(Map2d):
         )
 
     def _num_array(self):
-        return np.array([self.nu_num, self.x_num, self.y_num], dtype=np.int)
+        return np.array([self.nu_num, self.x_num, self.y_num], dtype=int)
 
     _frequencies = None
 
