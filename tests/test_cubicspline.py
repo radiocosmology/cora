@@ -84,7 +84,7 @@ def test_random(interpolater):
     p = interpolater(data)
 
     for i, x_ in enumerate(x):
-        assert p(x_) == y[i]
+        assert p(x_) == pytest.approx(y[i], rel=1e-13)
 
 
 def test_polynomial():
