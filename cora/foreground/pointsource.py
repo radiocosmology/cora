@@ -440,12 +440,12 @@ class RealPointSources(maps.Map3d):
         mask_max = (
             (flux < self.flux_max)
             if self.flux_max is not None
-            else np.ones_like(flux, dtype=np.bool)
+            else np.ones_like(flux, dtype=bool)
         )
         mask_min = (
             (flux > self.flux_min)
             if self.flux_min is not None
-            else np.ones_like(flux, dtype=np.bool)
+            else np.ones_like(flux, dtype=bool)
         )
 
         flux_mask = np.where(np.logical_and(mask_max, mask_min))
