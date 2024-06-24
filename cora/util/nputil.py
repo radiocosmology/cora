@@ -1,4 +1,5 @@
 """Utility functions to help with pure numpy stuff."""
+
 from typing import TypeVar
 
 import numpy as np
@@ -122,6 +123,4 @@ def complex_std_normal(shape, rng=None):
             np.random.standard_normal(shape) + 1.0j * np.random.standard_normal(shape)
         ) / 2**0.5
     else:
-        return (
-            rng.standard_normal(shape) + 1.0j * rng.standard_normal(shape)
-        ) / 2**0.5
+        return (rng.standard_normal(shape) + 1.0j * rng.standard_normal(shape)) / 2**0.5

@@ -948,6 +948,7 @@ class FingersOfGod(task.SingleTask):
     z_eff : float
         The effective redshift of the polynomial expansion.
     """
+
     model = config.enum(lssmodels.sigma_P.models, default=None)
 
     alpha_FoG = config.Property(proptype=float, default=1.0)

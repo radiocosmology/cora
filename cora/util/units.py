@@ -1,6 +1,5 @@
 """A set of useful constants and conversions in Astronomy and Cosmology."""
 
-
 import math
 
 # Astrophysical units (in SI)

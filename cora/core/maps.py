@@ -15,6 +15,7 @@ class Map2d(object):
     x_num, y_num : int
         Number of pixels along each angular axis.
     """
+
     x_width = 5.0
     y_width = 5.0
 
