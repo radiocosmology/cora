@@ -2,6 +2,6 @@ click
 cython
 h5py
 healpy>=1.15
-numpy>=1.7
+numpy>=1.7,<2
 scipy>=0.10
 skyfield
