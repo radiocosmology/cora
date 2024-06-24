@@ -1,4 +1,5 @@
 """Implementations of models for cosmological quantities."""
+
 from typing import Callable, Optional, Union, List
 
 import numpy as np
