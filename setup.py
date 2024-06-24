@@ -73,7 +73,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(),
     ext_modules=cythonize([cs_ext, bm_ext, cr_ext, pm_ext]),
-    python_requires=">=3.7",
+    python_requires=">=3.9",
     install_requires=requires,
     extras_require={
         "lss": [
