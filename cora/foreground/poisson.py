@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.random as rnd
 from scipy.optimize import fminbound
-from scipy.integrate import quad, cumtrapz
+from scipy.integrate import quad, cumulative_trapezoid
 
 
 from cora.util import cubicspline as cs
@@ -197,7 +197,7 @@ def inhomogeneous_process_approx(t, rate):
     rs = rate(ts)
 
     cumr = np.zeros_like(ts)
-    cumr[1:] = cumtrapz(ts, rs)
+    cumr[1:] = cumulative_trapezoid(ts, rs)
     cumr /= cumr[-1]
 
     # Interpolate to generate the inverse CDF and use this to generate
