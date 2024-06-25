@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.util.sphfunc &mdash; cora 0+untagged.1.g9e6aaf7 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=fa44fd50" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="../_static/documentation_options.js?v=cbe43a48"></script>
+        <script src="../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.util.units" href="cora.util.units.html" />
+    <link rel="prev" title="cora.util.nputil" href="cora.util.nputil.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+              <div class="version">
+                0+untagged.1.g9e6aaf7
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="cora.core.html">cora.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.foreground.html">cora.foreground</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="cora.util.html">cora.util</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="cora.util.bilinearmap.html">cora.util.bilinearmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.coord.html">cora.util.coord</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.cosmology.html">cora.util.cosmology</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.cubicspline.html">cora.util.cubicspline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.fftutil.html">cora.util.fftutil</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.hputil.html">cora.util.hputil</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.nputil.html">cora.util.nputil</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.util.sphfunc</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.units.html">cora.util.units</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.util.html">cora.util</a></li>
+      <li class="breadcrumb-item active">cora.util.sphfunc</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.util.sphfunc.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.util.sphfunc">
+<span id="cora-util-sphfunc"></span><h1>cora.util.sphfunc<a class="headerlink" href="#module-cora.util.sphfunc" title="Link to this heading"></a></h1>
+<p>Special functions for calculations on the sphere.</p>
+<p>These routines require <cite>pygsl</cite> to be installed. Although these functions are
+available in <cite>scipy</cite> they tend to be inaccurate at large values of <cite>l</cite>.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.sphfunc.Ylm" title="cora.util.sphfunc.Ylm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ylm</span></code></a>(l, m, theta, phi)</p></td>
+<td><p>Calculate the spherical harmonic functions.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.sphfunc.Ylm_array" title="cora.util.sphfunc.Ylm_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ylm_array</span></code></a>(lmax, theta, phi)</p></td>
+<td><p>Calculate the spherical harmonics up to lmax.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.sphfunc.Ylm_spin2" title="cora.util.sphfunc.Ylm_spin2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ylm_spin2</span></code></a>(l, m, theta, phi)</p></td>
+<td><p>Evaluate the spin-2 spherical harmonics.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.sphfunc.Ylm_spin2_array" title="cora.util.sphfunc.Ylm_spin2_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Ylm_spin2_array</span></code></a>(lmax, theta, phi)</p></td>
+<td><p>Calculate the spin-2 spherical harmonics up to lmax.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.sphfunc.jl" title="cora.util.sphfunc.jl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jl</span></code></a>(l, z)</p></td>
+<td><p>A fast spherical bessel function using approximations at low and high z.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.sphfunc.jl_d" title="cora.util.sphfunc.jl_d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jl_d</span></code></a>(l, z)</p></td>
+<td><p>First derivative of jl.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.sphfunc.jl_d2" title="cora.util.sphfunc.jl_d2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jl_d2</span></code></a>(l, z)</p></td>
+<td><p>Second derivative of jl.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.sphfunc.jl">
+<span class="sig-prename descclassname"><span class="pre">cora.util.sphfunc.</span></span><span class="sig-name descname"><span class="pre">jl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.sphfunc.jl" title="Link to this definition"></a></dt>
+<dd><p>A fast spherical bessel function using approximations at low and high z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>scalar</em><em> or </em><em>np.ndarray</em>) – Spherical bessel function arguments.</p></li>
+<li><p><strong>z</strong> (<em>scalar</em><em> or </em><em>np.ndarray</em>) – Spherical bessel function arguments.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>jl</strong> – Spherical bessel functions.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar or np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.sphfunc.jl_d">
+<span class="sig-prename descclassname"><span class="pre">cora.util.sphfunc.</span></span><span class="sig-name descname"><span class="pre">jl_d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.sphfunc.jl_d" title="Link to this definition"></a></dt>
+<dd><p>First derivative of jl.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>scalar</em><em> or </em><em>np.ndarray</em>) – Spherical bessel function arguments.</p></li>
+<li><p><strong>z</strong> (<em>scalar</em><em> or </em><em>np.ndarray</em>) – Spherical bessel function arguments.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>jl_d</strong> – Derivate of spherical bessel functions.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar or np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.sphfunc.jl_d2">
+<span class="sig-prename descclassname"><span class="pre">cora.util.sphfunc.</span></span><span class="sig-name descname"><span class="pre">jl_d2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.sphfunc.jl_d2" title="Link to this definition"></a></dt>
+<dd><p>Second derivative of jl.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>scalar</em><em> or </em><em>np.ndarray</em>) – Spherical bessel function arguments.</p></li>
+<li><p><strong>z</strong> (<em>scalar</em><em> or </em><em>np.ndarray</em>) – Spherical bessel function arguments.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>jl_d2</strong> – Second derivate of spherical bessel functions.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar or np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.sphfunc.Ylm">
+<span class="sig-prename descclassname"><span class="pre">cora.util.sphfunc.</span></span><span class="sig-name descname"><span class="pre">Ylm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.sphfunc.Ylm" title="Link to this definition"></a></dt>
+<dd><p>Calculate the spherical harmonic functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>int</em><em> or </em><em>array_like</em>) – Multipoles to calculate.</p></li>
+<li><p><strong>m</strong> (<em>int</em><em> or </em><em>array_like</em>) – Multipoles to calculate.</p></li>
+<li><p><strong>theta</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+<li><p><strong>phi</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ylm</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float or array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.sphfunc.Ylm_array">
+<span class="sig-prename descclassname"><span class="pre">cora.util.sphfunc.</span></span><span class="sig-name descname"><span class="pre">Ylm_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.sphfunc.Ylm_array" title="Link to this definition"></a></dt>
+<dd><p>Calculate the spherical harmonics up to lmax.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lmax</strong> (<em>integer</em>) – Maximum multipole.</p></li>
+<li><p><strong>theta</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+<li><p><strong>phi</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ylm</strong> – The spherical harmonics for each angular position. The output array is
+the same shape at <cite>theta</cite>, <cite>phi</cite> but with a new last axis for the
+multipoles.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[…, (lmax + 1) * (lmax + 2) / 2]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.sphfunc.Ylm_spin2">
+<span class="sig-prename descclassname"><span class="pre">cora.util.sphfunc.</span></span><span class="sig-name descname"><span class="pre">Ylm_spin2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.sphfunc.Ylm_spin2" title="Link to this definition"></a></dt>
+<dd><p>Evaluate the spin-2 spherical harmonics.</p>
+<p>Uses Eq. 14 from Wiaux et al. 2007 (arXiv:astro-ph/0508514).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>int</em><em> or </em><em>array_like</em>) – Multipoles to calculate.</p></li>
+<li><p><strong>m</strong> (<em>int</em><em> or </em><em>array_like</em>) – Multipoles to calculate.</p></li>
+<li><p><strong>theta</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+<li><p><strong>phi</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ylm_spin_plus2, ylm_spin_minus2</strong> – Two arrays of the +2 and -2 spin harmonics.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float or array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.sphfunc.Ylm_spin2_array">
+<span class="sig-prename descclassname"><span class="pre">cora.util.sphfunc.</span></span><span class="sig-name descname"><span class="pre">Ylm_spin2_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.sphfunc.Ylm_spin2_array" title="Link to this definition"></a></dt>
+<dd><p>Calculate the spin-2 spherical harmonics up to lmax.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lmax</strong> (<em>integer</em>) – Maximum multipole.</p></li>
+<li><p><strong>theta</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+<li><p><strong>phi</strong> (<em>float</em><em> or </em><em>array_like</em>) – Angular position.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ylm_spin_plus2, ylm_spin_minus2</strong> – The spin spherical harmonics for each angular position. The output array is
+the same shape at <cite>theta</cite>, <cite>phi</cite> but with a new last axis for the
+multipoles.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[…, (lmax + 1) * (lmax + 2) / 2]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.util.nputil.html" class="btn btn-neutral float-left" title="cora.util.nputil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.util.units.html" class="btn btn-neutral float-right" title="cora.util.units" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
