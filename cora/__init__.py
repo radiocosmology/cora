@@ -1,5 +1,4 @@
-"""
-Cosmology in the Radio Band
+"""Cosmology in the Radio Band
 
 Submodules
 ==========
@@ -14,7 +13,12 @@ Submodules
     util
 """
 
-from ._version import get_versions
+from importlib.metadata import PackageNotFoundError, version
 
-__version__ = get_versions()["version"]
-del get_versions
+try:
+    __version__ = version("cora")
+except PackageNotFoundError:
+    # package is not installed
+    pass
+
+del version, PackageNotFoundError

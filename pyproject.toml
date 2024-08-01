@@ -1,2 +1,72 @@
 [build-system]
-requires = ['setuptools', 'wheel', 'Cython', 'oldest-supported-numpy']
+requires = [
+    "setuptools>=61.0",
+    "wheel",
+    "setuptools-git-versioning",
+    "cython",
+    "oldest-supported-numpy",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cora"
+description = "Simulation and modelling of low frequency radio skies"
+license = { file = "LICENSE" }
+authors = [
+    { name = "The CHIME Collaboration", email = "lgray@phas.ubc.ca" }
+]
+maintainers = [
+    { name = "Liam Gray", email = "lgray@phas.ubc.ca" },
+    { name = "Don Wiebe", email = "dvw@phas.ubc.ca" }
+]
+dynamic = ["readme", "version"]
+requires-python = ">=3.9"
+dependencies = [
+    "click",
+    "cython",
+    "h5py",
+    "healpy>=1.15",
+    "numpy>=1.7,<2",
+    "scipy>=0.10",
+    "skyfield",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.optional-dependencies]
+lss = [
+    "draco @ git+https://github.com/radiocosmology/draco.git",
+    "hankel",
+    "hankl",
+    "pyfftlog",
+]
+docs = ["Sphinx", "sphinx_rtd_theme"]
+lint = ["black"]
+test = ["pytest"]
+
+[project.urls]
+Repository = "https://github.com/radiocosmology/cora"
+
+[project.scripts]
+cora-makesky = "cora.scripts.makesky:cli"
+
+[tool.setuptools.dynamic]
+readme = { file = ["README.md"], content-type = "text/markdown" }
+
+[tool.setuptools-git-versioning]
+enabled = true
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools.package-data]
+"cora.signal" = ["data/ps_z1.5.dat", "data/corr_z1.5.dat", "data/ps*.h5"]
+"cora.foreground" = ["data/skydata.npz", "data/combinedps.dat"]
