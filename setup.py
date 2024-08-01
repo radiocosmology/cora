@@ -1,101 +1,63 @@
+"""Build cython extensions.
+
+The full project config can be found in `pyproject.toml`. `setup.py` is still
+required to build cython extensions.
+"""
+
 import os
-
-from setuptools import setup, Extension, find_packages
-from distutils import sysconfig
-
-from Cython.Build import cythonize
-
 import re
+import sysconfig
 
-import numpy as np
-
-import versioneer
-
+import numpy
+from Cython.Build import cythonize
+from setuptools import setup
+from setuptools.extension import Extension
 
 # Decide whether to use OpenMP or not
 if ("CORA_NO_OPENMP" in os.environ) or (
     re.search("gcc", sysconfig.get_config_var("CC")) is None
 ):
     print("Not using OpenMP")
-    args = ["-std=c99"]
+    omp_args = ["-std=c99"]
 else:
-    args = ["-std=c99", "-fopenmp"]
+    omp_args = ["-std=c99", "-fopenmp"]
 
-
-# Cubic spline extension
-cs_ext = Extension(
-    "cora.util.cubicspline",
-    ["cora/util/cubicspline.pyx"],
-    include_dirs=[np.get_include()],
-    extra_compile_args=args,
-    extra_link_args=args,
-)
-
-# Bi-linear map extension
-bm_ext = Extension(
-    "cora.util.bilinearmap",
-    ["cora/util/bilinearmap.pyx"],
-    include_dirs=[np.get_include()],
-    extra_compile_args=args,
-    extra_link_args=args,
-)
-
-# coord extension
-cr_ext = Extension(
-    "cora.util.coord",
-    ["cora/util/coord.pyx"],
-    include_dirs=[np.get_include()],
-    extra_compile_args=args,
-    extra_link_args=args,
-)
-
-# particle-mesh gridding extension
-pm_ext = Extension(
-    "cora.util.pmesh",
-    ["cora/util/pmesh.pyx"],
-    include_dirs=[np.get_include()],
-    extra_compile_args=args,
-    extra_link_args=args,
-)
-
-# Load the requirements list
-with open("requirements.txt", "r") as fh:
-    requires = fh.readlines()
-
-# Load the description
-with open("README.rst", "r") as fh:
-    long_description = fh.read()
-
+extensions = [
+    # Cubic spline extension
+    Extension(
+        "cora.util.cubicspline",
+        ["cora/util/cubicspline.pyx"],
+        include_dirs=[numpy.get_include()],
+        extra_compile_args=omp_args,
+        extra_link_args=omp_args,
+    ),
+    # Bi-linear map extension
+    Extension(
+        "cora.util.bilinearmap",
+        ["cora/util/bilinearmap.pyx"],
+        include_dirs=[numpy.get_include()],
+        extra_compile_args=omp_args,
+        extra_link_args=omp_args,
+    ),
+    # coord extension
+    Extension(
+        "cora.util.coord",
+        ["cora/util/coord.pyx"],
+        include_dirs=[numpy.get_include()],
+        extra_compile_args=omp_args,
+        extra_link_args=omp_args,
+    ),
+    # particle-mesh gridding extension
+    Extension(
+        "cora.util.pmesh",
+        ["cora/util/pmesh.pyx"],
+        include_dirs=[numpy.get_include()],
+        extra_compile_args=omp_args,
+        extra_link_args=omp_args,
+    ),
+]
 
 setup(
-    name="cora",
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
-    packages=find_packages(),
-    ext_modules=cythonize([cs_ext, bm_ext, cr_ext, pm_ext]),
-    python_requires=">=3.9",
-    install_requires=requires,
-    extras_require={
-        "lss": [
-            "draco @ git+https://github.com/radiocosmology/draco.git",
-            "hankel",
-            "hankl",
-            "pyfftlog",
-        ],
-    },
-    package_data={
-        "cora.signal": ["data/ps_z1.5.dat", "data/corr_z1.5.dat", "data/ps*.h5"],
-        "cora.foreground": ["data/skydata.npz", "data/combinedps.dat"],
-    },
-    entry_points="""
-        [console_scripts]
-        cora-makesky=cora.scripts.makesky:cli
-    """,
-    # metadata for upload to PyPI
-    author="J. Richard Shaw",
-    author_email="richard@phas.ubc.ca",
-    description="Simulation and modelling of low frequency radio skies.",
-    long_description=long_description,
-    license="MIT",
-    url="http://github.com/radiocosmology/cora",
+    name="cora",  # required
+    ext_modules=cythonize(extensions),
 )

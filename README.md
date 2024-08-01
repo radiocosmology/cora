@@ -1,6 +1,4 @@
-==================================
-cora - Cosmology in the Radio Band
-==================================
+# cora - Cosmology in the Radio Band
 
 A package for simulating skies for 21cm Intensity Mapping, with a lot of bonus
 utility code for dealing with Healpix maps, spherical co-ordinates etc.
