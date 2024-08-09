@@ -21,7 +21,7 @@ jobs:
         python-version: "3.12"
 
     - name: Install linting requirements
-      run: pip install -e .[lint]
+      run: pip install black
 
     - name: Check code with black
       run: black --check .
