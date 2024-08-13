@@ -196,8 +196,7 @@ def inhomogeneous_process_approx(t, rate):
     ts = np.linspace(0.0, t, 10000)
     rs = rate(ts)
 
-    cumr = np.zeros_like(ts)
-    cumr[1:] = cumulative_trapezoid(ts, rs)
+    cumr = cumulative_trapezoid(rs, ts, initial=0)
     cumr /= cumr[-1]
 
     # Interpolate to generate the inverse CDF and use this to generate
