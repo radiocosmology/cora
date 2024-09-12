@@ -224,7 +224,7 @@ def laplacian(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
     return d2
 
 
-def gradient(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
+def gradient(maps: np.ndarray, x: np.ndarray, grad0: bool = True) -> np.ndarray:
     """Take the gradient of a set of maps.
 
     Parameters
@@ -233,6 +233,10 @@ def gradient(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
         An 2D array of maps. First axis is the x coord, second is Healpix pixels.
     x
         The coordinate along the first axis. This axis need not be uniform.
+    grad0
+        If True, compute the gradient along axis 0. Otherwise, output `grad[0]`
+        will not be computed. This is useful if `maps` is distributed.
+        Default is True.
 
     Returns
     -------
@@ -253,8 +257,9 @@ def gradient(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
         # NOTE: the zeroth component doesn't yet contain dr
         grad[1:, i] = healpy.alm2map_der1(alm, nside)[1:] / x[i]
 
-    # TODO: try and do this in place so as not to balloon the memory
-    grad[0] = np.gradient(maps, x, axis=0)
+    if grad0:
+        # TODO: try and do this in place so as not to balloon the memory
+        grad[0] = np.gradient(maps, x, axis=0)
 
     return grad
 
