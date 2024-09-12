@@ -3,6 +3,7 @@ import scipy.linalg as la
 import scipy.integrate as si
 import healpy
 
+from caput import mpiarray
 from cora.util import hputil, nputil
 
 
@@ -92,30 +93,45 @@ def mkfullsky(corr, nside, alms=False, rng=None):
     """
 
     numz = corr.shape[1]
-    maxl = corr.shape[0] - 1
+
+    isdistributed = isinstance(corr, mpiarray.MPIArray)
+
+    if isdistributed:
+        maxl = corr.global_shape[0] - 1
+        corr = corr.local_array
+    else:
+        maxl = corr.shape[0] - 1
 
     if corr.shape[2] != numz:
         raise Exception("Correlation matrix is incorrect shape.")
 
-    alm_array = np.zeros((numz, 1, maxl + 1, maxl + 1), dtype=np.complex128)
+    alm_array = mpiarray.zeros(
+        (numz, 1, maxl + 1, maxl + 1), dtype=np.complex128, axis=2
+    )
 
     # Generate gaussian deviates and transform to have correct correlation
     # structure
-    for l in range(maxl + 1):
+    for lloc, lglob in alm_array.enumerate(axis=2):
         # Add in a small diagonal to try and ensure positive definiteness
-        cmax = corr[l].diagonal().max() * 1e-14
-        corrm = corr[l] + np.identity(numz) * cmax
+        cmax = corr[lloc].diagonal().max() * 1e-14
+        corrm = corr[lloc] + np.identity(numz) * cmax
 
         trans = nputil.matrix_root_manynull(corrm, truncate=False)
-        gaussvars = nputil.complex_std_normal((numz, l + 1), rng=rng)
-        alm_array[:, 0, l, : (l + 1)] = np.dot(trans, gaussvars)
+        gaussvars = nputil.complex_std_normal((numz, lglob + 1), rng=rng)
+        alm_array.local_array[:, 0, lloc, : (lglob + 1)] = np.dot(trans, gaussvars)
 
     if alms:
-        return alm_array
+        # Return the entire alm array on each rank
+        return alm_array.allgather()
 
     # Perform the spherical harmonic transform for each z
-    sky = hputil.sphtrans_inv_sky(alm_array, nside)
-    sky = sky[:, 0]
+    alm_array = alm_array.redistribute(axis=0)
+
+    sky = hputil.sphtrans_inv_sky(alm_array.local_array, nside)[:, 0]
+
+    if isdistributed:
+        # Re-wrap the final array
+        sky = mpiarray.MPIArray.wrap(sky, axis=0)
 
     return sky
 
