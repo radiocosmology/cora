@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import healpy
 import numpy as np
 
-from caput import config, pipeline
+from caput import config, mpiarray, pipeline
 from cora.core import skysim
 from cora.util import hputil, units
 from cora.util.cosmology import Cosmology
@@ -286,12 +286,6 @@ class GenerateInitialLSS(task.SingleTask):
             The LSS initial conditions.
         """
 
-        if self.comm.size > 1:
-            raise RuntimeError(
-                "This task is not MPI parallel at the moment, but is running "
-                f"in an MPI job of size {self.comm.size}"
-            )
-
         # Stop if we've already generated enough simulated fields
         if self.num_sims == 0:
             raise pipeline.PipelineStopIteration()
@@ -311,23 +305,24 @@ class GenerateInitialLSS(task.SingleTask):
         # NOTE: it is important not to set this any higher, otherwise power will alias
         # back down when the map is transformed later on
         lmax = 3 * self.nside - 1
-
-        self.log.debug("Generating C_l(x, x')")
-        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=self.xromb, q=self.leg_q)
-        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=self.xromb, q=self.leg_q)
-        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=self.xromb, q=self.leg_q)
-
         nz = len(redshift)
 
         # Create an extended covariance matrix capturing the cross correlations between
         # the fields
-        cla = np.zeros((lmax + 1, 2 * nz, 2 * nz))
-        cla[:, :nz, :nz] = cla4
-        cla[:, :nz, nz:] = cla2
-        cla[:, nz:, :nz] = cla2
+        cla = mpiarray.zeros((lmax + 1, 2 * nz, 2 * nz), axis=0)
+
+        self.log.debug("Generating C_l(x, x')")
+        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=self.xromb, q=self.leg_q)
         cla[:, nz:, nz:] = cla0
 
-        self.log.info("Generating realisation of fields using seed %d" % self.seed)
+        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        cla[:, :nz, nz:] = cla2
+        cla[:, nz:, :nz] = cla2
+
+        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        cla[:, :nz, :nz] = cla4
+
+        self.log.info(f"Generating realisation of fields using seed {self.seed}")
         rng = np.random.default_rng(self.seed)
         sky = skysim.mkfullsky(cla, self.nside, rng=rng)
 
@@ -343,15 +338,15 @@ class GenerateInitialLSS(task.SingleTask):
                 nside=self.nside,
                 redshift=redshift,
             )
+        # Redistribute over the pixel axis to properly
+        # index the sky nz axis
+        f.redistribute("pixel")
+        sky = sky.redistribute(axis=1)
 
-        # NOTE: this is to support *future* MPI parallel generation. At the moment this
-        # does not work.
-        # Local shape and offset along chi axis
-        loff = f.phi.local_offset[0]
-        lshape = f.phi.local_shape[0]
+        f.phi[:] = sky[:nz]
+        f.delta[:] = sky[nz:]
 
-        f.phi[:] = sky[loff : loff + lshape]
-        f.delta[:] = sky[nz + loff : nz + loff + lshape]
+        f.redistribute("chi")
 
         self.seed += 1
 
@@ -425,26 +420,25 @@ class GenerateBiasedFieldBase(task.SingleTask):
         z = f.redshift if self.lightcone else self.redshift * np.ones_like(f.chi)
         D = f.cosmology.growth_factor(z) / f.cosmology.growth_factor(0)
 
+        fd = f.delta[:].local_array
+
         # Apply any first order bias
         try:
             b1 = self._bias_1(z)
 
             # Local offset and shape along chi axis
-            loff = f.delta.local_offset[0]
-            lshape = f.delta.local_shape[0]
+            lsel = f.delta[:].local_bounds
 
-            biased_field.delta[:] += (D * b1)[
-                loff : loff + lshape, np.newaxis
-            ] * f.delta[:]
+            biased_field.delta[:].local_array[:] += (D * b1)[lsel, np.newaxis] * fd
         except NotImplementedError:
             self.log.info("First order bias is not implemented. This is a bit odd.")
 
         # Apply any second order bias
         try:
             b2 = self._bias_2(z)
-            d2m = (f.delta[:] ** 2).mean(axis=1)[:, np.newaxis]
-            biased_field.delta[:] += (D**2 * b2)[:, np.newaxis] * (
-                f.delta[:] ** 2 - d2m
+            d2m = (fd**2).mean(axis=1)[:, np.newaxis]
+            biased_field.delta[:].local_array[:] += (D**2 * b2)[:, np.newaxis] * (
+                fd**2 - d2m
             )
         except NotImplementedError:
             self.log.debug("No second order bias to apply.")
@@ -648,12 +642,25 @@ class ZeldovichDynamics(DynamicsBase):
             The field Eulerian space with Zel'dovich dynamics applied. This can be in
             redshift space or real space depending on the value of `redshift_space`.
         """
+        initial_field.redistribute("chi")
+        biased_field.redistribute("chi")
+
+        lsel = initial_field.phi[:].local_bounds
+
         self._validate_fields(initial_field, biased_field)
         c, nside, _, chi, za = self._get_props(biased_field)
 
         # Take the gradient of the Lagrangian potential to get the
-        # displacements
-        vpsi = lssutil.gradient(initial_field.phi[:], chi)
+        # displacements. Need the full array on each rank because
+        # we want the gradient along both axes. This is a bit of an
+        # awkward way to do this, but we have to do it this way to
+        # avoid ballooning the memory
+        vpsi = lssutil.gradient(
+            initial_field.phi[:].local_array, chi[lsel], grad0=False
+        )
+        initial_field.redistribute("pixel")
+        vpsi[0] = np.gradient(initial_field.phi[:].local_array, chi, axis=0)
+        initial_field.redistribute("chi")
 
         # Apply growth factor:
         D = c.growth_factor(za) / c.growth_factor(0)
@@ -678,19 +685,26 @@ class ZeldovichDynamics(DynamicsBase):
 
         # Calculate the Zel'dovich displaced field and assign directly into the output
         # container
-        delta_m = (initial_field.delta[:] * D[:, np.newaxis]).view(np.ndarray)
-        delta_bias = biased_field.delta[:].view(np.ndarray)
+        delta_m = initial_field.delta[:].local_array * D[lsel, np.newaxis]
+        delta_bias = biased_field.delta[:].local_array
+        fdelta = final_field.delta[:].local_array
 
         if self.sph:
+            # Calculate sigma_chi for the full chi range, rather than
+            # just the local selection
+            sigma_chi = np.mean(abs(np.diff(chi))) / 2
+
             za_density_sph(
-                vpsi,
+                vpsi[:, lsel],
                 delta_bias,
                 delta_m,
-                chi,
-                final_field.delta[:],
+                chi[lsel],
+                fdelta,
+                sigma_chi=sigma_chi,
             )
         else:
-            za_density_grid(vpsi, delta_bias, delta_m, chi, final_field.delta[:])
+            za_density_grid(vpsi[:, lsel], delta_bias, delta_m, chi[lsel], fdelta)
+
         return final_field
 
 
@@ -723,27 +737,27 @@ class LinearDynamics(DynamicsBase):
         # Create the final field container
         final_field = BiasedLSS(axes_from=biased_field, attrs_from=biased_field)
 
+        fdelta = final_field.delta[:].local_array
+        idelta = initial_field.delta[:].local_array
+        iphi = initial_field.phi[:].local_array
+        lsel = final_field.delta[:].local_bounds
+
         # Get growth factor:
         D = c.growth_factor(za) / c.growth_factor(0)
 
         # Copy over biased field
-        final_field.delta[:] = biased_field.delta[:]
+        fdelta[:] = biased_field.delta[:].local_array
 
         # Add in standard linear term
-        loff = final_field.delta.local_offset[0]
-        lshape = final_field.delta.local_shape[0]
-        final_field.delta[:] += (
-            D[loff : loff + lshape, np.newaxis] * initial_field.delta[:]
-        )
+
+        fdelta[:] += D[lsel, np.newaxis] * idelta
 
         if self.redshift_space:
             fr = c.growth_rate(za)
-            vterm = lssutil.diff2(
-                initial_field.phi[:], chi[loff : loff + lshape], axis=0
-            )
-            vterm *= -(D * fr)[loff : loff + lshape, np.newaxis]
+            vterm = lssutil.diff2(iphi, chi[lsel], axis=0)
+            vterm *= -(D * fr)[lsel, np.newaxis]
 
-            final_field.delta[:] += vterm
+            fdelta[:] += vterm
 
         return final_field
 
@@ -805,7 +819,7 @@ class BiasedLSSToMap(task.SingleTask):
 
         # Multiply map by specific prefactor, if desired
         if self.map_prefactor != 1:
-            self.log.info("Multiplying map by %g" % self.map_prefactor)
+            self.log.info(f"Multiplying map by {self.map_prefactor}")
             m.map[:] *= self.map_prefactor
 
         # If desired, multiply by Tb(z)
@@ -815,9 +829,7 @@ class BiasedLSSToMap(task.SingleTask):
             omHI = lssmodels.omega_HI.evaluate(z, model=self.omega_HI_model)
             T_b = lssmodels.mean_21cm_temperature(biased_lss.cosmology, z, omHI)
 
-            loff = m.map.local_offset[0]
-            lshape = m.map.local_shape[0]
-            m.map[:, 0] *= T_b[loff : loff + lshape, np.newaxis]
+            m.map[:].local_array[:, 0] *= T_b[m.map[:].local_bounds, np.newaxis]
 
         return m
 
@@ -1000,9 +1012,17 @@ class FingersOfGod(task.SingleTask):
         K = lssutil.exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
 
         smoothed_field = BiasedLSS(axes_from=field, attrs_from=field)
+        # Distribute over pixels to apply the smoothing kernel
+        smoothed_field.redistribute("pixel")
+        field.redistribute("pixel")
 
-        # Apply the smoothing kernel and directly assign into output field
-        np.matmul(K, field.delta[:], out=smoothed_field.delta[:])
+        # Apply the smoothing kernel
+        np.matmul(
+            K, field.delta[:].local_array, out=smoothed_field.delta[:].local_array
+        )
+
+        # distribute back to the chi axis
+        smoothed_field.redistribute("chi")
 
         return smoothed_field
 
@@ -1043,7 +1063,7 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         import zlib
 
         # Get a subset of the data in bytes
-        lss_subset = lss.delta[:, :100].copy().tobytes()
+        lss_subset = lss.delta[:].local_array[:, :100].copy().tobytes()
 
         # If the seed was not set, hash the input LSS and use that
         if self.seed is None:
@@ -1072,18 +1092,15 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
             The field with shot noise. This is the same object as `input_field`.
         """
         pixarea = healpy.nside2pixarea(input_field.nside)
+        ichi = input_field.chi[input_field.delta[:].local_bounds]
 
-        volume = (
-            pixarea
-            * input_field.chi[:] ** 2
-            * lssutil.calculate_width(input_field.chi[:])
-        )
+        volume = pixarea * (ichi**2) * lssutil.calculate_width(ichi)
 
         std = (volume * self._n_eff_z) ** -0.5
         shot_noise = self.rng.normal(
             scale=std[:, np.newaxis], size=input_field.delta.shape
         )
-        input_field.delta[:] += shot_noise
+        input_field.delta[:].local_array[:] += shot_noise
 
         return input_field
 
@@ -1094,6 +1111,7 @@ def za_density_sph(
     delta_m: np.ndarray,
     chi: np.ndarray,
     out: np.ndarray,
+    sigma_chi: float = None,
 ):
     """Calculate the density field under the Zel'dovich approximations.
 
@@ -1114,6 +1132,8 @@ def za_density_sph(
         The comoving distance of each slice.
     out
         The array to save the output into.
+    sigma_chi
+        Smoothing scale at mean density
     """
     nchi, npix = delta_bias.shape
     nside = healpy.npix2nside(npix)
@@ -1125,7 +1145,8 @@ def za_density_sph(
     lssutil.assert_shape(out, (nchi, npix), "out")
 
     # Set the nominal smoothing scales at mean density
-    sigma_chi = np.mean(np.abs(np.diff(chi))) / 2
+    if sigma_chi is None:
+        sigma_chi = np.mean(np.abs(np.diff(chi))) / 2
     sigma_ang = healpy.nside2resol(nside) / 2
 
     angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
