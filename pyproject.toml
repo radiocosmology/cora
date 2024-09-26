@@ -22,6 +22,7 @@ maintainers = [
 dynamic = ["readme", "version"]
 requires-python = ">=3.9"
 dependencies = [
+    "caput @ git+https://github.com/radiocosmology/caput.git",
     "click",
     "cython",
     "h5py",
