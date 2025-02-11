@@ -734,13 +734,17 @@ class LinearDynamics(DynamicsBase):
         self._validate_fields(initial_field, biased_field)
         c, _, __, chi, za = self._get_props(biased_field)
 
+        # Distribute over the pixel axis for derivatives
+        initial_field.redistribute("pixel")
+        biased_field.redistribute("pixel")
+
         # Create the final field container
         final_field = BiasedLSS(axes_from=biased_field, attrs_from=biased_field)
+        final_field.redistribute("pixel")
 
         fdelta = final_field.delta[:].local_array
         idelta = initial_field.delta[:].local_array
         iphi = initial_field.phi[:].local_array
-        lsel = final_field.delta[:].local_bounds
 
         # Get growth factor:
         D = c.growth_factor(za) / c.growth_factor(0)
@@ -750,14 +754,16 @@ class LinearDynamics(DynamicsBase):
 
         # Add in standard linear term
 
-        fdelta[:] += D[lsel, np.newaxis] * idelta
+        fdelta[:] += D[:, np.newaxis] * idelta
 
         if self.redshift_space:
             fr = c.growth_rate(za)
-            vterm = lssutil.diff2(iphi, chi[lsel], axis=0)
-            vterm *= -(D * fr)[lsel, np.newaxis]
+            vterm = lssutil.diff2(iphi, chi[:], axis=0)
+            vterm *= -(D * fr)[:, np.newaxis]
 
             fdelta[:] += vterm
+
+        final_field.redistribute("chi")
 
         return final_field
 
