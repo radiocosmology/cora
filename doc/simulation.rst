@@ -16,10 +16,10 @@ different sources of radio emission:
 	* A synthetic population of dimmer point sources.
 	* A gaussian random field to model an unresolved background of sources.
 
-These models are described in more detail in `arXiv:1302.3267`_ and `arXiv:1401.XXXX`_
+These models are described in more detail in `arXiv:1302.0327`_ and `arXiv:1401.2095`_
 
-.. _`arXiv:1302.3267`: http://arxiv.org/abs/1302.3267
-.. _`arXiv:1401.XXXX`: http://arxiv.org/abs/1401.XXXX
+.. _`arXiv:1302.0327`: http://arxiv.org/abs/1302.0327
+.. _`arXiv:1401.2095`: http://arxiv.org/abs/1401.2095
 
 Command Line Tools
 ------------------
