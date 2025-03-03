@@ -251,6 +251,8 @@ class GenerateInitialLSS(task.SingleTask):
     leg_q : int, optional
         Integration accuracy parameter for Legendre transform for C_ell
         computation. Default: 4.
+    leg_chunksize: int, optional
+        Chunk size for evaluating samples of C_ell integral. Default: 50.
     """
 
     nside = config.Property(proptype=int)
@@ -260,6 +262,7 @@ class GenerateInitialLSS(task.SingleTask):
     start_seed = config.Property(proptype=int, default=0)
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
+    leg_chunksize = config.Property(proptype=int, default=50)
 
     def setup(self, correlation_functions: CorrelationFunction):
         """Setup the task.
@@ -311,15 +314,38 @@ class GenerateInitialLSS(task.SingleTask):
         # the fields
         cla = mpiarray.zeros((lmax + 1, 2 * nz, 2 * nz), axis=0)
 
-        self.log.debug("Generating C_l(x, x')")
-        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        self.log.debug("Generating C_l(x, x') for phi-phi")
+        cla0 = corrfunc.corr_to_clarray(
+            corr0,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
         cla[:, nz:, nz:] = cla0
 
-        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        self.log.debug("Generating C_l(x, x') for phi-delta")
+        cla2 = corrfunc.corr_to_clarray(
+            corr2,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
         cla[:, :nz, nz:] = cla2
         cla[:, nz:, :nz] = cla2
 
-        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        self.log.debug("Generating C_l(x, x') for delta-delta")
+        cla4 = corrfunc.corr_to_clarray(
+            corr4,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
         cla[:, :nz, :nz] = cla4
 
         self.log.info(f"Generating realisation of fields using seed {self.seed}")
