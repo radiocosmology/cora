@@ -296,6 +296,7 @@ def corr_to_clarray(
     xromb: int = 3,
     xwidth: Optional[float] = None,
     q: int = 2,
+    chunksize: int = 50,
 ):
     """Calculate an array of :math:`C_l(\chi_1, \chi_2)`.
 
@@ -319,6 +320,9 @@ def corr_to_clarray(
         calculate from the separation of the first two bins.
     q
         Integration accuracy parameter for the Legendre transform
+    chunksize
+        Chunk size for evaluating discrete samples of angular integrand in batches.
+        Default: 50.
 
     Returns
     -------
@@ -363,8 +367,8 @@ def corr_to_clarray(
     clo = corr_array.local_offset[0]
     _len = corr_array.local_array.shape[0]
 
-    # Split thetas into ~length 50 chunks, otherwise memory will blow up
-    for msec in np.array_split(np.arange(_len), _len // 50):
+    # Split thetas into chunks, otherwise memory will blow up
+    for msec in np.array_split(np.arange(_len), _len // chunksize):
         # Index into the global index in mu
         rc = coord.cosine_rule(mu[clo + msec], xa, xa)
         corr1 = corr(rc)
