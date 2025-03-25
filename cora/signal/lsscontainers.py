@@ -1,4 +1,4 @@
-from typing import Optional, Union, Callable
+from typing import Optional, Callable
 
 import numpy as np
 
@@ -7,6 +7,7 @@ from cora.util.cosmology import Cosmology
 from cora.util import units, cubicspline as cs
 
 from draco.core import containers
+from draco.core.containers import CosmologyContainer
 
 from ..util.nputil import FloatArrayLike
 
@@ -115,58 +116,6 @@ class InterpolatedFunction(memh5.BasicCont):
         # Copy over any kwargs containing extra info for the interpolation
         for key, val in kwargs.items():
             dset.attrs[key] = val
-
-
-class CosmologyContainer(containers.ContainerBase):
-    """A baseclass for a container that is referenced to a background Cosmology.
-
-    Parameters
-    ----------
-    cosmology
-        An explicit cosmology instance or dict representation. If not set, the cosmology
-        *must* get set via `attrs_from`.
-    """
-
-    def __init__(self, cosmology: Union[Cosmology, dict, None] = None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        cosmo_dict = self._resolve_args(cosmology, **kwargs)
-        self.attrs["cosmology"] = cosmo_dict
-
-    @staticmethod
-    def _resolve_args(
-        cosmology: Union[Cosmology, dict, None] = None,
-        attrs_from: Optional[containers.ContainerBase] = None,
-        **kwargs,
-    ):
-        """Try and extract a Cosmology dict representation from the parameters.
-
-        Useful as subclasses sometimes need access *before* the full class is setup.
-        """
-        # Insert the Cosmological parameters
-        if cosmology is None:
-            if attrs_from is not None and "cosmology" in attrs_from.attrs:
-                cosmology = attrs_from.attrs["cosmology"]
-            else:
-                raise ValueError("A cosmology must be supplied.")
-        elif not isinstance(cosmology, (Cosmology, dict)):
-            raise TypeError("cosmology argument must be a Cosmology instance.")
-
-        if isinstance(cosmology, Cosmology):
-            cosmology = cosmology.to_dict()
-
-        return cosmology
-
-    _cosmology_instance = None
-
-    @property
-    def cosmology(self):
-        """The background cosmology."""
-
-        if self._cosmology_instance is None:
-            self._cosmology_instance = Cosmology(**self.attrs["cosmology"])
-
-        return self._cosmology_instance
 
 
 class FZXContainer(CosmologyContainer):
