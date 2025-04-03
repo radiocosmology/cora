@@ -16,14 +16,19 @@ authors:
   affiliation: "University of British Columbia"
   orcid: "https://orcid.org/0000-0002-4543-4588"
 
-- given-names: "Rick"
-  family-names: "Nitsche"
+- given-names: "Liam"
+  family-names: "Gray"
   affiliation: "University of British Columbia"
+  orcid: "https://orcid.org/0000-0003-3986-954X"
 
 - given-names: "Simon"
   family-names: "Foreman"
   affiliation: "Arizona State University"
   orcid: "https://orcid.org/0000-0002-0190-2271"
+
+- given-names: "Rick"
+  family-names: "Nitsche"
+  affiliation: "University of British Columbia"
 
 - given-names: "Anja"
   family-names: "Boskovic"
