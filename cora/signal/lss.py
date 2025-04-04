@@ -25,6 +25,7 @@ from .lsscontainers import (
     CorrelationFunction,
     InitialLSS,
     MatterPowerSpectrum,
+    _INTERP_TYPES,
 )
 
 
@@ -69,6 +70,8 @@ class CalculateCorrelations(task.SingleTask):
         Apply power-law cutoffs at low and high-k to regularise the power spectrum.
         These values give the locations of the cutoffs in log_10(k Mpc / h). By default
         they are at -4 and 1.
+    r_interp_type : str
+        Default interpolation type for correlation functions. Default: "sinh".
     """
 
     minlogr = config.Property(proptype=float, default=-1)
@@ -79,6 +82,7 @@ class CalculateCorrelations(task.SingleTask):
     logkcut_low = config.Property(proptype=float, default=-4)
     logkcut_high = config.Property(proptype=float, default=4)
     powerspectrum = config.enum(_POWERSPECTRA, default="planck2018_z1.0_halofit-mead")
+    r_interp_type = config.enum(_INTERP_TYPES, default="sinh")
 
     def setup(self, powerspectrum: Optional[MatterPowerSpectrum] = None):
 
@@ -154,9 +158,9 @@ class CalculateCorrelations(task.SingleTask):
 
         func = CorrelationFunction(attrs_from=self._ps)
 
-        func.add_function("corr0", k0, c0, type="sinh", x_t=k0[1], f_t=1e-3)
-        func.add_function("corr2", k2, c2, type="sinh", x_t=k2[1], f_t=1e-6)
-        func.add_function("corr4", k4, c4, type="sinh", x_t=k4[1], f_t=1e2)
+        func.add_function("corr0", k0, c0, type=self.r_interp_type, x_t=k0[1], f_t=1e-3)
+        func.add_function("corr2", k2, c2, type=self.r_interp_type, x_t=k2[1], f_t=1e-6)
+        func.add_function("corr4", k4, c4, type=self.r_interp_type, x_t=k4[1], f_t=1e2)
 
         self.done = True
 
@@ -253,6 +257,10 @@ class GenerateInitialLSS(task.SingleTask):
         computation. Default: 4.
     leg_chunksize: int, optional
         Chunk size for evaluating samples of C_ell integral. Default: 50.
+    corrfunc_interp_type: str, optional
+        Interpolation method to use for correlation functions. If none, the
+        default method stored in the CorrelationFunction container is used.
+        Default: None.
     """
 
     nside = config.Property(proptype=int)
@@ -263,6 +271,7 @@ class GenerateInitialLSS(task.SingleTask):
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
     leg_chunksize = config.Property(proptype=int, default=50)
+    corrfunc_interp_type = config.enum(_INTERP_TYPES, default=None)
 
     def setup(self, correlation_functions: CorrelationFunction):
         """Setup the task.
@@ -294,9 +303,15 @@ class GenerateInitialLSS(task.SingleTask):
             raise pipeline.PipelineStopIteration()
         self.num_sims -= 1
 
-        corr0 = self.correlation_functions.get_function("corr0")
-        corr2 = self.correlation_functions.get_function("corr2")
-        corr4 = self.correlation_functions.get_function("corr4")
+        corr0 = self.correlation_functions.get_function(
+            "corr0", interp_type=self.corrfunc_interp_type
+        )
+        corr2 = self.correlation_functions.get_function(
+            "corr2", interp_type=self.corrfunc_interp_type
+        )
+        corr4 = self.correlation_functions.get_function(
+            "corr4", interp_type=self.corrfunc_interp_type
+        )
 
         if self.frequencies is None:
             redshift = self.redshift
