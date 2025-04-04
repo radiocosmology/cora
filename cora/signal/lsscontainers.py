@@ -139,7 +139,7 @@ class InterpolatedFunction(memh5.BasicCont):
             )
 
             def _func(x):
-                return f_t * np.sinh(_spline(np.asinh(x / x_t)))
+                return f_t * np.sinh(_spline(np.arcsinh(x / x_t)))
 
             func = _func
 
