@@ -14,9 +14,7 @@ from ..util.nputil import FloatArrayLike
 
 
 # Types of interpolation that can be used
-_INTERP_TYPES = [
-    "linear", "log", "sinh", "linear_scipy", "sinh_scipy"
-]
+_INTERP_TYPES = ["linear", "log", "sinh", "linear_scipy", "sinh_scipy"]
 
 
 class InterpolatedFunction(memh5.BasicCont):
@@ -367,6 +365,66 @@ class CorrelationFunction(CosmologyContainer, InterpolatedFunction):
         # where ContainerBase does not correctly call its superconstructor we need to do
         # this explicitly
         self._finish_setup()
+
+
+class MultiFrequencyAngularPowerSpectrum(FZXContainer):
+    """Container for holding C_ell(chi,chi')."""
+
+    _axes = ("ell",)
+
+    def __init__(
+        self,
+        lmax: float,
+        *args,
+        **kwargs,
+    ):
+        # Set ell axis to span from ell=0 to lmax
+        kwargs["ell"] = lmax + 1
+        super().__init__(*args, **kwargs)
+
+    _dataset_spec = {
+        "Cl_phi_phi": {
+            "axes": ["ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+        "Cl_phi_delta": {
+            "axes": ["ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+        "Cl_delta_delta": {
+            "axes": ["ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+    }
+
+    @property
+    def Cl_phi_phi(self):
+        """Phi-phi angular power spectrum."""
+        return self.datasets["Cl_phi_phi"]
+
+    @property
+    def Cl_phi_delta(self):
+        """Phi-delta angular power spectrum."""
+        return self.datasets["Cl_phi_delta"]
+
+    @property
+    def Cl_delta_delta(self):
+        """Delta-delta angular power spectrum."""
+        return self.datasets["Cl_delta_delta"]
+
+    @property
+    def ell(self):
+        """Ell values for stored angular power spectra."""
+        return self.index_map["ell"]
 
 
 class InitialLSS(FZXContainer, containers.HealpixContainer):
