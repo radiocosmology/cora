@@ -23,6 +23,7 @@ from . import corrfunc, lssutil, lssmodels
 from .lsscontainers import (
     BiasedLSS,
     CorrelationFunction,
+    MultiFrequencyAngularPowerSpectrum,
     InitialLSS,
     MatterPowerSpectrum,
     _INTERP_TYPES,
@@ -229,6 +230,256 @@ class BlendNonLinearPowerSpectrum(task.SingleTask):
         self.done = True
 
         return ps_linear
+
+
+class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
+    """Calculate C_l(chi,chi') from a real-space correlation function.
+
+    Attributes
+    ----------
+    nside : int
+        The Healpix resolution corresponding to the desired ell_max.
+    redshift : np.ndarray
+        The redshifts to evaluate at.
+    frequencies : np.ndarray
+        The frequencies to evaulate at. Overrides redshift property if
+        specified.
+    xromb : int, optional
+        Gauss-Legendre quadrature order for integrating C_ell over radial
+        bins. (Used Romberg integration in a previous version, hence the
+        name xromb.) xromb=0 turns off this integral. Default: 2.
+    leg_q : int, optional
+        Integration accuracy parameter for Legendre transform for C_ell
+        computation. Default: 4.
+    leg_chunksize: int, optional
+        Chunk size for evaluating samples of C_ell integrand. Changing
+        from default value is unlikely to affect performance. Default: 50.
+    corrfunc_interp_type: str, optional
+        Interpolation method to use for correlation function in C_ell
+        integrand. If None, the default method stored in the
+        CorrelationFunction container is used. Default: None.
+    """
+
+    nside = config.Property(proptype=int)
+    redshift = config.Property(proptype=lssutil.linspace, default=None)
+    frequencies = config.Property(proptype=lssutil.linspace, default=None)
+    xromb = config.Property(proptype=int, default=2)
+    leg_q = config.Property(proptype=int, default=4)
+    leg_chunksize = config.Property(proptype=int, default=50)
+    corrfunc_interp_type = config.enum(_INTERP_TYPES, default=None)
+
+    def process(
+        self, correlation_functions: CorrelationFunction
+    ) -> MultiFrequencyAngularPowerSpectrum:
+        """Compute the angular power spectra.
+
+        Returns
+        -------
+        out_cont
+            Container with the output angular power spectra.
+        """
+
+        if self.redshift is None and self.frequencies is None:
+            raise RuntimeError("Redshifts or frequencies must be specified!")
+
+        cosmology = correlation_functions.cosmology
+
+        corr0 = correlation_functions.get_function(
+            "corr0", interp_type=self.corrfunc_interp_type
+        )
+        corr2 = correlation_functions.get_function(
+            "corr2", interp_type=self.corrfunc_interp_type
+        )
+        corr4 = correlation_functions.get_function(
+            "corr4", interp_type=self.corrfunc_interp_type
+        )
+
+        if self.frequencies is None:
+            redshift = self.redshift
+        else:
+            redshift = units.nu21 / self.frequencies - 1.0
+
+        xa = cosmology.comoving_distance(redshift)
+
+        # NOTE: it is important not to set this any higher. Otherwise,
+        # power will alias back down when the map is transformed later on
+        lmax = 3 * self.nside - 1
+
+        self.log.debug("Generating C_l(x, x') for phi-phi")
+        cla0 = corrfunc.corr_to_clarray(
+            corr0,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
+
+        self.log.debug("Generating C_l(x, x') for phi-delta")
+        cla2 = corrfunc.corr_to_clarray(
+            corr2,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
+
+        self.log.debug("Generating C_l(x, x') for delta-delta")
+        cla4 = corrfunc.corr_to_clarray(
+            corr4,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
+
+        if self.frequencies is not None:
+            out_cont = MultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                freq=self.frequencies,
+                lmax=lmax,
+            )
+        else:
+            out_cont = MultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                redshift=redshift,
+                lmax=lmax,
+            )
+
+        out_cont.Cl_phi_phi[:] = cla0
+        out_cont.Cl_phi_delta[:] = cla2
+        out_cont.Cl_delta_delta[:] = cla4
+
+        return out_cont
+
+
+class GenerateInitialLSSFromCl(task.SingleTask):
+    """Generate initial LSS maps from input angular power spectrum.
+
+    Attributes
+    ----------
+    nside : int, optional
+        The Healpix resolution to use. Must not be higher than the nside
+        corresponding to lmax of the input angular power spectrum. If not
+        specified, will be determined from the input spectrum. Default: None.
+    num : int
+        The number of simulations to generate. Default: 1.
+    start_seed : int
+        The random seed to use for generating the first simulation.
+        Sim i (indexed from 0) is generated using start_seed+i.
+        Default: 0.
+    """
+
+    nside = config.Property(proptype=int, default=None)
+    num_sims = config.Property(proptype=int, default=1)
+    start_seed = config.Property(proptype=int, default=0)
+
+    def setup(self, cls: MultiFrequencyAngularPowerSpectrum):
+        """Set up the task.
+
+        Parameters
+        ----------
+        cls
+            The pre-calculated multi-frequency angular power spectrum.
+        """
+        self.cls = cls
+        self.cosmology = cls.cosmology
+
+        self.seed = self.start_seed
+
+        nside_from_cl = hputil.nside_for_lmax(len(cls.ell) - 1, accuracy_boost=0)
+
+        if self.nside is None:
+            self.nside = nside_from_cl
+            self.log.info(f"Set nside={self.nside} from input C_l container")
+        else:
+            if self.nside > nside_from_cl:
+                raise RuntimeError(
+                    f"Requested nside ({self.nside}) cannot exceed nside used for "
+                    f"input C_l ({nside_from_cl})"
+                )
+
+        cls.redistribute("ell")
+
+    def process(self) -> InitialLSS:
+        """Generate a realisation of the LSS initial conditions.
+
+        Returns
+        -------
+        InitialLSS
+            The LSS initial conditions.
+        """
+        # Stop if we've already generated enough realizations
+        if self.num_sims == 0:
+            raise pipeline.PipelineStopIteration()
+        self.num_sims -= 1
+
+        nz = len(self.cls.chi)
+
+        # Create extended covariance matrix capturing cross-correlations
+        # between the phi and delta fields
+        cla = mpiarray.zeros((len(self.cls.ell), 2 * nz, 2 * nz), axis=0)
+        cla[:, nz:, nz:] = self.cls.Cl_phi_phi[:]
+        cla[:, :nz, nz:] = self.cls.Cl_phi_delta[:]
+        cla[:, nz:, :nz] = self.cls.Cl_phi_delta[:]
+        cla[:, :nz, :nz] = self.cls.Cl_delta_delta[:]
+
+        # Generate map
+        self.log.info(f"Generating realisation of fields using seed {self.seed}")
+        rng = np.random.default_rng(self.seed)
+        sky = skysim.mkfullsky(cla, self.nside, rng=rng)
+
+        # Make container for output
+        if self.cls.freq is not None:
+            f = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                freq=self.cls.freq,
+            )
+        else:
+            f = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                redshift=self.cls.redshift,
+            )
+
+        # Redistribute over the pixel axis to properly
+        # index the sky nz axis
+        f.redistribute("pixel")
+        sky = sky.redistribute(axis=1)
+
+        f.phi[:] = sky[:nz]
+        f.delta[:] = sky[nz:]
+
+        f.redistribute("chi")
+
+        self.seed += 1
+
+        return f
+
+
+class GenerateInitialLSSLegacy(
+    CalculateMultiFrequencyAngularPowerSpectrum,
+    GenerateInitialLSSFromCl,
+):
+    """Generate initial LSS maps from a correlation function.
+
+    This reproduces the behavior of the previous GenerateInitialLSS
+    task, for legacy compatibility.
+    """
+
+    def setup(self, correlation_functions: CorrelationFunction):
+        cls = CalculateMultiFrequencyAngularPowerSpectrum.process(
+            self, correlation_functions
+        )
+        GenerateInitialLSSFromCl.setup(self, cls)
+
+    def process(self):
+        GenerateInitialLSSFromCl.process(
+            self,
+        )
 
 
 class GenerateInitialLSS(task.SingleTask):
