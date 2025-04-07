@@ -547,6 +547,7 @@ class GenerateBiasedFieldBase(task.SingleTask):
         z = f.redshift if self.lightcone else self.redshift * np.ones_like(f.chi)
         D = f.cosmology.growth_factor(z) / f.cosmology.growth_factor(0)
 
+        f.redistribute("chi")
         fd = f.delta[:].local_array
 
         # Apply any first order bias
