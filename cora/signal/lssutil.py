@@ -578,7 +578,7 @@ def exponential_FoG_kernel(
 
     # The zero-lag bins are a special case because of the reflection about zero
     # Here the weight is slightly less than if we evaluated exactly at zero
-    np.fill_diagonal(K, np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4))
+    np.fill_diagonal(K, np.diagonal(np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4)))
 
     # Normalise each row to ensure conservation of mass
     K /= np.sum(K, axis=1)[:, np.newaxis]
