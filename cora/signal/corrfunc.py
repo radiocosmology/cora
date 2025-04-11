@@ -346,18 +346,23 @@ def corr_to_clarray(
     # *output* maps as it the transform from theta -> l seems to wash it out
     if xromb > 0:
         # Calculate the half bin width
-        # TODO: make this more accurate for non-uniform bin spacings
-        xsort = np.sort(xarray)
-        xhalf = np.abs(xsort[1] - xsort[0]) / 2.0 if xwidth is None else xwidth / 2.0
+        if xwidth is None:
+            xhalf = np.ndarray(shape=xarray.shape)
+            # width for first and second bin are same
+            xhalf[0] = np.abs(xarray[1] - xarray[0]) / 2.0
+            xhalf[1:] = np.abs(xarray[1:] - xarray[:-1]) / 2.0
+        else:
+            # for continuity with previous convention of allowing to choose xwidth
+            xhalf = np.ones(shape=xarray.shape) * xwidth / 2.0
+
         xint = 2**xromb + 1
 
         # Get the quadrature points and weights.
         x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
-        x_r *= xhalf
         x_w /= x_wsum
 
         # Calculate the extended z-array with the extra intervals to integrate over
-        xa = (xarray[:, np.newaxis] + x_r[np.newaxis, :]).flatten()
+        xa = (xarray[:, np.newaxis] + xhalf[:, np.newaxis] * x_r).flatten()
 
     else:
         xa = xarray
