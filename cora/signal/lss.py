@@ -247,10 +247,14 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     xromb : int, optional
         Gauss-Legendre quadrature order for integrating C_ell over radial
         bins. (Used Romberg integration in a previous version, hence the
-        name xromb.) xromb=0 turns off this integral. Default: 2.
+        name xromb.) xromb=0 turns off this integral. When dealing with
+        nonlinear matter power spectrum, for sub-percent accuracy up to
+        l ~ 1500, xromb = 3 is recommended. Default: 2.
     leg_q : int, optional
         Integration accuracy parameter for Legendre transform for C_ell
-        computation. Default: 4.
+        computation. When dealing with nonlinear matter power spectrum,
+        for sub-percent accuracy up to l ~ 1500, leg_q = 16 is recommended.
+        Default: 4.
     leg_chunksize: int, optional
         Chunk size for evaluating samples of C_ell integrand. Changing
         from default value is unlikely to affect performance. Default: 50.
