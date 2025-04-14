@@ -309,7 +309,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
         # power will alias back down when the map is transformed later on
         lmax = 3 * self.nside - 1
 
-        self.log.debug("Generating C_l(x, x') for phi-phi")
+        self.log.debug("Generating C_l(x, x') for delta-delta")
         cla0 = corrfunc.corr_to_clarray(
             corr0,
             lmax,
@@ -329,7 +329,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
             chunksize=self.leg_chunksize,
         )
 
-        self.log.debug("Generating C_l(x, x') for delta-delta")
+        self.log.debug("Generating C_l(x, x') for phi-phi")
         cla4 = corrfunc.corr_to_clarray(
             corr4,
             lmax,
@@ -352,9 +352,9 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
                 lmax=lmax,
             )
 
-        out_cont.Cl_phi_phi[:] = cla0
+        out_cont.Cl_delta_delta[:] = cla0
         out_cont.Cl_phi_delta[:] = cla2
-        out_cont.Cl_delta_delta[:] = cla4
+        out_cont.Cl_phi_phi[:] = cla4
 
         return out_cont
 
@@ -425,10 +425,10 @@ class GenerateInitialLSSFromCl(task.SingleTask):
         # Create extended covariance matrix capturing cross-correlations
         # between the phi and delta fields
         cla = mpiarray.zeros((len(self.aps.ell), 2 * nz, 2 * nz), axis=0)
-        cla[:, nz:, nz:] = self.aps.Cl_phi_phi[:]
+        cla[:, nz:, nz:] = self.aps.Cl_delta_delta[:]
         cla[:, :nz, nz:] = self.aps.Cl_phi_delta[:]
         cla[:, nz:, :nz] = self.aps.Cl_phi_delta[:]
-        cla[:, :nz, :nz] = self.aps.Cl_delta_delta[:]
+        cla[:, :nz, :nz] = self.aps.Cl_phi_phi[:]
 
         # Generate map
         self.log.info(f"Generating realisation of fields using seed {self.seed}")
