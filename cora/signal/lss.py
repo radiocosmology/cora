@@ -47,6 +47,10 @@ class CalculateCorrelations(task.SingleTask):
     To reproduce something close to the old cora results, set `powerspectrum` to be
     `cora-orig` and `ksmooth` as 5.
 
+    If a precalculated power spectrum at z>0 is used as input, it will be re-scaled
+    to z=0 using the linear growth factor, so the output correlation functions will
+    also contain this scaling.
+
     Attributes
     ----------
     minlogr, maxlogr : float
@@ -99,7 +103,10 @@ class CalculateCorrelations(task.SingleTask):
         ks = 1e10 if self.ksmooth is None else self.ksmooth
 
         # Get the power spectrum multiplied by k**-n and a the low and high cutoffs,
-        # plus a Gaussian suppression to be compatible with cora
+        # plus a Gaussian suppression to be compatible with cora.
+        # Note that the options for precalculated power spectra are all calculated
+        # at z=1, but here they are rescaled to z=0 using the linear growth factor
+        # (this occurs internally in self._ps.powerspectrum())
         def _ps(k):
             return (
                 lssutil.cutoff(k, self.logkcut_low, 1, 0.5, 6)
@@ -234,6 +241,9 @@ class BlendNonLinearPowerSpectrum(task.SingleTask):
 
 class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     """Calculate C_l(chi,chi') from a real-space correlation function.
+
+    The output will be evaluated at constant redshift, corresponding
+    to the redshift of the input correlation functions.
 
     Attributes
     ----------
@@ -495,16 +505,18 @@ class GenerateBiasedFieldBase(task.SingleTask):
 
     Attributes
     ----------
-    lightcone : bool
-        Generate the field on the lightcone or not. If not, all slices will be at a
-        fixed epoch specified by the `redshift` attribute.
-    redshift : float
-        The redshift of the field (if not on the `lightcone`).
+    lightcone : bool, optional
+        Whether to generate the field on the lightcone, by re-scaling each
+        map by the linear growth factor. If not, all slices will be at a
+        fixed epoch specified by the `redshift` attribute. Default: True.
+    redshift : float, optional
+        The redshift of the field (if not on the `lightcone`). Default: None.
+    lognormal : bool, optional
+        Whether to apply a lognormal transform to the field. Default: False.
     """
 
     lightcone = config.Property(proptype=bool, default=True)
     redshift = config.Property(proptype=float, default=None)
-
     lognormal = config.Property(proptype=bool, default=False)
 
     def _bias_1(self, z: FloatArrayLike) -> FloatArrayLike:
@@ -548,6 +560,8 @@ class GenerateBiasedFieldBase(task.SingleTask):
         )
         biased_field.delta[:] = 0.0
 
+        # The input field has previously been scaled to z=0, so to re-scale to
+        # another redshift, we need to multiply by D(z) / D(z=0)
         z = f.redshift if self.lightcone else self.redshift * np.ones_like(f.chi)
         D = f.cosmology.growth_factor(z) / f.cosmology.growth_factor(0)
 
@@ -674,7 +688,7 @@ class DynamicsBase(task.SingleTask):
     Attributes
     ----------
     redshift_space : bool, optional
-        Generate the final field in redshift space or not.
+        Generate the final field in redshift space or not. Default: True.
     """
 
     redshift_space = config.Property(proptype=bool, default=True)
@@ -878,14 +892,16 @@ class LinearDynamics(DynamicsBase):
         idelta = initial_field.delta[:].local_array
         iphi = initial_field.phi[:].local_array
 
-        # Get growth factor:
+        # The input fields have previously been scaled to z=0, so to re-scale to
+        # another redshift, we need to multiply by D(z) / D(z=0)
         D = c.growth_factor(za) / c.growth_factor(0)
 
         # Copy over biased field
         fdelta[:] = biased_field.delta[:].local_array
 
-        # Add in standard linear term
-
+        # Input biased field will have been multiplied by Lagrangian bias, which
+        # is equal to Eulerian bias minus one, so we add the growth-factor-scaled
+        # "initial" delta to obtain the Eulerian-bias-scaled field
         fdelta[:] += D[:, np.newaxis] * idelta
 
         if self.redshift_space:
