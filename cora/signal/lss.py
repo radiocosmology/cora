@@ -5,20 +5,18 @@ from functools import cache
 import healpy
 import numpy as np
 
-from caput import config, mpiarray, pipeline
-from cora.core import skysim
-from cora.util import hputil, units
-from cora.util.cosmology import Cosmology
-from cora.util.pmesh import (
+from caput import config, mpiarray, pipeline, task
+from caput.task.random import RandomTask
+
+from ..core import containers, skysim
+from ..util import hputil, units
+from ..util.cosmology import Cosmology
+from ..util.pmesh import (
     _bin_delta,
     _pixel_weights,
     _radial_weights,
     calculate_positions,
 )
-from draco.core import task
-from draco.util.random import RandomTask
-from draco.core.containers import Map, CosmologyContainer
-
 from ..util.nputil import FloatArrayLike
 from . import corrfunc, lssutil, lssmodels
 from .lsscontainers import (
@@ -946,7 +944,7 @@ class BiasedLSSToMap(task.SingleTask):
     lognormal = config.Property(proptype=bool, default=False)
     omega_HI_model = config.enum(lssmodels.omega_HI.models(), default="Crighton2015")
 
-    def process(self, biased_lss: BiasedLSS) -> Map:
+    def process(self, biased_lss: BiasedLSS) -> containers.Map:
         """Convert a BiasedLSS contailer into a Map container.
 
         Parameters
@@ -969,7 +967,7 @@ class BiasedLSSToMap(task.SingleTask):
         freqmap["width"][:] = np.abs(np.diff(biased_lss.freq[:])[0])
 
         # Make new map container and copy delta into Stokes I component
-        m = Map(
+        m = containers.Map(
             freq=freqmap, polarisation=True, axes_from=biased_lss, attrs_from=biased_lss
         )
 
@@ -1139,7 +1137,7 @@ class FingersOfGod(task.SingleTask):
 
     apply_growth_factor = config.Property(proptype=bool, default=True)
 
-    def setup(self, cosmo_cont: Optional[CosmologyContainer] = None):
+    def setup(self, cosmo_cont: Optional[containers.CosmologyContainer] = None):
         """Verify the config parameters and initialize cosmology."""
 
         # Initialize fiducial FoG model
@@ -1165,7 +1163,7 @@ class FingersOfGod(task.SingleTask):
         else:
             self.cosmo = get_cosmo()
 
-    def process(self, field: BiasedLSS | Map) -> BiasedLSS | Map:
+    def process(self, field: BiasedLSS | containers.Map) -> BiasedLSS | containers.Map:
         """Apply the FoG effect.
 
         Parameters
@@ -1426,7 +1424,7 @@ def za_density_sph(
     return out
 
 
-class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
+class GenerateFlatSpectrumMap(task.SingleTask, task.random.RandomTask):
     """Generate a full-frequency sky map of a flat-spectrum noise-like signal.
 
     The user can either specify the per-voxel variance or the desired value
@@ -1492,7 +1490,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
                 "Must have full_pol=True if nonzero non-I maps are desired."
             )
 
-    def process(self) -> Map:
+    def process(self) -> containers.Map:
         """Generate a flat-spectrum noise-like sky map with given power.
 
         Returns
@@ -1524,7 +1522,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
 
         # Make new map container and distribute in pixel, to make it easier to
         # fill map with freq- and pol-dependent values
-        m = Map(freq=freqmap, polarisation=self.full_pol, nside=self.nside)
+        m = containers.Map(freq=freqmap, polarisation=self.full_pol, nside=self.nside)
         m.redistribute("pixel")
 
         # Set standard deviation of map values

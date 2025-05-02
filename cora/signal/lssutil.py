@@ -4,8 +4,7 @@ import numpy as np
 
 import healpy
 
-from caput import config
-from draco.util import tools
+from caput import config, tools
 
 from ..util import cubicspline as cs
 from ..util import hputil
