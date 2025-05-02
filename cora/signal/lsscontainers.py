@@ -4,13 +4,11 @@ import numpy as np
 from scipy.interpolate import CubicSpline
 
 from caput import memh5
-from cora.util.cosmology import Cosmology
-from cora.util import units, cubicspline as cs
 
-from draco.core import containers
-from draco.core.containers import CosmologyContainer
-
+from ..core.containers import CosmologyContainer, HealpixContainer
 from ..util.nputil import FloatArrayLike
+from ..util import units, cubicspline as cs
+from ..util.cosmology import Cosmology
 
 
 # Types of interpolation that can be used
@@ -427,7 +425,7 @@ class MultiFrequencyAngularPowerSpectrum(FZXContainer):
         return self.index_map["ell"]
 
 
-class InitialLSS(FZXContainer, containers.HealpixContainer):
+class InitialLSS(FZXContainer, HealpixContainer):
     """Container for holding initial LSS fields used for simulation.
 
     These fields are all implicitly the linear fields at redshift z=0.
@@ -471,7 +469,7 @@ class InitialLSS(FZXContainer, containers.HealpixContainer):
         return self.datasets["phi"]
 
 
-class BiasedLSS(FZXContainer, containers.HealpixContainer):
+class BiasedLSS(FZXContainer, HealpixContainer):
     """A biased large scale structure field.
 
     Parameters
