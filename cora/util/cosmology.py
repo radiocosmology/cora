@@ -129,9 +129,9 @@ class Cosmology(object):
         cosmo : instance of Cosmology
         """
         h = H0 / 100.0
-        H_si = H0 * 1000.0 / u.mega_parsec
-        rhoc = 3.0 * H_si**2 * u.c_sl**2 / (8.0 * np.pi * u.G_n)
-        rhorad = u.a_rad * TCMB**4
+        H_si = H0 * 1000.0 / units.mega_parsec
+        rhoc = 3.0 * H_si**2 * units.c_sl**2 / (8.0 * np.pi * units.G_n)
+        rhorad = units.a_rad * TCMB**4
         rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
         omkh2 = omk * h**2
 
@@ -185,7 +185,7 @@ class Cosmology(object):
         )
 
         # Convert to SI
-        return H * 1000.0 / u.mega_parsec
+        return H * 1000.0 / units.mega_parsec
 
     def comoving_distance(self, z: FloatArrayLike) -> FloatArrayLike:
         r"""The comoving distance to redshift z.
@@ -205,7 +205,7 @@ class Cosmology(object):
 
         # Calculate the integrand.
         def f(z1):
-            return u.c_sl / self.H(z1)
+            return units.c_sl / self.H(z1)
 
         return _intf_0_z(f, z) / self._unit_distance
 
@@ -232,7 +232,7 @@ class Cosmology(object):
 
         om_k = self.omega_k
 
-        dhi = np.sqrt(np.fabs(om_k)) * self.H() / u.c_sl * self._unit_distance
+        dhi = np.sqrt(np.fabs(om_k)) * self.H() / units.c_sl * self._unit_distance
 
         if om_k < 0.0:
             x = np.sin(x * dhi) / dhi
@@ -302,9 +302,9 @@ class Cosmology(object):
     def _unit_distance(self) -> float:
         # Select the appropriate distance unit
         if self.units == "astro":
-            return u.mega_parsec
+            return units.mega_parsec
         elif self.units == "cosmo":
-            return u.mega_parsec / (self.H0 / 100.0)
+            return units.mega_parsec / (self.H0 / 100.0)
         elif self.units == "si":
             return 1.0
 
@@ -314,9 +314,9 @@ class Cosmology(object):
     def _unit_time(self) -> float:
         # Select the appropriate time unit
         if self.units == "astro":
-            return u.mega_year
+            return units.mega_year
         elif self.units == "cosmo":
-            return u.mega_year
+            return units.mega_year
         elif self.units == "si":
             return 1.0
 
@@ -485,11 +485,11 @@ def ps_nowiggle(kh, z=0.0, c=None):
     d2k = (
         4.0
         / 25
-        * (u.c_sl * k / (1000.0 * c.H0)) ** 4
+        * (units.c_sl * k / (1000.0 * c.H0)) ** 4
         * t**2
         * pkp
         / c.omega_m**2
-        * growth_factor(z, c) ** 2
+        * c.growth_factor(z) ** 2
     )
 
     # d2k = deltah**2 * (u.c_sl * k / (1000.0 * c.H0))**(3 + ns) * t**2
