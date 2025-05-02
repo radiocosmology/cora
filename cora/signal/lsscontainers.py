@@ -296,7 +296,7 @@ class MatterPowerSpectrum(CosmologyContainer, InterpolatedFunction):
         # Initialise the base classes (which sets the cosmology etc)
         super().__init__(*args, **kwargs)
 
-        # This shouldn't be necessary, but due to a bug in `draco` where ContainerBase
+        # This shouldn't be necessary, but due to a bug in `caput` where ContainerBase
         # does not correctly call its superconstructor we need to do this explicitly
         self._finish_setup()
 
@@ -359,7 +359,7 @@ class CorrelationFunction(CosmologyContainer, InterpolatedFunction):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # This whole constructor shouldn't be necessary, but due to a bug in `draco`
+        # This whole constructor shouldn't be necessary, but due to a bug in `caput`
         # where ContainerBase does not correctly call its superconstructor we need to do
         # this explicitly
         self._finish_setup()
