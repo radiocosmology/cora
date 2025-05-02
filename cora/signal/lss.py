@@ -4,20 +4,18 @@ from typing import Optional, Tuple
 import healpy
 import numpy as np
 
-from caput import config, mpiarray, pipeline
-from cora.core import skysim
-from cora.util import hputil, units
-from cora.util.cosmology import Cosmology
-from cora.util.pmesh import (
+from caput import config, mpiarray, pipeline, task
+from caput.task.random import RandomTask
+
+from ..core import containers, skysim
+from ..util import hputil, units
+from ..util.cosmology import Cosmology
+from ..util.pmesh import (
     _bin_delta,
     _pixel_weights,
     _radial_weights,
     calculate_positions,
 )
-from draco.core import task
-from draco.util.random import RandomTask
-from draco.core.containers import Map
-
 from ..util.nputil import FloatArrayLike
 from . import corrfunc, lssutil, lssmodels
 from .lsscontainers import (
@@ -939,7 +937,7 @@ class BiasedLSSToMap(task.SingleTask):
     lognormal = config.Property(proptype=bool, default=False)
     omega_HI_model = config.enum(lssmodels.omega_HI.models, default="Crighton2015")
 
-    def process(self, biased_lss: BiasedLSS) -> Map:
+    def process(self, biased_lss: BiasedLSS) -> containers.Map:
         """Generate a realisation of the LSS initial conditions.
 
         Parameters
@@ -962,7 +960,7 @@ class BiasedLSSToMap(task.SingleTask):
         freqmap["width"][:] = np.abs(np.diff(biased_lss.freq[:])[0])
 
         # Make new map container and copy delta into Stokes I component
-        m = Map(
+        m = containers.Map(
             freq=freqmap, polarisation=True, axes_from=biased_lss, attrs_from=biased_lss
         )
 
