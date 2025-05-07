@@ -1,7 +1,6 @@
 import numpy as np
 
-from cora.util import units
-
+from caput import units
 from cora.core import skysim
 
 
