@@ -4,9 +4,10 @@ from typing import Callable, Optional, Union, List
 
 import numpy as np
 
+from caput import units
+
 from .lssutil import FloatArrayLike
 from ..util.cosmology import Cosmology
-from ..util import units
 
 
 class PolyModelSet:
