@@ -6,12 +6,13 @@ import scipy.special as ss
 from scipy.fftpack import dct
 
 from caput import mpiarray
+from caput.coordinates import coord
 
 import hankl
 import hankel
 import pyfftlog
 
-from ..util import bilinearmap, coord
+from ..util import bilinearmap
 from ..util.nputil import FloatArrayLike
 
 
