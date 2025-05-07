@@ -4,11 +4,10 @@ from typing import Optional, Tuple
 import healpy
 import numpy as np
 
-from caput import config, mpiarray, pipeline, task
-from caput.task.random import RandomTask
+from caput import config, mpiarray, pipeline, task, units
 
 from ..core import containers, skysim
-from ..util import hputil, units
+from ..util import hputil
 from ..util.cosmology import Cosmology
 from ..util.pmesh import (
     _bin_delta,
@@ -1179,7 +1178,7 @@ class FingersOfGod(task.SingleTask):
         return smoothed_field
 
 
-class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
+class AddCorrelatedShotNoise(task.random.RandomTask, task.SingleTask):
     """Add a correlated shot noise contribution to each input map.
 
     The shot noise realisation is deterministically generated from the LSS field, so all
