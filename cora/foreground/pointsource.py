@@ -12,8 +12,8 @@ import numpy.random as rnd
 import healpy
 from scipy.optimize import newton
 
+from caput import units
 from cora.core import maps
-from cora.util import units
 from cora.foreground import poisson as ps
 from cora.foreground import gaussianfg
 

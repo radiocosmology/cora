@@ -8,7 +8,8 @@ import scipy.interpolate
 import numpy as np
 import math
 
-from cora.util import units, fftutil, bilinearmap
+from caput import units
+from cora.util import fftutil, bilinearmap
 from cora.util import cubicspline as cs
 from cora.util.cosmology import Cosmology
 from cora.core import gaussianfield

@@ -1,8 +1,9 @@
 import numpy as np
 import math
 
+from caput import units
 from cora.core import maps
-from cora.util import fftutil, units
+from cora.util import fftutil
 
 
 class RandomField(object):

@@ -13,8 +13,8 @@ import numpy as np
 from scipy import integrate as si
 
 # Package imports
+from caput import units
 from .nputil import FloatArrayLike
-from . import units as u
 
 
 @dataclass

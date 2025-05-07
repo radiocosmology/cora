@@ -1,8 +1,8 @@
 import numpy as np
 
+from caput import units
 from cora.core import maps
 from cora.util import cubicspline as cs
-from cora.util import units
 from cora.signal import corr
 
 
