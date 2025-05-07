@@ -3,11 +3,11 @@ from typing import Optional, Callable
 import numpy as np
 from scipy.interpolate import CubicSpline
 
-from caput import memh5
+from caput import memh5, units
 
 from ..core.containers import CosmologyContainer, HealpixContainer
 from ..util.nputil import FloatArrayLike
-from ..util import units, cubicspline as cs
+from ..util import cubicspline as cs
 from ..util.cosmology import Cosmology
 
 

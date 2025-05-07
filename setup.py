@@ -39,14 +39,6 @@ extensions = [
         extra_compile_args=omp_args,
         extra_link_args=omp_args,
     ),
-    # coord extension
-    Extension(
-        "cora.util.coord",
-        ["cora/util/coord.pyx"],
-        include_dirs=[numpy.get_include()],
-        extra_compile_args=omp_args,
-        extra_link_args=omp_args,
-    ),
     # particle-mesh gridding extension
     Extension(
         "cora.util.pmesh",
