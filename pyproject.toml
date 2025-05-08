@@ -44,7 +44,6 @@ classifiers = [
 
 [project.optional-dependencies]
 lss = [
-    "draco @ git+https://github.com/radiocosmology/draco.git",
     "hankel",
     "hankl",
     "pyfftlog",
