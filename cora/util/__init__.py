@@ -5,12 +5,9 @@ cora utils
     :toctree:
 
     bilinearmap
-    coord
     cosmology
     cubicspline
     fftutil
     hputil
     nputil
-    sphfunc
-    units
 """
