@@ -648,7 +648,7 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
 
     z_eff = config.Property(proptype=float, default=None)
     bias_coeff = config.list_type(type_=float, default=None)
-    model = config.enum(lssmodels.bias.models, default=None)
+    model = config.enum(lssmodels.bias.models(), default=None)
     alpha_b = config.Property(proptype=float, default=1.0)
 
     def setup(self):
@@ -937,7 +937,7 @@ class BiasedLSSToMap(task.SingleTask):
     use_mean_21cmT = config.Property(proptype=int, default=False)
     map_prefactor = config.Property(proptype=float, default=1.0)
     lognormal = config.Property(proptype=bool, default=False)
-    omega_HI_model = config.enum(lssmodels.omega_HI.models, default="Crighton2015")
+    omega_HI_model = config.enum(lssmodels.omega_HI.models(), default="Crighton2015")
 
     def process(self, biased_lss: BiasedLSS) -> Map:
         """Generate a realisation of the LSS initial conditions.
@@ -1115,7 +1115,7 @@ class FingersOfGod(task.SingleTask):
         The effective redshift of the polynomial expansion.
     """
 
-    model = config.enum(lssmodels.sigma_P.models, default=None)
+    model = config.enum(lssmodels.sigma_P.models(), default=None)
 
     alpha_FoG = config.Property(proptype=float, default=1.0)
 
@@ -1204,7 +1204,7 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
 
     n_eff = config.Property(proptype=float, default=None)
     log_M_HI_g = config.Property(proptype=float, default=None)
-    omega_HI_model = config.enum(lssmodels.omega_HI.models, default="Crighton2015")
+    omega_HI_model = config.enum(lssmodels.omega_HI.models(), default="Crighton2015")
 
     def setup(self, lss: InitialLSS):
         """Set up a common seed from the LSS field.
