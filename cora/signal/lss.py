@@ -1245,14 +1245,18 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         output_field
             The field with shot noise. This is the same object as `input_field`.
         """
+        input_field.redistribute("chi")
+
         pixarea = healpy.nside2pixarea(input_field.nside)
-        ichi = input_field.chi[input_field.delta[:].local_bounds]
+
+        chi_local_bounds = input_field.delta[:].local_bounds
+        ichi = input_field.chi[chi_local_bounds]
 
         volume = pixarea * (ichi**2) * lssutil.calculate_width(ichi)
 
-        std = (volume * self._n_eff_z) ** -0.5
+        std = (volume * self._n_eff_z[chi_local_bounds]) ** -0.5
         shot_noise = self.rng.normal(
-            scale=std[:, np.newaxis], size=input_field.delta.shape
+            scale=std[:, np.newaxis], size=input_field.delta[:].local_shape
         )
         input_field.delta[:].local_array[:] += shot_noise
 
