@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Tuple
+from functools import cache
 
 import healpy
 import numpy as np
@@ -28,6 +29,12 @@ from .lsscontainers import (
     MatterPowerSpectrum,
     _INTERP_TYPES,
 )
+
+
+@cache
+def get_cosmo(*args, **kwargs):
+    # get default Cosmology object from cora.util
+    return Cosmology(*args, **kwargs)
 
 
 # Power spectra that can be used
@@ -1375,3 +1382,114 @@ def za_density_sph(
     out[:] -= 1.0
 
     return out
+
+
+class GenerateFlatSpectrumSkymodel(task.SingleTask, RandomTask):
+    """Generate a full-frequency SkyModel of a flat-spectrum noise-like HI signal.
+
+    The amplitude of this signal is variance * vol(ref_chan), where vol() gives
+    the voxel volume and ref_chan is a chosen reference point.
+
+    Attributes
+    ----------
+    nside : int
+        The nside of the Healpix map.
+    frequencies : np.ndarray
+        The frequencies to evaulate at.
+    full_pol : bool
+      If True all Stokes parameters are stores. If False
+      only Stokes I is stored. Default : True
+    variance: float
+        Variance of the signal, in Kelvin^2, at the reference channel.
+        Default is 1.0.
+    niter : int
+        Number of noise realizations to generate.
+    """
+
+    nside = config.Property(proptype=int, default=512)
+    frequencies = config.Property(proptype=lssutil.linspace, default=None)
+    full_pol = config.Property(proptype=bool, default=True)
+    variance = config.Property(proptype=float, default=1.0)
+    niter = config.Property(proptype=int, default=1)
+
+    def process(self) -> Map:
+        """Generate a flat-spectrum noise like skymap with given variance.
+
+        Returns
+        -------
+        out_map
+            Output Map container.
+        """
+
+        # Form frequency map in appropriate format to feed into Map container
+        freq = self.frequencies
+        nfreq = len(freq)
+        redshift = units.nu21 / freq - 1
+        freqmap = np.zeros(nfreq, dtype=[("centre", np.float64), ("width", np.float64)])
+        freqmap["centre"][:] = freq[:]
+        freqmap["width"][:] = np.abs(np.diff(freq[:])[0])
+
+        # Map properties
+        npix = 12 * self.nside**2
+        omega = 4 * np.pi / npix  # pixel area in sr
+        ref_chan = int(nfreq / 2.0)  # The central channel
+
+        # Make new map container and fill the noise into Stokes I component
+        m = Map(freq=freqmap, polarisation=self.full_pol, pixel=np.arange(npix))
+        m.redistribute("pol")
+
+        # Fill up with noise of given variance
+        m.map[:, 0, :] = self.rng.normal(
+            scale=np.sqrt(self.variance), size=(nfreq, npix)
+        )
+
+        # Now estimate the voxel volume of reference channel
+        # and save it as attributes
+        dV = differential_comoving_volume(redshift[ref_chan])
+        dz = redshift[ref_chan + 1] - redshift[ref_chan]
+        voxvols = dV * dz * omega
+
+        m.attrs["voxvol_ref"] = voxvols
+        m.attrs["central_redshift"] = redshift[ref_chan]
+
+        if self._count == self.niter:
+            raise pipeline.PipelineStopIteration
+
+        return m
+
+
+def differential_comoving_volume(z, cosmo=None):
+    """Differential comoving volume at redshift z.
+
+    Useful for calculating the effective comoving volume.
+    For example, allows for integration over a comoving volume that has a
+    sensitivity function that changes with redshift. The total comoving
+    volume is given by integrating ``differential_comoving_volume`` to
+    redshift ``z`` and multiplying by a solid angle.
+
+    This is taken from:
+    https://docs.astropy.org/en/stable/_modules/astropy/cosmology/flrw/base.html#FLRW.differential_comoving_volume
+
+    Parameters
+    ----------
+    z : float
+     redshift
+    cosmo: Cosmology object
+        Default is cora.util.Cosmology() default.
+
+    Returns
+    -------
+    dV : float
+      Differential comoving volume per redshift per steradian at each
+      input redshift. unit (Mpc/h)^3
+    """
+
+    if cosmo is None:
+        cosmo = get_cosmo()
+
+    H_z = cosmo.H(z) * (
+        cosmo._unit_distance / 1000.0
+    )  # H(z) in unit [(km . h) / (Mpc . sec)]
+    dm = cosmo.comoving_distance(z)  # Mpc / h
+
+    return dm**2 * (units.c / 1e3) / H_z
