@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Tuple
+from functools import cache
 
 import healpy
 import numpy as np
@@ -28,6 +29,12 @@ from .lsscontainers import (
     MatterPowerSpectrum,
     _INTERP_TYPES,
 )
+
+
+@cache
+def get_cosmo(*args, **kwargs):
+    # get default Cosmology object from cora.util
+    return Cosmology(*args, **kwargs)
 
 
 # Power spectra that can be used
@@ -1379,3 +1386,173 @@ def za_density_sph(
     out[:] -= 1.0
 
     return out
+
+
+class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
+    """Generate a full-frequency sky map of a flat-spectrum noise-like signal.
+
+    The user can either specify the per-voxel variance or the desired value
+    of the 3d power spectrum of the map. In the latter case, voxels are populated
+    with zero-mean Gaussian noise with variance P_SN / V_voxel ** 0.5. The user
+    can also specify whether V_voxel should be calculated per frequency channel
+    or be evaluated at the middle channel of the band. If one expects a 3d power
+    spectrum to be measured from the map in the constant-redshift approximation,
+    it's more accurate to use a constant V_voxel when generating the map.
+
+    Although `seed` is not listed below, it can be specified by the user, since
+    this task inherits from `draco.util.random.RandomTask`.
+
+    Attributes
+    ----------
+    nside : int
+        The nside of the Healpix map.
+    frequencies : np.ndarray
+        The frequencies to evaulate at.
+    full_pol : bool
+        If True, maps for all 4 Stokes parameters are stored in the output
+        container (regardless of whether some of them are zero). The `pol`
+        attribute chooses which Stokes parameters to actually generate
+        noise for. If False, only a Stokes I map is stored (i.e. the
+        polarization axis of the output map has length 1). Default: True.
+    pol : list of str
+        List of Stokes parameters to generate noise maps for.
+        Must be a subset of ["I", "Q", "U", "V"]. If maps other than I are
+        desired, `full_pol` must be True. Default: ["I"].
+    variance : float
+        Per-voxel variance of the signal, in Kelvin^2. Only one of `variance`
+        and `P_SN` can be specified (an exception will be raised if both or
+        neither are specified). Default: None.
+    P_SN : float
+        Desired value of constant-redshift 3d power spectrum of map.
+        Default: None.
+    use_freq_dependent_voxel_volume : bool
+        Whether to use/store frequency-dependent voxel volume. If False,
+        the voxel volume at the central channel of the input frequency
+        range is used/stored. Default: False.
+    num_sims : int
+        Number of realizations to generate.
+    """
+
+    nside = config.Property(proptype=int, default=512)
+    frequencies = config.Property(proptype=lssutil.linspace, default=None)
+    full_pol = config.Property(proptype=bool, default=True)
+    pol = config.Property(proptype=list, default=["I"])
+    variance = config.Property(proptype=float, default=None)
+    P_SN = config.Property(proptype=float, default=None)
+    use_freq_dependent_voxel_volume = config.Property(proptype=bool, default=False)
+    num_sims = config.Property(proptype=int, default=1)
+
+    def setup(self):
+        """Set up task."""
+        if ((self.variance is None) and (self.P_SN is None)) or (
+            (self.variance is not None) and (self.P_SN is not None)
+        ):
+            raise ValueError("Only one of variance or P_SN can be specified.")
+
+        if not self.full_pol and self.pol != ["I"]:
+            raise RuntimeError(
+                "Must have full_pol=True if nonzero non-I maps are desired."
+            )
+
+    def process(self) -> Map:
+        """Generate a flat-spectrum noise-like sky map with given power.
+
+        Returns
+        -------
+        out_map
+            Output Map container.
+        """
+
+        # Form frequency map in appropriate format to feed into Map container
+        freq = self.frequencies
+        nfreq = len(freq)
+        redshift = units.nu21 / freq - 1
+        freqmap = np.zeros(nfreq, dtype=[("centre", np.float64), ("width", np.float64)])
+        freqmap["centre"][:] = freq[:]
+        freqmap["width"][:] = np.abs(np.diff(freq[:])[0])
+
+        # Find index of central channel
+        ref_chan = int(nfreq / 2.0)
+
+        # Compute voxel volume
+        omega = healpy.nside2pixarea(self.nside)  # Pixel area in sr
+        if self.use_freq_dependent_voxel_volume:
+            dV = differential_comoving_volume(redshift)
+            dz = lssutil.calculate_width(redshift)
+        else:
+            dV = differential_comoving_volume(redshift[ref_chan])
+            dz = redshift[ref_chan + 1] - redshift[ref_chan]
+        voxvol = dV * dz * omega
+
+        # Make new map container and distribute in pixel, to make it easier to
+        # fill map with freq- and pol-dependent values
+        m = Map(freq=freqmap, polarisation=self.full_pol, nside=self.nside)
+        m.redistribute("pixel")
+
+        # Set standard deviation of map values
+        if self.variance is not None:
+            scale = self.variance**0.5
+        else:
+            scale = self.P_SN**0.5
+            if self.use_freq_dependent_voxel_volume:
+                scale /= voxvol[:, np.newaxis] ** 0.5
+            else:
+                scale /= voxvol**0.5
+
+        # Find indices of desired polarizations
+        pol_axis = list(m.index_map["pol"])
+        ipol = [pol_axis.index(p) for p in self.pol]
+
+        # Fill local section of map with random values
+        m.map[:].local_array[:, ipol, :] = self.rng.normal(
+            scale=scale, size=(nfreq, len(ipol), m.map[:].local_shape[-1])
+        )
+
+        # Save voxel volume(s) as attribute
+        m.attrs["voxvol_ref"] = voxvol
+        m.attrs["central_redshift"] = redshift[ref_chan]
+
+        # Distribute in frequency, because other tasks often expect this
+        m.redistribute("freq")
+
+        if self._count == self.num_sims:
+            raise pipeline.PipelineStopIteration
+
+        return m
+
+
+def differential_comoving_volume(z, cosmo=None):
+    """Differential comoving volume at redshift z.
+
+    Useful for calculating the effective comoving volume.
+    For example, allows for integration over a comoving volume that has a
+    sensitivity function that changes with redshift. The total comoving
+    volume is given by integrating ``differential_comoving_volume`` to
+    redshift ``z`` and multiplying by a solid angle.
+
+    This is taken from:
+    https://docs.astropy.org/en/stable/_modules/astropy/cosmology/flrw/base.html#FLRW.differential_comoving_volume
+
+    Parameters
+    ----------
+    z : float
+     redshift
+    cosmo: Cosmology object
+        Default is cora.util.Cosmology() default.
+
+    Returns
+    -------
+    dV : float
+      Differential comoving volume per redshift per steradian at each
+      input redshift. unit (Mpc/h)^3
+    """
+
+    if cosmo is None:
+        cosmo = get_cosmo()
+
+    # H(z) in unit [(km . h) / (Mpc . sec)]
+    H_z = cosmo.H(z) * (cosmo._unit_distance / 1000.0)
+    # Comoving distance in unit Mpc/h
+    dm = cosmo.comoving_distance(z)
+
+    return dm**2 * (units.c / 1e3) / H_z
