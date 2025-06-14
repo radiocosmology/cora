@@ -350,7 +350,7 @@ def pk_flat(
     # transform a complex field
     almn_square = np.array([hputil.sphtrans_complex(m, lmax) for m in cn])
 
-    l = np.arange(lmax + 1)
+    ell = np.arange(lmax + 1)
     n = np.arange(cn.shape[0])
 
     # Sum over m direction
@@ -364,10 +364,10 @@ def pk_flat(
         cln = (almn_square * almn_square2.conj()).sum(axis=-1).real
 
     # Divide by the number of m's at each l to get an average
-    cln /= (2 * l + 1)[np.newaxis, :]
+    cln /= (2 * ell + 1)[np.newaxis, :]
 
     # Get the effective axes in k space
-    kperp = l / chi_mean
+    kperp = ell / chi_mean
     kpar = 2 * np.pi * n / L
 
     cln *= L * chi_mean**2
