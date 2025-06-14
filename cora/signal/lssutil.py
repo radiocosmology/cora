@@ -339,7 +339,7 @@ def pk_flat(
         lmax = 3 * nside
 
     N = len(chi)
-    dx = chi.ptp() / (N - 1)
+    dx = np.ptp(chi) / (N - 1)
 
     # The effective L is slightly longer than the range because of the channel widths
     L = N * dx
