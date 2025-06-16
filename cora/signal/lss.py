@@ -17,7 +17,7 @@ from cora.util.pmesh import (
 )
 from draco.core import task
 from draco.util.random import RandomTask
-from draco.core.containers import Map
+from draco.core.containers import Map, CosmologyContainer
 
 from ..util.nputil import FloatArrayLike
 from . import corrfunc, lssutil, lssmodels
@@ -1120,6 +1120,11 @@ class FingersOfGod(task.SingleTask):
         `None` default, a `model` must be set.
     z_eff : float
         The effective redshift of the polynomial expansion.
+    apply_growth_factor : bool
+        If True, linear growth factor at each redshift is divided out of the field
+        prior to applying the FoG kernel, and then reapplied afterwards. This should
+        be done for a cosmological density field, but not for a shot-noise field.
+        Default: True.
     """
 
     model = config.enum(lssmodels.sigma_P.models(), default=None)
@@ -1129,9 +1134,12 @@ class FingersOfGod(task.SingleTask):
     FoG_coeff = config.list_type(type_=float, default=None)
     z_eff = config.Property(proptype=float, default=None)
 
-    def setup(self):
-        """Verify the config parameters."""
+    apply_growth_factor = config.Property(proptype=bool, default=True)
 
+    def setup(self, cosmo_cont: Optional[CosmologyContainer] = None):
+        """Verify the config parameters and initialize cosmology."""
+
+        # Initialize fiducial FoG model
         if self.z_eff is not None and self.FoG_coeff is not None:
 
             def s(z):
@@ -1148,42 +1156,66 @@ class FingersOfGod(task.SingleTask):
                 "Either `model` must be set, or `z_eff` and `FoG_coeff`"
             )
 
-    def process(self, field: BiasedLSS) -> BiasedLSS:
+        # Get cosmology object
+        if cosmo_cont is not None:
+            self.cosmo = cosmo_cont.cosmology
+        else:
+            self.cosmo = get_cosmo()
+
+    def process(self, field: BiasedLSS | Map) -> BiasedLSS | Map:
         """Apply the FoG effect.
 
         Parameters
         ----------
         field
-            The input field.
+            The input field/map.
 
         Returns
         -------
         smoothed_field
-            The field with the smoothing applied.
+            The field/map with the smoothing applied.
         """
 
         # Just return the input if FoGs are effectively turned off
         if self.alpha_FoG == 0.0:
             return field
 
+        # Get redshift and chi arrays
+        if isinstance(field, BiasedLSS):
+            redshift = field.redshift
+            chi = field.chi
+        else:
+            redshift = units.nu21 / field.freq - 1.0
+            chi = self.cosmo.comoving_distance(redshift)
+
         # Get the growth factor and smoothing scales
-        D = field.cosmology.growth_factor(field.redshift)
-        sigmaP = self._sigma_P(field.redshift)
+        if self.apply_growth_factor:
+            D = field.cosmology.growth_factor(redshift)
+        else:
+            D = np.full(redshift.shape, 1.0)
+        sigmaP = self._sigma_P(redshift)
 
-        K = lssutil.exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
+        K = lssutil.exponential_FoG_kernel(chi, self.alpha_FoG * sigmaP, D)
 
-        smoothed_field = BiasedLSS(axes_from=field, attrs_from=field)
+        smoothed_field = field.__class__(axes_from=field, attrs_from=field)
         # Distribute over pixels to apply the smoothing kernel
         smoothed_field.redistribute("pixel")
         field.redistribute("pixel")
 
-        # Apply the smoothing kernel
-        np.matmul(
-            K, field.delta[:].local_array, out=smoothed_field.delta[:].local_array
-        )
-
-        # distribute back to the chi axis
-        smoothed_field.redistribute("chi")
+        # Apply the smoothing kernel and distribute back to the chi/freq axis
+        if isinstance(field, BiasedLSS):
+            np.matmul(
+                K, field.delta[:].local_array, out=smoothed_field.delta[:].local_array
+            )
+            smoothed_field.redistribute("chi")
+        else:
+            n_freq = len(field.freq)
+            np.matmul(
+                K,
+                field.map[:].local_array.reshape(n_freq, -1),
+                out=smoothed_field.map[:].local_array.reshape(n_freq, -1),
+            )
+            smoothed_field.redistribute("freq")
 
         return smoothed_field
 
