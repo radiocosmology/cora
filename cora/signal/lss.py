@@ -1493,6 +1493,9 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
         m.attrs["voxvol_ref"] = voxvol
         m.attrs["central_redshift"] = redshift[ref_chan]
 
+        # Distribute in frequency, because other tasks often expect this
+        m.redistribute("freq")
+
         if self._count == self.niter:
             raise pipeline.PipelineStopIteration
 
