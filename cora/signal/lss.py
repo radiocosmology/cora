@@ -385,7 +385,7 @@ class GenerateInitialLSSFromCl(task.SingleTask):
         The Healpix resolution to use. Must not be higher than the nside
         corresponding to lmax of the input angular power spectrum. If not
         specified, will be determined from the input spectrum. Default: None.
-    num : int
+    num_sims : int
         The number of simulations to generate. Default: 1.
     start_seed : int
         The random seed to use for generating the first simulation.
