@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Optional, Tuple
+from functools import cache
 
 import healpy
 import numpy as np
@@ -16,7 +17,7 @@ from cora.util.pmesh import (
 )
 from draco.core import task
 from draco.util.random import RandomTask
-from draco.core.containers import Map
+from draco.core.containers import Map, CosmologyContainer
 
 from ..util.nputil import FloatArrayLike
 from . import corrfunc, lssutil, lssmodels
@@ -28,6 +29,12 @@ from .lsscontainers import (
     MatterPowerSpectrum,
     _INTERP_TYPES,
 )
+
+
+@cache
+def get_cosmo(*args, **kwargs):
+    # get default Cosmology object from cora.util
+    return Cosmology(*args, **kwargs)
 
 
 # Power spectra that can be used
@@ -378,7 +385,7 @@ class GenerateInitialLSSFromCl(task.SingleTask):
         The Healpix resolution to use. Must not be higher than the nside
         corresponding to lmax of the input angular power spectrum. If not
         specified, will be determined from the input spectrum. Default: None.
-    num : int
+    num_sims : int
         The number of simulations to generate. Default: 1.
     start_seed : int
         The random seed to use for generating the first simulation.
@@ -1113,6 +1120,11 @@ class FingersOfGod(task.SingleTask):
         `None` default, a `model` must be set.
     z_eff : float
         The effective redshift of the polynomial expansion.
+    apply_growth_factor : bool
+        If True, linear growth factor at each redshift is divided out of the field
+        prior to applying the FoG kernel, and then reapplied afterwards. This should
+        be done for a cosmological density field, but not for a shot-noise field.
+        Default: True.
     """
 
     model = config.enum(lssmodels.sigma_P.models(), default=None)
@@ -1122,9 +1134,12 @@ class FingersOfGod(task.SingleTask):
     FoG_coeff = config.list_type(type_=float, default=None)
     z_eff = config.Property(proptype=float, default=None)
 
-    def setup(self):
-        """Verify the config parameters."""
+    apply_growth_factor = config.Property(proptype=bool, default=True)
 
+    def setup(self, cosmo_cont: Optional[CosmologyContainer] = None):
+        """Verify the config parameters and initialize cosmology."""
+
+        # Initialize fiducial FoG model
         if self.z_eff is not None and self.FoG_coeff is not None:
 
             def s(z):
@@ -1141,42 +1156,66 @@ class FingersOfGod(task.SingleTask):
                 "Either `model` must be set, or `z_eff` and `FoG_coeff`"
             )
 
-    def process(self, field: BiasedLSS) -> BiasedLSS:
+        # Get cosmology object
+        if cosmo_cont is not None:
+            self.cosmo = cosmo_cont.cosmology
+        else:
+            self.cosmo = get_cosmo()
+
+    def process(self, field: BiasedLSS | Map) -> BiasedLSS | Map:
         """Apply the FoG effect.
 
         Parameters
         ----------
         field
-            The input field.
+            The input field/map.
 
         Returns
         -------
         smoothed_field
-            The field with the smoothing applied.
+            The field/map with the smoothing applied.
         """
 
         # Just return the input if FoGs are effectively turned off
         if self.alpha_FoG == 0.0:
             return field
 
+        # Get redshift and chi arrays
+        if isinstance(field, BiasedLSS):
+            redshift = field.redshift
+            chi = field.chi
+        else:
+            redshift = units.nu21 / field.freq - 1.0
+            chi = self.cosmo.comoving_distance(redshift)
+
         # Get the growth factor and smoothing scales
-        D = field.cosmology.growth_factor(field.redshift)
-        sigmaP = self._sigma_P(field.redshift)
+        if self.apply_growth_factor:
+            D = field.cosmology.growth_factor(redshift)
+        else:
+            D = np.full(redshift.shape, 1.0)
+        sigmaP = self._sigma_P(redshift)
 
-        K = lssutil.exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
+        K = lssutil.exponential_FoG_kernel(chi, self.alpha_FoG * sigmaP, D)
 
-        smoothed_field = BiasedLSS(axes_from=field, attrs_from=field)
+        smoothed_field = field.__class__(axes_from=field, attrs_from=field)
         # Distribute over pixels to apply the smoothing kernel
         smoothed_field.redistribute("pixel")
         field.redistribute("pixel")
 
-        # Apply the smoothing kernel
-        np.matmul(
-            K, field.delta[:].local_array, out=smoothed_field.delta[:].local_array
-        )
-
-        # distribute back to the chi axis
-        smoothed_field.redistribute("chi")
+        # Apply the smoothing kernel and distribute back to the chi/freq axis
+        if isinstance(field, BiasedLSS):
+            np.matmul(
+                K, field.delta[:].local_array, out=smoothed_field.delta[:].local_array
+            )
+            smoothed_field.redistribute("chi")
+        else:
+            n_freq = len(field.freq)
+            np.matmul(
+                K,
+                field.map[:].local_array.reshape(n_freq, -1),
+                out=smoothed_field.map[:].local_array.reshape(n_freq, -1),
+            )
+            smoothed_field.redistribute("freq")
 
         return smoothed_field
 
@@ -1379,3 +1418,168 @@ def za_density_sph(
     out[:] -= 1.0
 
     return out
+
+
+class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
+    """Generate a full-frequency sky map of a flat-spectrum noise-like signal.
+
+    The user can either specify the per-voxel variance or the desired value
+    of the 3d power spectrum of the map. In the latter case, voxels are populated
+    with zero-mean Gaussian noise with variance P_SN / V_voxel ** 0.5. The user
+    can also specify whether V_voxel should be calculated per frequency channel
+    or be evaluated at the middle channel of the band. If one expects a 3d power
+    spectrum to be measured from the map in the constant-redshift approximation,
+    it's more accurate to use a constant V_voxel when generating the map.
+
+    Although `seed` is not listed below, it can be specified by the user, since
+    this task inherits from `draco.util.random.RandomTask`.
+
+    Attributes
+    ----------
+    nside : int
+        The nside of the Healpix map.
+    frequencies : np.ndarray
+        The frequencies to evaulate at.
+    full_pol : bool
+        If True, all Stokes parameters are stored. If False, only Stokes I is
+        stored. Default: True.
+    pol : list of str
+        List of Stokes parameters to generate noise maps for.
+        Must be a subset of ["I", "Q', "U", "V"]. Default: ["I"].
+    variance : float
+        Per-voxel variance of the signal, in Kelvin^2. Only one of `variance`
+        and `P_SN` can be specified (an exception will be raised if both or
+        neither are specified). Default: None.
+    P_SN : float
+        Desired value of constant-redshift 3d power spectrum of map.
+        Default: None.
+    use_freq_dependent_voxel_volume : bool
+        Whether to use/store frequency-dependent voxel volume. Default: False.
+    num_sims : int
+        Number of realizations to generate.
+    """
+
+    nside = config.Property(proptype=int, default=512)
+    frequencies = config.Property(proptype=lssutil.linspace, default=None)
+    full_pol = config.Property(proptype=bool, default=True)
+    pol = config.Property(proptype=list, default=None)
+    variance = config.Property(proptype=float, default=None)
+    P_SN = config.Property(proptype=float, default=None)
+    use_freq_dependent_voxel_volume = config.Property(proptype=bool, default=False)
+    num_sims = config.Property(proptype=int, default=1)
+
+    def setup(self):
+        """Set up task."""
+        if ((self.variance is None) and (self.P_SN is None)) or (
+            (self.variance is not None) and (self.P_SN is not None)
+        ):
+            raise ValueError("Only one of variance or P_SN can be specified.")
+
+        if self.pol is None:
+            self.pol = ["I"]
+
+        if not self.full_pol and self.pol != ["I"]:
+            raise RuntimeError("Must have full_pol=True if non-I maps are desired.")
+
+    def process(self) -> Map:
+        """Generate a flat-spectrum noise-like sky map with given power.
+
+        Returns
+        -------
+        out_map
+            Output Map container.
+        """
+
+        # Form frequency map in appropriate format to feed into Map container
+        freq = self.frequencies
+        nfreq = len(freq)
+        redshift = units.nu21 / freq - 1
+        freqmap = np.zeros(nfreq, dtype=[("centre", np.float64), ("width", np.float64)])
+        freqmap["centre"][:] = freq[:]
+        freqmap["width"][:] = np.abs(np.diff(freq[:])[0])
+
+        # Find index of central channel
+        ref_chan = int(nfreq / 2.0)
+
+        # Compute voxel volume
+        omega = healpy.nside2pixarea(self.nside)  # Pixel area in sr
+        if self.use_freq_dependent_voxel_volume:
+            dV = differential_comoving_volume(redshift)
+            dz = lssutil.calculate_width(redshift)
+        else:
+            dV = differential_comoving_volume(redshift[ref_chan])
+            dz = redshift[ref_chan + 1] - redshift[ref_chan]
+        voxvol = dV * dz * omega
+
+        # Make new map container and distribute in pixel, to make it easier to
+        # fill map with freq- and pol-dependent values
+        m = Map(freq=freqmap, polarisation=self.full_pol, nside=self.nside)
+        m.redistribute("pixel")
+
+        # Set standard deviation of map values
+        if self.variance is not None:
+            scale = self.variance**0.5
+        else:
+            scale = self.P_SN**0.5
+            if self.use_freq_dependent_voxel_volume:
+                scale /= voxvol[:, np.newaxis] ** 0.5
+            else:
+                scale /= voxvol**0.5
+
+        # Find indices of desired polarizations
+        pol_axis = list(m.index_map["pol"])
+        ipol = [pol_axis.index(p) for p in self.pol]
+
+        # Fill local section of map with random values
+        m.map[:].local_array[:, ipol, :] = self.rng.normal(
+            scale=scale, size=(nfreq, len(ipol), m.map[:].local_shape[-1])
+        )
+
+        # Save voxel volume(s) as attribute
+        m.attrs["voxvol_ref"] = voxvol
+        m.attrs["central_redshift"] = redshift[ref_chan]
+
+        # Distribute in frequency, because other tasks often expect this
+        m.redistribute("freq")
+
+        if self._count == self.num_sims:
+            raise pipeline.PipelineStopIteration
+
+        return m
+
+
+def differential_comoving_volume(z, cosmo=None):
+    """Differential comoving volume at redshift z.
+
+    Useful for calculating the effective comoving volume.
+    For example, allows for integration over a comoving volume that has a
+    sensitivity function that changes with redshift. The total comoving
+    volume is given by integrating ``differential_comoving_volume`` to
+    redshift ``z`` and multiplying by a solid angle.
+
+    This is taken from:
+    https://docs.astropy.org/en/stable/_modules/astropy/cosmology/flrw/base.html#FLRW.differential_comoving_volume
+
+    Parameters
+    ----------
+    z : float
+     redshift
+    cosmo: Cosmology object
+        Default is cora.util.Cosmology() default.
+
+    Returns
+    -------
+    dV : float
+      Differential comoving volume per redshift per steradian at each
+      input redshift. unit (Mpc/h)^3
+    """
+
+    if cosmo is None:
+        cosmo = get_cosmo()
+
+    # H(z) in unit [(km . h) / (Mpc . sec)]
+    H_z = cosmo.H(z) * (cosmo._unit_distance / 1000.0)
+    # Comoving distance in unit Mpc/h
+    dm = cosmo.comoving_distance(z)
+
+    return dm**2 * (units.c / 1e3) / H_z
