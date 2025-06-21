@@ -1563,9 +1563,9 @@ def differential_comoving_volume(z, cosmo=None):
     if cosmo is None:
         cosmo = get_cosmo()
 
-    H_z = cosmo.H(z) * (
-        cosmo._unit_distance / 1000.0
-    )  # H(z) in unit [(km . h) / (Mpc . sec)]
-    dm = cosmo.comoving_distance(z)  # Mpc / h
+    # H(z) in unit [(km . h) / (Mpc . sec)]
+    H_z = cosmo.H(z) * (cosmo._unit_distance / 1000.0)
+    # Comoving distance in unit Mpc/h
+    dm = cosmo.comoving_distance(z)
 
     return dm**2 * (units.c / 1e3) / H_z
