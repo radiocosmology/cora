@@ -1455,7 +1455,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
         Default: None.
     use_freq_dependent_voxel_volume : bool
         Whether to use/store frequency-dependent voxel volume. Default: False.
-    niter : int
+    num_sims : int
         Number of realizations to generate.
     """
 
@@ -1466,7 +1466,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
     variance = config.Property(proptype=float, default=None)
     P_SN = config.Property(proptype=float, default=None)
     use_freq_dependent_voxel_volume = config.Property(proptype=bool, default=False)
-    niter = config.Property(proptype=int, default=1)
+    num_sims = config.Property(proptype=int, default=1)
 
     def setup(self):
         """Set up task."""
@@ -1542,7 +1542,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
         # Distribute in frequency, because other tasks often expect this
         m.redistribute("freq")
 
-        if self._count == self.niter:
+        if self._count == self.num_sims:
             raise pipeline.PipelineStopIteration
 
         return m
