@@ -1443,6 +1443,9 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
     full_pol : bool
         If True, all Stokes parameters are stored. If False, only Stokes I is
         stored. Default: True.
+    pol : list of str
+        List of Stokes parameters to generate noise maps for.
+        Must be a subset of ["I", "Q', "U", "V"]. Default: ["I"].
     variance : float
         Per-voxel variance of the signal, in Kelvin^2. Only one of `variance`
         and `P_SN` can be specified (an exception will be raised if both or
@@ -1459,6 +1462,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
     nside = config.Property(proptype=int, default=512)
     frequencies = config.Property(proptype=lssutil.linspace, default=None)
     full_pol = config.Property(proptype=bool, default=True)
+    pol = config.Property(proptype=list, default=None)
     variance = config.Property(proptype=float, default=None)
     P_SN = config.Property(proptype=float, default=None)
     use_freq_dependent_voxel_volume = config.Property(proptype=bool, default=False)
@@ -1470,6 +1474,12 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
             (self.variance is not None) and (self.P_SN is not None)
         ):
             raise ValueError("Only one of variance or P_SN can be specified.")
+
+        if self.pol is None:
+            self.pol = ["I"]
+
+        if not self.full_pol and self.pol != ["I"]:
+            raise RuntimeError("Must have full_pol=True if non-I maps are desired.")
 
     def process(self) -> Map:
         """Generate a flat-spectrum noise-like sky map with given power.
@@ -1516,9 +1526,13 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
             else:
                 scale /= voxvol**0.5
 
+        # Find indices of desired polarizations
+        pol_axis = list(m.index_map["pol"])
+        ipol = [pol_axis.index(p) for p in self.pol]
+
         # Fill local section of map with random values
-        m.map[:].local_array[:, 0, :] = self.rng.normal(
-            scale=scale, size=(nfreq, m.map[:].local_shape[-1])
+        m.map[:].local_array[:, ipol, :] = self.rng.normal(
+            scale=scale, size=(nfreq, len(ipol), m.map[:].local_shape[-1])
         )
 
         # Save voxel volume(s) as attribute
