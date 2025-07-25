@@ -9,23 +9,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v1
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.9
+          python-version: "3.13"
 
       - name: Install apt dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libhdf5-serial-dev libopenmpi-dev openmpi-bin libgsl-dev
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install pip requirements
         run: |
-          pip install numpy  # Needed for pygsl installation
-          pip install --use-deprecated=legacy-resolver -r requirements.txt
-          pip install -r doc/requirements.txt
-          pip install .[sphfunc]
+          pip install -e .
+          pip install -e .[docs]
       - name: Sphinx build
         run: |
           git checkout -b gh-pages

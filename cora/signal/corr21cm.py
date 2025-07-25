@@ -334,7 +334,6 @@ def theory_power_spectrum(
 
 class EoR21cm(Corr21cm):
     def T_b(self, z):
-
         r"""Mean 21cm brightness temperature at a given redshift.
 
         According to Eq.(4) of M. G. Santos, L. Ferramacho and M. B. Silva, 2009, Fast Large Volume Simulations of the Epoch of Reionization.

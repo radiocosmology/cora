@@ -1,10 +1,11 @@
 from pathlib import Path
 from typing import Optional, Tuple
+from functools import cache
 
 import healpy
 import numpy as np
 
-from caput import config, pipeline
+from caput import config, mpiarray, pipeline
 from cora.core import skysim
 from cora.util import hputil, units
 from cora.util.cosmology import Cosmology
@@ -16,16 +17,24 @@ from cora.util.pmesh import (
 )
 from draco.core import task
 from draco.util.random import RandomTask
-from draco.core.containers import Map
+from draco.core.containers import Map, CosmologyContainer
 
 from ..util.nputil import FloatArrayLike
 from . import corrfunc, lssutil, lssmodels
 from .lsscontainers import (
     BiasedLSS,
     CorrelationFunction,
+    MultiFrequencyAngularPowerSpectrum,
     InitialLSS,
     MatterPowerSpectrum,
+    _INTERP_TYPES,
 )
+
+
+@cache
+def get_cosmo(*args, **kwargs):
+    # get default Cosmology object from cora.util
+    return Cosmology(*args, **kwargs)
 
 
 # Power spectra that can be used
@@ -44,6 +53,10 @@ class CalculateCorrelations(task.SingleTask):
 
     To reproduce something close to the old cora results, set `powerspectrum` to be
     `cora-orig` and `ksmooth` as 5.
+
+    If a precalculated power spectrum at z>0 is used as input, it will be re-scaled
+    to z=0 using the linear growth factor, so the output correlation functions will
+    also contain this scaling.
 
     Attributes
     ----------
@@ -69,6 +82,8 @@ class CalculateCorrelations(task.SingleTask):
         Apply power-law cutoffs at low and high-k to regularise the power spectrum.
         These values give the locations of the cutoffs in log_10(k Mpc / h). By default
         they are at -4 and 1.
+    r_interp_type : str
+        Default interpolation type for correlation functions. Default: "sinh".
     """
 
     minlogr = config.Property(proptype=float, default=-1)
@@ -79,6 +94,7 @@ class CalculateCorrelations(task.SingleTask):
     logkcut_low = config.Property(proptype=float, default=-4)
     logkcut_high = config.Property(proptype=float, default=4)
     powerspectrum = config.enum(_POWERSPECTRA, default="planck2018_z1.0_halofit-mead")
+    r_interp_type = config.enum(_INTERP_TYPES, default="sinh")
 
     def setup(self, powerspectrum: Optional[MatterPowerSpectrum] = None):
 
@@ -94,7 +110,10 @@ class CalculateCorrelations(task.SingleTask):
         ks = 1e10 if self.ksmooth is None else self.ksmooth
 
         # Get the power spectrum multiplied by k**-n and a the low and high cutoffs,
-        # plus a Gaussian suppression to be compatible with cora
+        # plus a Gaussian suppression to be compatible with cora.
+        # Note that the options for precalculated power spectra are all calculated
+        # at z=1, but here they are rescaled to z=0 using the linear growth factor
+        # (this occurs internally in self._ps.powerspectrum())
         def _ps(k):
             return (
                 lssutil.cutoff(k, self.logkcut_low, 1, 0.5, 6)
@@ -154,9 +173,9 @@ class CalculateCorrelations(task.SingleTask):
 
         func = CorrelationFunction(attrs_from=self._ps)
 
-        func.add_function("corr0", k0, c0, type="sinh", x_t=k0[1], f_t=1e-3)
-        func.add_function("corr2", k2, c2, type="sinh", x_t=k2[1], f_t=1e-6)
-        func.add_function("corr4", k4, c4, type="sinh", x_t=k4[1], f_t=1e2)
+        func.add_function("corr0", k0, c0, type=self.r_interp_type, x_t=k0[1], f_t=1e-3)
+        func.add_function("corr2", k2, c2, type=self.r_interp_type, x_t=k2[1], f_t=1e-6)
+        func.add_function("corr4", k4, c4, type=self.r_interp_type, x_t=k4[1], f_t=1e2)
 
         self.done = True
 
@@ -227,135 +246,259 @@ class BlendNonLinearPowerSpectrum(task.SingleTask):
         return ps_linear
 
 
-class GenerateInitialLSS(task.SingleTask):
-    """Generate the initial LSS distribution.
+class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
+    """Calculate C_l(chi,chi') from a real-space correlation function.
+
+    The output will be evaluated at constant redshift, corresponding
+    to the redshift of the input correlation functions.
 
     Attributes
     ----------
     nside : int
-        The Healpix resolution to use.
+        The Healpix resolution corresponding to the desired ell_max.
     redshift : np.ndarray
-        The redshifts for the map slices.
+        The redshifts to evaluate at.
     frequencies : np.ndarray
-        The frequencies that determine the redshifts for the map slices.
-        Overrides redshift property if specified.
-    num : int
-        The number of simulations to generate.
-    start_seed : int
-        The random seed to use for generating the first simulation.
-        Sim i (indexed from 0) is generated using start_seed+i.
-        Default: 0.
+        The frequencies to evaulate at. Overrides redshift property if
+        specified.
     xromb : int, optional
-        Romberg order for integrating C_ell over radial bins.
-        xromb=0 turns off this integral. Default: 2.
+        Gauss-Legendre quadrature order for integrating C_ell over radial
+        bins. (Used Romberg integration in a previous version, hence the
+        name xromb.) xromb=0 turns off this integral. When dealing with
+        nonlinear matter power spectrum, for sub-percent accuracy up to
+        l ~ 1500, xromb = 3 is recommended. Default: 2.
     leg_q : int, optional
         Integration accuracy parameter for Legendre transform for C_ell
-        computation. Default: 4.
+        computation. When dealing with nonlinear matter power spectrum,
+        for sub-percent accuracy up to l ~ 1500, leg_q = 16 is recommended.
+        Default: 4.
+    leg_chunksize: int, optional
+        Chunk size for evaluating samples of C_ell integrand. Changing
+        from default value is unlikely to affect performance. Default: 50.
+    corrfunc_interp_type: str, optional
+        Interpolation method to use for correlation function in C_ell
+        integrand. If None, the default method stored in the
+        CorrelationFunction container is used. Default: None.
     """
 
     nside = config.Property(proptype=int)
     redshift = config.Property(proptype=lssutil.linspace, default=None)
     frequencies = config.Property(proptype=lssutil.linspace, default=None)
-    num_sims = config.Property(proptype=int, default=1)
-    start_seed = config.Property(proptype=int, default=0)
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
+    leg_chunksize = config.Property(proptype=int, default=50)
+    corrfunc_interp_type = config.enum(_INTERP_TYPES, default=None)
 
-    def setup(self, correlation_functions: CorrelationFunction):
-        """Setup the task.
+    def process(
+        self, correlation_functions: CorrelationFunction
+    ) -> MultiFrequencyAngularPowerSpectrum:
+        """Compute the angular power spectra.
 
-        Parameters
-        ----------
-        correlation_functions
-            The pre-calculated correlation functions.
+        Returns
+        -------
+        out_cont
+            Container with the output angular power spectra.
         """
-        self.correlation_functions = correlation_functions
-        self.cosmology = correlation_functions.cosmology
 
         if self.redshift is None and self.frequencies is None:
             raise RuntimeError("Redshifts or frequencies must be specified!")
 
-        self.seed = self.start_seed
+        cosmology = correlation_functions.cosmology
 
-    def process(self) -> InitialLSS:
-        """Generate a realisation of the LSS initial conditions.
-
-        Returns
-        -------
-        InitialLSS
-            The LSS initial conditions.
-        """
-
-        if self.comm.size > 1:
-            raise RuntimeError(
-                "This task is not MPI parallel at the moment, but is running "
-                f"in an MPI job of size {self.comm.size}"
-            )
-
-        # Stop if we've already generated enough simulated fields
-        if self.num_sims == 0:
-            raise pipeline.PipelineStopIteration()
-        self.num_sims -= 1
-
-        corr0 = self.correlation_functions.get_function("corr0")
-        corr2 = self.correlation_functions.get_function("corr2")
-        corr4 = self.correlation_functions.get_function("corr4")
+        corr0 = correlation_functions.get_function(
+            "corr0", interp_type=self.corrfunc_interp_type
+        )
+        corr2 = correlation_functions.get_function(
+            "corr2", interp_type=self.corrfunc_interp_type
+        )
+        corr4 = correlation_functions.get_function(
+            "corr4", interp_type=self.corrfunc_interp_type
+        )
 
         if self.frequencies is None:
             redshift = self.redshift
         else:
             redshift = units.nu21 / self.frequencies - 1.0
 
-        xa = self.cosmology.comoving_distance(redshift)
+        xa = cosmology.comoving_distance(redshift)
 
-        # NOTE: it is important not to set this any higher, otherwise power will alias
-        # back down when the map is transformed later on
+        # NOTE: it is important not to set this any higher. Otherwise,
+        # power will alias back down when the map is transformed later on
         lmax = 3 * self.nside - 1
 
-        self.log.debug("Generating C_l(x, x')")
-        cla0 = corrfunc.corr_to_clarray(corr0, lmax, xa, xromb=self.xromb, q=self.leg_q)
-        cla2 = corrfunc.corr_to_clarray(corr2, lmax, xa, xromb=self.xromb, q=self.leg_q)
-        cla4 = corrfunc.corr_to_clarray(corr4, lmax, xa, xromb=self.xromb, q=self.leg_q)
+        self.log.debug("Generating C_l(x, x') for delta-delta")
+        cla0 = corrfunc.corr_to_clarray(
+            corr0,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
 
-        nz = len(redshift)
+        self.log.debug("Generating C_l(x, x') for phi-delta")
+        cla2 = corrfunc.corr_to_clarray(
+            corr2,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
 
-        # Create an extended covariance matrix capturing the cross correlations between
-        # the fields
-        cla = np.zeros((lmax + 1, 2 * nz, 2 * nz))
-        cla[:, :nz, :nz] = cla4
-        cla[:, :nz, nz:] = cla2
-        cla[:, nz:, :nz] = cla2
-        cla[:, nz:, nz:] = cla0
+        self.log.debug("Generating C_l(x, x') for phi-phi")
+        cla4 = corrfunc.corr_to_clarray(
+            corr4,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+        )
 
-        self.log.info("Generating realisation of fields using seed %d" % self.seed)
+        if self.frequencies is not None:
+            out_cont = MultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                freq=self.frequencies,
+                lmax=lmax,
+            )
+        else:
+            out_cont = MultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                redshift=redshift,
+                lmax=lmax,
+            )
+
+        out_cont.Cl_delta_delta[:] = cla0
+        out_cont.Cl_phi_delta[:] = cla2
+        out_cont.Cl_phi_phi[:] = cla4
+
+        return out_cont
+
+
+class GenerateInitialLSSFromCl(task.SingleTask):
+    """Generate initial LSS maps from input angular power spectrum.
+
+    Attributes
+    ----------
+    nside : int, optional
+        The Healpix resolution to use. Must not be higher than the nside
+        corresponding to lmax of the input angular power spectrum. If not
+        specified, will be determined from the input spectrum. Default: None.
+    num_sims : int
+        The number of simulations to generate. Default: 1.
+    start_seed : int
+        The random seed to use for generating the first simulation.
+        Sim i (indexed from 0) is generated using start_seed+i.
+        Default: 0.
+    """
+
+    nside = config.Property(proptype=int, default=None)
+    num_sims = config.Property(proptype=int, default=1)
+    start_seed = config.Property(proptype=int, default=0)
+
+    def setup(self, aps: MultiFrequencyAngularPowerSpectrum):
+        """Set up the task.
+
+        Parameters
+        ----------
+        aps
+            The pre-calculated multi-frequency angular power spectrum.
+        """
+        self.aps = aps
+        self.cosmology = aps.cosmology
+
+        self.seed = self.start_seed
+
+        nside_from_cl = hputil.nside_for_lmax(len(aps.ell) - 1, accuracy_boost=0)
+
+        if self.nside is None:
+            self.nside = nside_from_cl
+            self.log.info(f"Set nside={self.nside} from input C_l container")
+        else:
+            if self.nside > nside_from_cl:
+                raise RuntimeError(
+                    f"Requested nside ({self.nside}) cannot exceed nside used for "
+                    f"input C_l ({nside_from_cl})"
+                )
+
+        aps.redistribute("ell")
+
+    def process(self) -> InitialLSS:
+        """Generate a realisation of the LSS initial conditions.
+
+        Returns
+        -------
+        f
+            The LSS initial conditions.
+        """
+        # Stop if we've already generated enough realizations
+        if self.num_sims == 0:
+            raise pipeline.PipelineStopIteration()
+        self.num_sims -= 1
+
+        nz = len(self.aps.chi)
+
+        # Create extended covariance matrix capturing cross-correlations
+        # between the phi and delta fields
+        cla = mpiarray.zeros((len(self.aps.ell), 2 * nz, 2 * nz), axis=0)
+        cla[:, nz:, nz:] = self.aps.Cl_delta_delta[:]
+        cla[:, :nz, nz:] = self.aps.Cl_phi_delta[:]
+        cla[:, nz:, :nz] = self.aps.Cl_phi_delta[:]
+        cla[:, :nz, :nz] = self.aps.Cl_phi_phi[:]
+
+        # Generate map
+        self.log.info(f"Generating realisation of fields using seed {self.seed}")
         rng = np.random.default_rng(self.seed)
         sky = skysim.mkfullsky(cla, self.nside, rng=rng)
 
-        if self.frequencies is not None:
+        # Make container for output
+        if self.aps.freq is not None:
             f = InitialLSS(
                 cosmology=self.cosmology,
                 nside=self.nside,
-                freq=self.frequencies,
+                freq=self.aps.freq,
             )
         else:
             f = InitialLSS(
                 cosmology=self.cosmology,
                 nside=self.nside,
-                redshift=redshift,
+                redshift=self.aps.redshift,
             )
 
-        # NOTE: this is to support *future* MPI parallel generation. At the moment this
-        # does not work.
-        # Local shape and offset along chi axis
-        loff = f.phi.local_offset[0]
-        lshape = f.phi.local_shape[0]
+        # Redistribute over the pixel axis to properly
+        # index the sky nz axis
+        f.redistribute("pixel")
+        sky = sky.redistribute(axis=1)
 
-        f.phi[:] = sky[loff : loff + lshape]
-        f.delta[:] = sky[nz + loff : nz + loff + lshape]
+        f.phi[:] = sky[:nz]
+        f.delta[:] = sky[nz:]
+
+        f.redistribute("chi")
 
         self.seed += 1
 
         return f
+
+
+class GenerateInitialLSS(
+    CalculateMultiFrequencyAngularPowerSpectrum,
+    GenerateInitialLSSFromCl,
+):
+    """Generate initial LSS maps from a correlation function.
+
+    This reproduces the behavior of the previous GenerateInitialLSS
+    task, for legacy compatibility.
+    """
+
+    def setup(self, correlation_functions: CorrelationFunction):
+        aps = CalculateMultiFrequencyAngularPowerSpectrum.process(
+            self, correlation_functions
+        )
+        GenerateInitialLSSFromCl.setup(self, aps)
+
+    def process(self):
+        return GenerateInitialLSSFromCl.process(self)
 
 
 class GenerateBiasedFieldBase(task.SingleTask):
@@ -369,16 +512,18 @@ class GenerateBiasedFieldBase(task.SingleTask):
 
     Attributes
     ----------
-    lightcone : bool
-        Generate the field on the lightcone or not. If not, all slices will be at a
-        fixed epoch specified by the `redshift` attribute.
-    redshift : float
-        The redshift of the field (if not on the `lightcone`).
+    lightcone : bool, optional
+        Whether to generate the field on the lightcone, by re-scaling each
+        map by the linear growth factor. If not, all slices will be at a
+        fixed epoch specified by the `redshift` attribute. Default: True.
+    redshift : float, optional
+        The redshift of the field (if not on the `lightcone`). Default: None.
+    lognormal : bool, optional
+        Whether to apply a lognormal transform to the field. Default: False.
     """
 
     lightcone = config.Property(proptype=bool, default=True)
     redshift = config.Property(proptype=float, default=None)
-
     lognormal = config.Property(proptype=bool, default=False)
 
     def _bias_1(self, z: FloatArrayLike) -> FloatArrayLike:
@@ -422,29 +567,31 @@ class GenerateBiasedFieldBase(task.SingleTask):
         )
         biased_field.delta[:] = 0.0
 
+        # The input field has previously been scaled to z=0, so to re-scale to
+        # another redshift, we need to multiply by D(z) / D(z=0)
         z = f.redshift if self.lightcone else self.redshift * np.ones_like(f.chi)
         D = f.cosmology.growth_factor(z) / f.cosmology.growth_factor(0)
+
+        f.redistribute("chi")
+        fd = f.delta[:].local_array
 
         # Apply any first order bias
         try:
             b1 = self._bias_1(z)
 
             # Local offset and shape along chi axis
-            loff = f.delta.local_offset[0]
-            lshape = f.delta.local_shape[0]
+            lsel = f.delta[:].local_bounds
 
-            biased_field.delta[:] += (D * b1)[
-                loff : loff + lshape, np.newaxis
-            ] * f.delta[:]
+            biased_field.delta[:].local_array[:] += (D * b1)[lsel, np.newaxis] * fd
         except NotImplementedError:
             self.log.info("First order bias is not implemented. This is a bit odd.")
 
         # Apply any second order bias
         try:
             b2 = self._bias_2(z)
-            d2m = (f.delta[:] ** 2).mean(axis=1)[:, np.newaxis]
-            biased_field.delta[:] += (D**2 * b2)[:, np.newaxis] * (
-                f.delta[:] ** 2 - d2m
+            d2m = (fd**2).mean(axis=1)[:, np.newaxis]
+            biased_field.delta[:].local_array[:] += (D**2 * b2)[:, np.newaxis] * (
+                fd**2 - d2m
             )
         except NotImplementedError:
             self.log.debug("No second order bias to apply.")
@@ -508,7 +655,7 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
 
     z_eff = config.Property(proptype=float, default=None)
     bias_coeff = config.list_type(type_=float, default=None)
-    model = config.enum(lssmodels.bias.models, default=None)
+    model = config.enum(lssmodels.bias.models(), default=None)
     alpha_b = config.Property(proptype=float, default=1.0)
 
     def setup(self):
@@ -548,7 +695,7 @@ class DynamicsBase(task.SingleTask):
     Attributes
     ----------
     redshift_space : bool, optional
-        Generate the final field in redshift space or not.
+        Generate the final field in redshift space or not. Default: True.
     """
 
     redshift_space = config.Property(proptype=bool, default=True)
@@ -648,12 +795,25 @@ class ZeldovichDynamics(DynamicsBase):
             The field Eulerian space with Zel'dovich dynamics applied. This can be in
             redshift space or real space depending on the value of `redshift_space`.
         """
+        initial_field.redistribute("chi")
+        biased_field.redistribute("chi")
+
+        lsel = initial_field.phi[:].local_bounds
+
         self._validate_fields(initial_field, biased_field)
         c, nside, _, chi, za = self._get_props(biased_field)
 
         # Take the gradient of the Lagrangian potential to get the
-        # displacements
-        vpsi = lssutil.gradient(initial_field.phi[:], chi)
+        # displacements. Need the full array on each rank because
+        # we want the gradient along both axes. This is a bit of an
+        # awkward way to do this, but we have to do it this way to
+        # avoid ballooning the memory
+        vpsi = lssutil.gradient(
+            initial_field.phi[:].local_array, chi[lsel], grad0=False
+        )
+        initial_field.redistribute("pixel")
+        vpsi[0] = np.gradient(initial_field.phi[:].local_array, chi, axis=0)
+        initial_field.redistribute("chi")
 
         # Apply growth factor:
         D = c.growth_factor(za) / c.growth_factor(0)
@@ -678,19 +838,26 @@ class ZeldovichDynamics(DynamicsBase):
 
         # Calculate the Zel'dovich displaced field and assign directly into the output
         # container
-        delta_m = (initial_field.delta[:] * D[:, np.newaxis]).view(np.ndarray)
-        delta_bias = biased_field.delta[:].view(np.ndarray)
+        delta_m = initial_field.delta[:].local_array * D[lsel, np.newaxis]
+        delta_bias = biased_field.delta[:].local_array
+        fdelta = final_field.delta[:].local_array
 
         if self.sph:
+            # Calculate sigma_chi for the full chi range, rather than
+            # just the local selection
+            sigma_chi = np.mean(abs(np.diff(chi))) / 2
+
             za_density_sph(
-                vpsi,
+                vpsi[:, lsel],
                 delta_bias,
                 delta_m,
-                chi,
-                final_field.delta[:],
+                chi[lsel],
+                fdelta,
+                sigma_chi=sigma_chi,
             )
         else:
-            za_density_grid(vpsi, delta_bias, delta_m, chi, final_field.delta[:])
+            za_density_grid(vpsi[:, lsel], delta_bias, delta_m, chi[lsel], fdelta)
+
         return final_field
 
 
@@ -720,30 +887,38 @@ class LinearDynamics(DynamicsBase):
         self._validate_fields(initial_field, biased_field)
         c, _, __, chi, za = self._get_props(biased_field)
 
+        # Distribute over the pixel axis for derivatives
+        initial_field.redistribute("pixel")
+        biased_field.redistribute("pixel")
+
         # Create the final field container
         final_field = BiasedLSS(axes_from=biased_field, attrs_from=biased_field)
+        final_field.redistribute("pixel")
 
-        # Get growth factor:
+        fdelta = final_field.delta[:].local_array
+        idelta = initial_field.delta[:].local_array
+        iphi = initial_field.phi[:].local_array
+
+        # The input fields have previously been scaled to z=0, so to re-scale to
+        # another redshift, we need to multiply by D(z) / D(z=0)
         D = c.growth_factor(za) / c.growth_factor(0)
 
         # Copy over biased field
-        final_field.delta[:] = biased_field.delta[:]
+        fdelta[:] = biased_field.delta[:].local_array
 
-        # Add in standard linear term
-        loff = final_field.delta.local_offset[0]
-        lshape = final_field.delta.local_shape[0]
-        final_field.delta[:] += (
-            D[loff : loff + lshape, np.newaxis] * initial_field.delta[:]
-        )
+        # Input biased field will have been multiplied by Lagrangian bias, which
+        # is equal to Eulerian bias minus one, so we add the growth-factor-scaled
+        # "initial" delta to obtain the Eulerian-bias-scaled field
+        fdelta[:] += D[:, np.newaxis] * idelta
 
         if self.redshift_space:
             fr = c.growth_rate(za)
-            vterm = lssutil.diff2(
-                initial_field.phi[:], chi[loff : loff + lshape], axis=0
-            )
-            vterm *= -(D * fr)[loff : loff + lshape, np.newaxis]
+            vterm = lssutil.diff2(iphi, chi[:], axis=0)
+            vterm *= -(D * fr)[:, np.newaxis]
 
-            final_field.delta[:] += vterm
+            fdelta[:] += vterm
+
+        final_field.redistribute("chi")
 
         return final_field
 
@@ -769,7 +944,7 @@ class BiasedLSSToMap(task.SingleTask):
     use_mean_21cmT = config.Property(proptype=int, default=False)
     map_prefactor = config.Property(proptype=float, default=1.0)
     lognormal = config.Property(proptype=bool, default=False)
-    omega_HI_model = config.enum(lssmodels.omega_HI.models, default="Crighton2015")
+    omega_HI_model = config.enum(lssmodels.omega_HI.models(), default="Crighton2015")
 
     def process(self, biased_lss: BiasedLSS) -> Map:
         """Generate a realisation of the LSS initial conditions.
@@ -805,7 +980,7 @@ class BiasedLSSToMap(task.SingleTask):
 
         # Multiply map by specific prefactor, if desired
         if self.map_prefactor != 1:
-            self.log.info("Multiplying map by %g" % self.map_prefactor)
+            self.log.info(f"Multiplying map by {self.map_prefactor}")
             m.map[:] *= self.map_prefactor
 
         # If desired, multiply by Tb(z)
@@ -815,9 +990,7 @@ class BiasedLSSToMap(task.SingleTask):
             omHI = lssmodels.omega_HI.evaluate(z, model=self.omega_HI_model)
             T_b = lssmodels.mean_21cm_temperature(biased_lss.cosmology, z, omHI)
 
-            loff = m.map.local_offset[0]
-            lshape = m.map.local_shape[0]
-            m.map[:, 0] *= T_b[loff : loff + lshape, np.newaxis]
+            m.map[:].local_array[:, 0] *= T_b[m.map[:].local_bounds, np.newaxis]
 
         return m
 
@@ -947,17 +1120,26 @@ class FingersOfGod(task.SingleTask):
         `None` default, a `model` must be set.
     z_eff : float
         The effective redshift of the polynomial expansion.
+    apply_growth_factor : bool
+        If True, linear growth factor at each redshift is divided out of the field
+        prior to applying the FoG kernel, and then reapplied afterwards. This should
+        be done for a cosmological density field, but not for a shot-noise field.
+        Default: True.
     """
-    model = config.enum(lssmodels.sigma_P.models, default=None)
+
+    model = config.enum(lssmodels.sigma_P.models(), default=None)
 
     alpha_FoG = config.Property(proptype=float, default=1.0)
 
     FoG_coeff = config.list_type(type_=float, default=None)
     z_eff = config.Property(proptype=float, default=None)
 
-    def setup(self):
-        """Verify the config parameters."""
+    apply_growth_factor = config.Property(proptype=bool, default=True)
 
+    def setup(self, cosmo_cont: Optional[CosmologyContainer] = None):
+        """Verify the config parameters and initialize cosmology."""
+
+        # Initialize fiducial FoG model
         if self.z_eff is not None and self.FoG_coeff is not None:
 
             def s(z):
@@ -974,34 +1156,66 @@ class FingersOfGod(task.SingleTask):
                 "Either `model` must be set, or `z_eff` and `FoG_coeff`"
             )
 
-    def process(self, field: BiasedLSS) -> BiasedLSS:
+        # Get cosmology object
+        if cosmo_cont is not None:
+            self.cosmo = cosmo_cont.cosmology
+        else:
+            self.cosmo = get_cosmo()
+
+    def process(self, field: BiasedLSS | Map) -> BiasedLSS | Map:
         """Apply the FoG effect.
 
         Parameters
         ----------
         field
-            The input field.
+            The input field/map.
 
         Returns
         -------
         smoothed_field
-            The field with the smoothing applied.
+            The field/map with the smoothing applied.
         """
 
         # Just return the input if FoGs are effectively turned off
         if self.alpha_FoG == 0.0:
             return field
 
+        # Get redshift and chi arrays
+        if isinstance(field, BiasedLSS):
+            redshift = field.redshift
+            chi = field.chi
+        else:
+            redshift = units.nu21 / field.freq - 1.0
+            chi = self.cosmo.comoving_distance(redshift)
+
         # Get the growth factor and smoothing scales
-        D = field.cosmology.growth_factor(field.redshift)
-        sigmaP = self._sigma_P(field.redshift)
+        if self.apply_growth_factor:
+            D = field.cosmology.growth_factor(redshift)
+        else:
+            D = np.full(redshift.shape, 1.0)
+        sigmaP = self._sigma_P(redshift)
 
-        K = lssutil.exponential_FoG_kernel(field.chi, self.alpha_FoG * sigmaP, D)
+        K = lssutil.exponential_FoG_kernel(chi, self.alpha_FoG * sigmaP, D)
 
-        smoothed_field = BiasedLSS(axes_from=field, attrs_from=field)
+        smoothed_field = field.__class__(axes_from=field, attrs_from=field)
+        # Distribute over pixels to apply the smoothing kernel
+        smoothed_field.redistribute("pixel")
+        field.redistribute("pixel")
 
-        # Apply the smoothing kernel and directly assign into output field
-        np.matmul(K, field.delta[:], out=smoothed_field.delta[:])
+        # Apply the smoothing kernel and distribute back to the chi/freq axis
+        if isinstance(field, BiasedLSS):
+            np.matmul(
+                K, field.delta[:].local_array, out=smoothed_field.delta[:].local_array
+            )
+            smoothed_field.redistribute("chi")
+        else:
+            n_freq = len(field.freq)
+            np.matmul(
+                K,
+                field.map[:].local_array.reshape(n_freq, -1),
+                out=smoothed_field.map[:].local_array.reshape(n_freq, -1),
+            )
+            smoothed_field.redistribute("freq")
 
         return smoothed_field
 
@@ -1029,7 +1243,7 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
 
     n_eff = config.Property(proptype=float, default=None)
     log_M_HI_g = config.Property(proptype=float, default=None)
-    omega_HI_model = config.enum(lssmodels.omega_HI.models, default="Crighton2015")
+    omega_HI_model = config.enum(lssmodels.omega_HI.models(), default="Crighton2015")
 
     def setup(self, lss: InitialLSS):
         """Set up a common seed from the LSS field.
@@ -1042,7 +1256,7 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         import zlib
 
         # Get a subset of the data in bytes
-        lss_subset = lss.delta[:, :100].copy().tobytes()
+        lss_subset = lss.delta[:].local_array[:, :100].copy().tobytes()
 
         # If the seed was not set, hash the input LSS and use that
         if self.seed is None:
@@ -1070,19 +1284,20 @@ class AddCorrelatedShotNoise(RandomTask, task.SingleTask):
         output_field
             The field with shot noise. This is the same object as `input_field`.
         """
+        input_field.redistribute("chi")
+
         pixarea = healpy.nside2pixarea(input_field.nside)
 
-        volume = (
-            pixarea
-            * input_field.chi[:] ** 2
-            * lssutil.calculate_width(input_field.chi[:])
-        )
+        chi_local_bounds = input_field.delta[:].local_bounds
+        ichi = input_field.chi[chi_local_bounds]
 
-        std = (volume * self._n_eff_z) ** -0.5
+        volume = pixarea * (ichi**2) * lssutil.calculate_width(ichi)
+
+        std = (volume * self._n_eff_z[chi_local_bounds]) ** -0.5
         shot_noise = self.rng.normal(
-            scale=std[:, np.newaxis], size=input_field.delta.shape
+            scale=std[:, np.newaxis], size=input_field.delta[:].local_shape
         )
-        input_field.delta[:] += shot_noise
+        input_field.delta[:].local_array[:] += shot_noise
 
         return input_field
 
@@ -1093,6 +1308,7 @@ def za_density_sph(
     delta_m: np.ndarray,
     chi: np.ndarray,
     out: np.ndarray,
+    sigma_chi: float = None,
 ):
     """Calculate the density field under the Zel'dovich approximations.
 
@@ -1113,6 +1329,8 @@ def za_density_sph(
         The comoving distance of each slice.
     out
         The array to save the output into.
+    sigma_chi
+        Smoothing scale at mean density
     """
     nchi, npix = delta_bias.shape
     nside = healpy.npix2nside(npix)
@@ -1124,7 +1342,8 @@ def za_density_sph(
     lssutil.assert_shape(out, (nchi, npix), "out")
 
     # Set the nominal smoothing scales at mean density
-    sigma_chi = np.mean(np.abs(np.diff(chi))) / 2
+    if sigma_chi is None:
+        sigma_chi = np.mean(np.abs(np.diff(chi))) / 2
     sigma_ang = healpy.nside2resol(nside) / 2
 
     angpos = np.array(healpy.pix2ang(nside, np.arange(npix)))
@@ -1199,3 +1418,173 @@ def za_density_sph(
     out[:] -= 1.0
 
     return out
+
+
+class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
+    """Generate a full-frequency sky map of a flat-spectrum noise-like signal.
+
+    The user can either specify the per-voxel variance or the desired value
+    of the 3d power spectrum of the map. In the latter case, voxels are populated
+    with zero-mean Gaussian noise with variance P_SN / V_voxel ** 0.5. The user
+    can also specify whether V_voxel should be calculated per frequency channel
+    or be evaluated at the middle channel of the band. If one expects a 3d power
+    spectrum to be measured from the map in the constant-redshift approximation,
+    it's more accurate to use a constant V_voxel when generating the map.
+
+    Although `seed` is not listed below, it can be specified by the user, since
+    this task inherits from `draco.util.random.RandomTask`.
+
+    Attributes
+    ----------
+    nside : int
+        The nside of the Healpix map.
+    frequencies : np.ndarray
+        The frequencies to evaulate at.
+    full_pol : bool
+        If True, maps for all 4 Stokes parameters are stored in the output
+        container (regardless of whether some of them are zero). The `pol`
+        attribute chooses which Stokes parameters to actually generate
+        noise for. If False, only a Stokes I map is stored (i.e. the
+        polarization axis of the output map has length 1). Default: True.
+    pol : list of str
+        List of Stokes parameters to generate noise maps for.
+        Must be a subset of ["I", "Q", "U", "V"]. If maps other than I are
+        desired, `full_pol` must be True. Default: ["I"].
+    variance : float
+        Per-voxel variance of the signal, in Kelvin^2. Only one of `variance`
+        and `P_SN` can be specified (an exception will be raised if both or
+        neither are specified). Default: None.
+    P_SN : float
+        Desired value of constant-redshift 3d power spectrum of map.
+        Default: None.
+    use_freq_dependent_voxel_volume : bool
+        Whether to use/store frequency-dependent voxel volume. If False,
+        the voxel volume at the central channel of the input frequency
+        range is used/stored. Default: False.
+    num_sims : int
+        Number of realizations to generate.
+    """
+
+    nside = config.Property(proptype=int, default=512)
+    frequencies = config.Property(proptype=lssutil.linspace, default=None)
+    full_pol = config.Property(proptype=bool, default=True)
+    pol = config.Property(proptype=list, default=["I"])
+    variance = config.Property(proptype=float, default=None)
+    P_SN = config.Property(proptype=float, default=None)
+    use_freq_dependent_voxel_volume = config.Property(proptype=bool, default=False)
+    num_sims = config.Property(proptype=int, default=1)
+
+    def setup(self):
+        """Set up task."""
+        if ((self.variance is None) and (self.P_SN is None)) or (
+            (self.variance is not None) and (self.P_SN is not None)
+        ):
+            raise ValueError("Only one of variance or P_SN can be specified.")
+
+        if not self.full_pol and self.pol != ["I"]:
+            raise RuntimeError(
+                "Must have full_pol=True if nonzero non-I maps are desired."
+            )
+
+    def process(self) -> Map:
+        """Generate a flat-spectrum noise-like sky map with given power.
+
+        Returns
+        -------
+        out_map
+            Output Map container.
+        """
+
+        # Form frequency map in appropriate format to feed into Map container
+        freq = self.frequencies
+        nfreq = len(freq)
+        redshift = units.nu21 / freq - 1
+        freqmap = np.zeros(nfreq, dtype=[("centre", np.float64), ("width", np.float64)])
+        freqmap["centre"][:] = freq[:]
+        freqmap["width"][:] = np.abs(np.diff(freq[:])[0])
+
+        # Find index of central channel
+        ref_chan = int(nfreq / 2.0)
+
+        # Compute voxel volume
+        omega = healpy.nside2pixarea(self.nside)  # Pixel area in sr
+        if self.use_freq_dependent_voxel_volume:
+            dV = differential_comoving_volume(redshift)
+            dz = lssutil.calculate_width(redshift)
+        else:
+            dV = differential_comoving_volume(redshift[ref_chan])
+            dz = redshift[ref_chan + 1] - redshift[ref_chan]
+        voxvol = dV * dz * omega
+
+        # Make new map container and distribute in pixel, to make it easier to
+        # fill map with freq- and pol-dependent values
+        m = Map(freq=freqmap, polarisation=self.full_pol, nside=self.nside)
+        m.redistribute("pixel")
+
+        # Set standard deviation of map values
+        if self.variance is not None:
+            scale = self.variance**0.5
+        else:
+            scale = self.P_SN**0.5
+            if self.use_freq_dependent_voxel_volume:
+                scale /= voxvol[:, np.newaxis] ** 0.5
+            else:
+                scale /= voxvol**0.5
+
+        # Find indices of desired polarizations
+        pol_axis = list(m.index_map["pol"])
+        ipol = [pol_axis.index(p) for p in self.pol]
+
+        # Fill local section of map with random values
+        m.map[:].local_array[:, ipol, :] = self.rng.normal(
+            scale=scale, size=(nfreq, len(ipol), m.map[:].local_shape[-1])
+        )
+
+        # Save voxel volume(s) as attribute
+        m.attrs["voxvol_ref"] = voxvol
+        m.attrs["central_redshift"] = redshift[ref_chan]
+
+        # Distribute in frequency, because other tasks often expect this
+        m.redistribute("freq")
+
+        if self._count == self.num_sims:
+            raise pipeline.PipelineStopIteration
+
+        return m
+
+
+def differential_comoving_volume(z, cosmo=None):
+    """Differential comoving volume at redshift z.
+
+    Useful for calculating the effective comoving volume.
+    For example, allows for integration over a comoving volume that has a
+    sensitivity function that changes with redshift. The total comoving
+    volume is given by integrating ``differential_comoving_volume`` to
+    redshift ``z`` and multiplying by a solid angle.
+
+    This is taken from:
+    https://docs.astropy.org/en/stable/_modules/astropy/cosmology/flrw/base.html#FLRW.differential_comoving_volume
+
+    Parameters
+    ----------
+    z : float
+     redshift
+    cosmo: Cosmology object
+        Default is cora.util.Cosmology() default.
+
+    Returns
+    -------
+    dV : float
+      Differential comoving volume per redshift per steradian at each
+      input redshift. unit (Mpc/h)^3
+    """
+
+    if cosmo is None:
+        cosmo = get_cosmo()
+
+    # H(z) in unit [(km . h) / (Mpc . sec)]
+    H_z = cosmo.H(z) * (cosmo._unit_distance / 1000.0)
+    # Comoving distance in unit Mpc/h
+    dm = cosmo.comoving_distance(z)
+
+    return dm**2 * (units.c / 1e3) / H_z

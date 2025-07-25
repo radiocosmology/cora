@@ -34,6 +34,7 @@ class LofarGDSE(maps.Map3d):
     and integrates over the third axis, to produce a 3d
     angle-angle-frequency map.
     """
+
     nu_0 = 325.0
 
     correlated = False

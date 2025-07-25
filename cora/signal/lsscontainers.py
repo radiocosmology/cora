@@ -1,14 +1,20 @@
-from typing import Optional, Union, Callable
+from typing import Optional, Callable
 
 import numpy as np
+from scipy.interpolate import CubicSpline
 
 from caput import memh5
 from cora.util.cosmology import Cosmology
 from cora.util import units, cubicspline as cs
 
 from draco.core import containers
+from draco.core.containers import CosmologyContainer
 
 from ..util.nputil import FloatArrayLike
+
+
+# Types of interpolation that can be used
+_INTERP_TYPES = ["linear", "log", "sinh", "linear_scipy", "sinh_scipy"]
 
 
 class InterpolatedFunction(memh5.BasicCont):
@@ -28,58 +34,118 @@ class InterpolatedFunction(memh5.BasicCont):
         # Create the function cache dict
         self._function_cache = {}
 
-    def get_function(self, name: str) -> Callable[[FloatArrayLike], FloatArrayLike]:
+    def get_function(
+        self,
+        name: str,
+        interp_type: str = None,
+    ) -> Callable[[FloatArrayLike], FloatArrayLike]:
         """Get the named function.
 
         Parameters
         ----------
         name
             The name of the function to return.
+        interp_type
+            Type of interpolation. If supplied, override value stored in container.
+            Default: None.
 
         Returns
         -------
         function
         """
 
-        # Return immediately from cache if available
-        if name not in self._function_cache:
+        # If name is in function cache, generate and store interpolator if not
+        # already in cache
+        if name in self._function_cache:
 
-            # Check if the underlying data is actually present
+            if interp_type is None:
+                interp_type = self[name].attrs["type"]
+
+            if interp_type not in self._function_cache[name]:
+                self._function_cache[name][interp_type] = self._make_interpolator(
+                    name, interp_type
+                )
+
+        # If name is not in cache, check that name is valid, then generate and
+        # store interpolator
+        else:
+
             if name not in self:
                 raise ValueError(f"Function {name} unknown.")
 
-            dset = self[name]
+            self._function_cache[name] = {}
 
-            if len(dset.attrs["axis"]) != 1:
-                raise RuntimeError("Can only return a single value.")
+            if interp_type is None:
+                interp_type = self[name].attrs["type"]
 
-            # Get the abscissa
-            axis = dset.attrs["axis"][0]
-            x = self.index_map[axis]
+            self._function_cache[name][interp_type] = self._make_interpolator(
+                name, interp_type
+            )
 
-            # Get the ordinate
-            f = dset[:]
+        return self._function_cache[name][interp_type]
 
-            interpolation_type = dset.attrs["type"]
+    def _make_interpolator(
+        self, name: str, interp_type: str
+    ) -> Callable[[FloatArrayLike], FloatArrayLike]:
 
-            data = np.dstack([x, f])[0]
+        dset = self[name]
 
-            if interpolation_type == "linear":
-                self._function_cache[name] = cs.Interpolater(data)
-            elif interpolation_type == "log":
-                self._function_cache[name] = cs.LogInterpolater(data)
-            elif interpolation_type == "sinh":
+        if len(dset.attrs["axis"]) != 1:
+            raise RuntimeError("Can only return a single value.")
 
-                x_t = dset.attrs["x_t"]
-                f_t = dset.attrs["f_t"]
+        # Get the abscissa
+        axis = dset.attrs["axis"][0]
+        x = self.index_map[axis]
 
-                self._function_cache[name] = cs.SinhInterpolater(data, x_t, f_t)
-            else:  # Unrecognized interpolation type
-                raise RuntimeError(
-                    f"Unrecognized interpolation type {interpolation_type}"
-                )
+        # Get the ordinate
+        f = dset[:]
 
-        return self._function_cache[name]
+        data = np.dstack([x, f])[0]
+
+        if interp_type == "linear":
+            # Cubic spline in linear-linear space
+            func = cs.Interpolater(data)
+
+        elif interp_type == "log":
+            # Cubic spline in log-log space
+            func = cs.LogInterpolater(data)
+
+        elif interp_type == "sinh":
+            # Cubic spline in sinh-transformed space (effectively log-space
+            # for values greater than the threshold and linear-space for values
+            # less than the threshold)
+            x_t = dset.attrs["x_t"]
+            f_t = dset.attrs["f_t"]
+
+            func = cs.SinhInterpolater(data, x_t, f_t)
+
+        elif interp_type == "linear_scipy":
+            # Scipy cubic spline in linear-linear space.
+            # Use natural boundary conditions to match the behavior
+            # of cs.Interpolater
+            func = CubicSpline(data[:, 0], data[:, 1], bc_type="natural")
+
+        elif interp_type == "sinh_scipy":
+            # Scipy cubic spline in sinh-transformed space
+            x_t = dset.attrs["x_t"]
+            f_t = dset.attrs["f_t"]
+
+            _spline = CubicSpline(
+                np.arcsinh(data[:, 0] / x_t),
+                np.arcsinh(data[:, 1] / f_t),
+                bc_type="natural",
+            )
+
+            def _func(x):
+                return f_t * np.sinh(_spline(np.arcsinh(x / x_t)))
+
+            func = _func
+
+        else:
+            # Unrecognized interpolation type
+            raise RuntimeError(f"Unrecognized interpolation type: {interp_type}")
+
+        return func
 
     def add_function(
         self, name: str, x: np.ndarray, f: np.ndarray, type: str = "linear", **kwargs
@@ -96,10 +162,10 @@ class InterpolatedFunction(memh5.BasicCont):
         f
             The ordinate.
         type
-            The type of the interpolation. Valid options are "linear", "log" or
-            "sinh".If the latter kwargs accepts additional keys for the `x_t` and
-            `f_t` parameters. See `sinh_interpolate` for details. By default
-            use "linear" interpolation.
+            The type of the interpolation. Valid options: "linear", "log", "sinh",
+            "linear_scipy", "sinh_scipy". If sinh-type interpolation, kwargs accepts
+            additional keys for the `x_t` and `f_t` parameters.
+            See `cubicspline.pyx` for details. Default: "linear".
         """
 
         if name in self:
@@ -115,58 +181,6 @@ class InterpolatedFunction(memh5.BasicCont):
         # Copy over any kwargs containing extra info for the interpolation
         for key, val in kwargs.items():
             dset.attrs[key] = val
-
-
-class CosmologyContainer(containers.ContainerBase):
-    """A baseclass for a container that is referenced to a background Cosmology.
-
-    Parameters
-    ----------
-    cosmology
-        An explicit cosmology instance or dict representation. If not set, the cosmology
-        *must* get set via `attrs_from`.
-    """
-
-    def __init__(self, cosmology: Union[Cosmology, dict, None] = None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        cosmo_dict = self._resolve_args(cosmology, **kwargs)
-        self.attrs["cosmology"] = cosmo_dict
-
-    @staticmethod
-    def _resolve_args(
-        cosmology: Union[Cosmology, dict, None] = None,
-        attrs_from: Optional[containers.ContainerBase] = None,
-        **kwargs,
-    ):
-        """Try and extract a Cosmology dict representation from the parameters.
-
-        Useful as subclasses sometimes need access *before* the full class is setup.
-        """
-        # Insert the Cosmological parameters
-        if cosmology is None:
-            if attrs_from is not None and "cosmology" in attrs_from.attrs:
-                cosmology = attrs_from.attrs["cosmology"]
-            else:
-                raise ValueError("A cosmology must be supplied.")
-        elif not isinstance(cosmology, (Cosmology, dict)):
-            raise TypeError("cosmology argument must be a Cosmology instance.")
-
-        if isinstance(cosmology, Cosmology):
-            cosmology = cosmology.to_dict()
-
-        return cosmology
-
-    _cosmology_instance = None
-
-    @property
-    def cosmology(self):
-        """The background cosmology."""
-
-        if self._cosmology_instance is None:
-            self._cosmology_instance = Cosmology(**self.attrs["cosmology"])
-
-        return self._cosmology_instance
 
 
 class FZXContainer(CosmologyContainer):
@@ -351,6 +365,66 @@ class CorrelationFunction(CosmologyContainer, InterpolatedFunction):
         # where ContainerBase does not correctly call its superconstructor we need to do
         # this explicitly
         self._finish_setup()
+
+
+class MultiFrequencyAngularPowerSpectrum(FZXContainer):
+    """Container for holding C_ell(chi,chi')."""
+
+    _axes = ("ell",)
+
+    def __init__(
+        self,
+        lmax: float,
+        *args,
+        **kwargs,
+    ):
+        # Set ell axis to span from ell=0 to lmax
+        kwargs["ell"] = lmax + 1
+        super().__init__(*args, **kwargs)
+
+    _dataset_spec = {
+        "Cl_phi_phi": {
+            "axes": ["ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+        "Cl_phi_delta": {
+            "axes": ["ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+        "Cl_delta_delta": {
+            "axes": ["ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+    }
+
+    @property
+    def Cl_phi_phi(self):
+        """Phi-phi angular power spectrum."""
+        return self.datasets["Cl_phi_phi"]
+
+    @property
+    def Cl_phi_delta(self):
+        """Phi-delta angular power spectrum."""
+        return self.datasets["Cl_phi_delta"]
+
+    @property
+    def Cl_delta_delta(self):
+        """Delta-delta angular power spectrum."""
+        return self.datasets["Cl_delta_delta"]
+
+    @property
+    def ell(self):
+        """Ell values for stored angular power spectra."""
+        return self.index_map["ell"]
 
 
 class InitialLSS(FZXContainer, containers.HealpixContainer):

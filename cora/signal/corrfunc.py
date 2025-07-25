@@ -5,6 +5,8 @@ import scipy.integrate as si
 import scipy.special as ss
 from scipy.fftpack import dct
 
+from caput import mpiarray
+
 import hankl
 import hankel
 import pyfftlog
@@ -294,6 +296,7 @@ def corr_to_clarray(
     xromb: int = 3,
     xwidth: Optional[float] = None,
     q: int = 2,
+    chunksize: int = 50,
 ):
     """Calculate an array of :math:`C_l(\chi_1, \chi_2)`.
 
@@ -317,6 +320,9 @@ def corr_to_clarray(
         calculate from the separation of the first two bins.
     q
         Integration accuracy parameter for the Legendre transform
+    chunksize
+        Chunk size for evaluating discrete samples of angular integrand in batches.
+        Default: 50.
 
     Returns
     -------
@@ -329,9 +335,6 @@ def corr_to_clarray(
     M = q * lmax
     mu, w, wsum = ss.roots_legendre(M, mu=True)
 
-    xlen = xarray.size
-    corr_array = np.zeros((M, xlen, xlen))
-
     # If xromb > 0 we need to integrate over the radial bin width, start by modifying
     # the array of distances to add extra points over which we'll integrate
     #
@@ -343,28 +346,36 @@ def corr_to_clarray(
     # *output* maps as it the transform from theta -> l seems to wash it out
     if xromb > 0:
         # Calculate the half bin width
-        # TODO: make this more accurate for non-uniform bin spacings
-        xsort = np.sort(xarray)
-        xhalf = np.abs(xsort[1] - xsort[0]) / 2.0 if xwidth is None else xwidth / 2.0
+        if xwidth is None:
+            xhalf = np.ndarray(shape=xarray.shape)
+            # width for first and second bin are same
+            xhalf[0] = np.abs(xarray[1] - xarray[0]) / 2.0
+            xhalf[1:] = np.abs(xarray[1:] - xarray[:-1]) / 2.0
+        else:
+            # for continuity with previous convention of allowing to choose xwidth
+            xhalf = np.ones(shape=xarray.shape) * xwidth / 2.0
+
         xint = 2**xromb + 1
 
         # Get the quadrature points and weights.
         x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
-        x_r *= xhalf
         x_w /= x_wsum
 
         # Calculate the extended z-array with the extra intervals to integrate over
-        xa = (xarray[:, np.newaxis] + x_r[np.newaxis, :]).flatten()
+        xa = (xarray[:, np.newaxis] + xhalf[:, np.newaxis] * x_r).flatten()
 
     else:
         xa = xarray
 
-    # Split the set of theta values to fill into groups of length ~50 and process each,
-    # this is helps reduce memory usage which otherwise we be massively inflated by the
-    # extra points we integrate over
-    for msec in np.array_split(np.arange(M), M // 50):
+    xlen = xarray.size
+    corr_array = mpiarray.zeros((M, xlen, xlen), axis=0)
+    clo = corr_array.local_offset[0]
+    _len = corr_array.local_array.shape[0]
 
-        rc = coord.cosine_rule(mu[msec], xa, xa)
+    # Split thetas into chunks, otherwise memory will blow up
+    for msec in np.array_split(np.arange(_len), _len // chunksize):
+        # Index into the global index in mu
+        rc = coord.cosine_rule(mu[clo + msec], xa, xa)
         corr1 = corr(rc)
 
         # If xromb then we need to integrate over the redshift bins which we do using
@@ -374,15 +385,21 @@ def corr_to_clarray(
             corr1 = np.matmul(corr1, x_w).reshape(-1, xlen, xint, xlen)
             corr1 = np.matmul(corr1.transpose(0, 1, 3, 2), x_w)
 
-        corr_array[msec, :, :] = corr1
+        corr_array.local_array[msec] = corr1
 
+    # Perform the dot product split over ranks for
+    # memory and time
     lm = legendre_array(lmax, mu)
-    lm *= w * 4.0 * np.pi / wsum
+    lm *= w[np.newaxis] * 4.0 * np.pi / wsum
 
-    clxx = np.dot(lm, corr_array.reshape(M, -1))
-    clxx = clxx.reshape(lmax + 1, xlen, xlen)
+    # Reshape and properly distribute the array to
+    # perform the dot product
+    corr_array = corr_array.reshape(None, -1).redistribute(axis=1)
 
-    return clxx
+    clxx = np.dot(lm, corr_array.local_array)
+    clxx = mpiarray.MPIArray.wrap(clxx, axis=1).redistribute(axis=0)
+
+    return clxx.reshape(None, xlen, xlen)
 
 
 def ps_to_aps_flat(

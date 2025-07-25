@@ -4,6 +4,7 @@ Cosmology routines: A module for various cosmological calculations.
 The bulk of the work is within the class :py:class:`Cosmology` which stores a
 cosmology and can calculate quantities like distance measures.
 """
+
 from dataclasses import dataclass, asdict
 
 import numpy as np
@@ -457,9 +458,7 @@ def ps_nowiggle(kh, z=0.0, c=None):
 
     omh2 = c.omega_m * h**2
     rb = c.omega_b / c.omega_m
-    alpha = (
-        1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb**2
-    )
+    alpha = 1.0 - 0.328 * np.log(431.0 * omh2) * rb + 0.38 * np.log(22.3 * omh2) * rb**2
 
     s = sound_horizon(c)
 

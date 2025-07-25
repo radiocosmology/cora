@@ -1,4 +1,5 @@
 """Implementations of models for cosmological quantities."""
+
 from typing import Callable, Optional, Union, List
 
 import numpy as np
@@ -93,7 +94,6 @@ class PolyModelSet:
         return np.sum([c * (x - x0) ** p for p, c in pc_iter], axis=0)
 
     @classmethod
-    @property
     def models(cls) -> List[str]:
         """The names of the available models."""
         return list(cls._models.keys())

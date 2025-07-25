@@ -4,6 +4,7 @@
 
 # C extensions
 *.so
+*.c
 
 # Packages
 *.egg
@@ -36,3 +37,7 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+#Editor rubble
+*~
+.*.sw*

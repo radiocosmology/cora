@@ -224,7 +224,7 @@ def laplacian(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
     return d2
 
 
-def gradient(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
+def gradient(maps: np.ndarray, x: np.ndarray, grad0: bool = True) -> np.ndarray:
     """Take the gradient of a set of maps.
 
     Parameters
@@ -233,6 +233,10 @@ def gradient(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
         An 2D array of maps. First axis is the x coord, second is Healpix pixels.
     x
         The coordinate along the first axis. This axis need not be uniform.
+    grad0
+        If True, compute the gradient along axis 0. Otherwise, output `grad[0]`
+        will not be computed. This is useful if `maps` is distributed.
+        Default is True.
 
     Returns
     -------
@@ -253,8 +257,9 @@ def gradient(maps: np.ndarray, x: np.ndarray) -> np.ndarray:
         # NOTE: the zeroth component doesn't yet contain dr
         grad[1:, i] = healpy.alm2map_der1(alm, nside)[1:] / x[i]
 
-    # TODO: try and do this in place so as not to balloon the memory
-    grad[0] = np.gradient(maps, x, axis=0)
+    if grad0:
+        # TODO: try and do this in place so as not to balloon the memory
+        grad[0] = np.gradient(maps, x, axis=0)
 
     return grad
 
@@ -334,7 +339,7 @@ def pk_flat(
         lmax = 3 * nside
 
     N = len(chi)
-    dx = chi.ptp() / (N - 1)
+    dx = np.ptp(chi) / (N - 1)
 
     # The effective L is slightly longer than the range because of the channel widths
     L = N * dx
@@ -345,7 +350,7 @@ def pk_flat(
     # transform a complex field
     almn_square = np.array([hputil.sphtrans_complex(m, lmax) for m in cn])
 
-    l = np.arange(lmax + 1)
+    ell = np.arange(lmax + 1)
     n = np.arange(cn.shape[0])
 
     # Sum over m direction
@@ -359,10 +364,10 @@ def pk_flat(
         cln = (almn_square * almn_square2.conj()).sum(axis=-1).real
 
     # Divide by the number of m's at each l to get an average
-    cln /= (2 * l + 1)[np.newaxis, :]
+    cln /= (2 * ell + 1)[np.newaxis, :]
 
     # Get the effective axes in k space
-    kperp = l / chi_mean
+    kperp = ell / chi_mean
     kpar = 2 * np.pi * n / L
 
     cln *= L * chi_mean**2
@@ -573,7 +578,7 @@ def exponential_FoG_kernel(
 
     # The zero-lag bins are a special case because of the reflection about zero
     # Here the weight is slightly less than if we evaluated exactly at zero
-    np.fill_diagonal(K, np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4))
+    np.fill_diagonal(K, np.diagonal(np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4)))
 
     # Normalise each row to ensure conservation of mass
     K /= np.sum(K, axis=1)[:, np.newaxis]

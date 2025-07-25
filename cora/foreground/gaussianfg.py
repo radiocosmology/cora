@@ -10,7 +10,6 @@ References
  .. [1] http://arxiv.org/abs/astro-ph/0408515
 """
 
-
 import numpy as np
 
 from cora.core import maps, gaussianfield
