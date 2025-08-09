@@ -185,8 +185,8 @@ class CalculateCorrelations(task.SingleTask):
 class BlendNonLinearPowerSpectrum(task.SingleTask):
     """Generate a controllable mix between a linear and non-linear power spectrum.
 
-    Blends a linear and non-linear power spectrum by linear interpolating in
-    :math:`\log(P(k))`.
+    Blends a linear and non-linear power spectrum by computing a linear
+    combination of the two spectra.
 
     Attributes
     ----------
@@ -237,7 +237,7 @@ class BlendNonLinearPowerSpectrum(task.SingleTask):
         psnl = ps_nonlinear.datasets["powerspectrum"][:]
 
         ps_linear.datasets["powerspectrum"][:] = (
-            psl ** (1 - self.alpha_NL) * psnl**self.alpha_NL
+            psl * (1 - self.alpha_NL) + psnl * self.alpha_NL
         )
         ps_linear.attrs["tag"] = f"psblend_alphaNL_{self.alpha_NL}"
 
