@@ -930,7 +930,7 @@ class BiasedLSSToMap(task.SingleTask):
     ----------
     use_mean_21cmT : bool
         Multiply map by mean 21cm temperature as a function of z (default: False).
-    use_prefactor : float
+    map_prefactor : float
         Scale by an arbitrary prefactor.
     lognormal : bool
         Use a lognormal transform to guarantee that the density is always positive (i.e.
