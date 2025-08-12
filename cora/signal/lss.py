@@ -1527,7 +1527,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, RandomTask):
         else:
             scale = self.P_SN**0.5
             if self.use_freq_dependent_voxel_volume:
-                scale /= voxvol[:, np.newaxis] ** 0.5
+                scale /= voxvol[:, np.newaxis, np.newaxis] ** 0.5
             else:
                 scale /= voxvol**0.5
 
