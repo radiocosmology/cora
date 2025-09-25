@@ -1185,7 +1185,10 @@ class FingersOfGod(task.SingleTask):
 
         # Get redshift and chi arrays
         if isinstance(field, BiasedLSS):
-            redshift = field.redshift
+            if field.lightcone:
+                redshift = field.redshift
+            else:
+                redshift = field.fixed_redshift * np.ones_like(field.redshift)
             chi = field.chi
         else:
             redshift = units.nu21 / field.freq - 1.0
