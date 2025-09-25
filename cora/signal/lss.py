@@ -947,7 +947,7 @@ class BiasedLSSToMap(task.SingleTask):
     omega_HI_model = config.enum(lssmodels.omega_HI.models(), default="Crighton2015")
 
     def process(self, biased_lss: BiasedLSS) -> Map:
-        """Generate a realisation of the LSS initial conditions.
+        """Convert a BiasedLSS contailer into a Map container.
 
         Parameters
         ----------
