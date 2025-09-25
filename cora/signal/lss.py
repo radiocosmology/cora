@@ -985,8 +985,11 @@ class BiasedLSSToMap(task.SingleTask):
 
         # If desired, multiply by Tb(z)
         if self.use_mean_21cmT:
+            if biased_lss.lightcone:
+                z = biased_lss.redshift
+            else:
+                z = biased_lss.fixed_redshift * np.ones_like(biased_lss.redshift)
 
-            z = biased_lss.redshift
             omHI = lssmodels.omega_HI.evaluate(z, model=self.omega_HI_model)
             T_b = lssmodels.mean_21cm_temperature(biased_lss.cosmology, z, omHI)
 
