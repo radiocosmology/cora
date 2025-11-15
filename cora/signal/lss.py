@@ -1122,6 +1122,11 @@ class FingersOfGod(tasklib.base.ContainerTask):
         prior to applying the FoG kernel, and then reapplied afterwards. This should
         be done for a cosmological density field, but not for a shot-noise field.
         Default: True.
+    use_full_channel_kernel : bool
+        Whether to integrate the continuous FoG kernel over each radial bin for both
+        the "input" and "output" channel (True), or just the "input" channel
+        (False). The former is more correct, but the latter is the default for
+        legacy purposes. Default. False.
     """
 
     model = config.enum(lssmodels.sigma_P.models(), default=None)
@@ -1132,6 +1137,8 @@ class FingersOfGod(tasklib.base.ContainerTask):
     z_eff = config.Property(proptype=float, default=None)
 
     apply_growth_factor = config.Property(proptype=bool, default=True)
+
+    use_full_channel_kernel = config.Property(proptype=bool, default=False)
 
     def setup(self, cosmo_cont: Optional[containers.CosmologyContainer] = None):
         """Verify the config parameters and initialize cosmology."""
@@ -1195,7 +1202,12 @@ class FingersOfGod(tasklib.base.ContainerTask):
             D = np.full(redshift.shape, 1.0)
         sigmaP = self._sigma_P(redshift)
 
-        K = lssutil.exponential_FoG_kernel(chi, self.alpha_FoG * sigmaP, D)
+        K = lssutil.exponential_FoG_kernel(
+            chi,
+            self.alpha_FoG * sigmaP,
+            D,
+            full_channel_kernel=self.use_full_channel_kernel,
+        )
 
         smoothed_field = field.__class__(axes_from=field, attrs_from=field)
         # Distribute over pixels to apply the smoothing kernel
