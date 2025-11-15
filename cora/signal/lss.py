@@ -1139,6 +1139,8 @@ class FingersOfGod(task.SingleTask):
 
     apply_growth_factor = config.Property(proptype=bool, default=True)
 
+    use_full_channel_kernel = config.Property(proptype=bool, default=False)
+
     def setup(self, cosmo_cont: Optional[CosmologyContainer] = None):
         """Verify the config parameters and initialize cosmology."""
 
@@ -1201,7 +1203,12 @@ class FingersOfGod(task.SingleTask):
             D = np.full(redshift.shape, 1.0)
         sigmaP = self._sigma_P(redshift)
 
-        K = lssutil.exponential_FoG_kernel(chi, self.alpha_FoG * sigmaP, D)
+        K = lssutil.exponential_FoG_kernel(
+            chi,
+            self.alpha_FoG * sigmaP,
+            D,
+            full_channel_kernel=self.use_full_channel_kernel,
+        )
 
         smoothed_field = field.__class__(axes_from=field, attrs_from=field)
         # Distribute over pixels to apply the smoothing kernel

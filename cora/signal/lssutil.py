@@ -519,7 +519,10 @@ def calculate_width(centres: np.ndarray) -> np.ndarray:
 
 
 def exponential_FoG_kernel(
-    chi: np.ndarray, sigmaP: FloatArrayLike, D: FloatArrayLike
+    chi: np.ndarray,
+    sigmaP: FloatArrayLike,
+    D: FloatArrayLike,
+    full_channel_kernel: bool = False,
 ) -> np.ndarray:
     r"""Get a smoothing kernel for approximating Fingers of God.
 
@@ -559,11 +562,13 @@ def exponential_FoG_kernel(
 
     # This is the main parameter of the exponential kernel and comes from the FT of the
     # canonically defined Lorentzian
-    a = 2**0.5 / sigmaP
-    ar = a[:, np.newaxis]
+    a_1D = 2**0.5 / sigmaP
+    a_r = a_1D[:, np.newaxis]
 
     # Get bin widths for the radial axis
-    dchi = calculate_width(chi)[np.newaxis, :]
+    dchi_1D = calculate_width(chi)
+    dchi_r = dchi_1D[:, np.newaxis]
+    dchi_rp = dchi_1D[np.newaxis, :]
 
     chi_sep = np.abs(chi[:, np.newaxis] - chi[np.newaxis, :])
 
@@ -571,14 +576,31 @@ def exponential_FoG_kernel(
         return np.sinh(x) / x
 
     # Create a matrix to apply the smoothing with an exponential kernel.
-    # NOTE: because of the finite radial bins we should calculate the average
-    # contribution over the width of each bin. That gives rise to the sinhc terms which
-    # slightly boost the weights of the non-zero bins
-    K = np.exp(-ar * chi_sep) * sinhc(ar * dchi / 2.0)
+    if full_channel_kernel:
+        K = (
+            (2.0 / dchi_rp)
+            * np.exp(-a_r * chi_sep)
+            * np.sinh(a_r * dchi_r / 2.0)
+            * np.sinh(a_r * dchi_rp / 2.0)
+        )
+        np.fill_diagonal(
+            K,
+            a_1D
+            - (2.0 / dchi_1D)
+            * np.exp(-a_1D * dchi_1D / 2.0)
+            * np.sinh(a_1D * dchi_1D / 2.0),
+        )
+    else:
+        # NOTE: because of the finite radial bins we should calculate the average
+        # contribution over the width of each bin. That gives rise to the sinhc terms which
+        # slightly boost the weights of the non-zero bins
+        K = np.exp(-a_r * chi_sep) * sinhc(a_r * dchi_rp / 2.0)
 
-    # The zero-lag bins are a special case because of the reflection about zero
-    # Here the weight is slightly less than if we evaluated exactly at zero
-    np.fill_diagonal(K, np.diagonal(np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4)))
+        # The zero-lag bins are a special case because of the reflection about zero
+        # Here the weight is slightly less than if we evaluated exactly at zero
+        np.fill_diagonal(
+            K, np.diagonal(np.exp(-a_r * dchi_rp / 4) * sinhc(a_r * dchi_rp / 4))
+        )
 
     # Normalise each row to ensure conservation of mass
     K /= np.sum(K, axis=1)[:, np.newaxis]
