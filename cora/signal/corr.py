@@ -4,15 +4,15 @@ import scipy
 import scipy.ndimage
 import scipy.fftpack
 import scipy.special
-import scipy.interpolate
+from scipy import integrate
 import numpy as np
 import math
 
-from caput import units
-from cora.util import fftutil, bilinearmap
-from cora.util import cubicspline as cs
-from cora.util.cosmology import Cosmology
-from cora.core import gaussianfield
+from caput.astro import constants
+from ..util import fftutil, bilinearmap
+from ..util import cubicspline as cs
+from ..util.cosmology import Cosmology
+from ..core import gaussianfield
 
 # ps = cs.LogInterpolater.fromfile( join(dirname(__file__),"data/ps.dat")).value
 
@@ -370,7 +370,6 @@ class RedshiftCorrelation(object):
         return self.redshiftspace_correlation(pi, sigma, z1, z2)
 
     def _load_cache(self, fname):
-
         if not exists(fname):
             raise Exception("Cache file does not exist.")
 
@@ -666,7 +665,9 @@ class RedshiftCorrelation(object):
 
         # Make cube pixelisation finer, such that angular cube will
         # have sufficient resolution on the closest face.
-        d = np.array([c2 - c1, thetax * d2 * units.degree, thetay * d2 * units.degree])
+        d = np.array(
+            [c2 - c1, thetax * d2 * constants.degree, thetay * d2 * constants.degree]
+        )
         # Note that the ratio of deltas in Ra, Dec in degrees may
         # be different than the Ra, Dec in physical coordinates due to
         # rounding onto this grid
@@ -742,8 +743,8 @@ class RedshiftCorrelation(object):
 
         print("Constructing mapping..")
         # Construct the angular offsets into cube
-        tx = np.linspace(-thetax / 2.0, thetax / 2.0, numx) * units.degree
-        ty = np.linspace(-thetay / 2.0, thetay / 2.0, numy) * units.degree
+        tx = np.linspace(-thetax / 2.0, thetax / 2.0, numx) * constants.degree
+        ty = np.linspace(-thetay / 2.0, thetay / 2.0, numy) * constants.degree
 
         # tgridx, tgridy = np.meshgrid(tx, ty)
         tgridy, tgridx = np.meshgrid(ty, tx)
@@ -912,7 +913,6 @@ class RedshiftCorrelation(object):
         nkpar = 32768
 
         if not self._aps_cache:
-
             kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)[
                 :, np.newaxis
             ]
@@ -993,7 +993,6 @@ def _pl(l, x):
 
 @np.vectorize
 def _integrate(r, l, psfunc):
-
     from scipy.integrate import quad
     from ..util import sphfunc
 

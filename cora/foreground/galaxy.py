@@ -41,7 +41,6 @@ class FullSkyPolarisedSynchrotron(gaussianfg.Synchrotron):
 
 
 def map_variance(input_map, nside):
-
     inp_nside = healpy.get_nside(input_map)
 
     # Convert to NESTED and then take advantage of this to group into lower
@@ -105,7 +104,6 @@ class ConstrainedGalaxy(maps.Sky3d):
     _maxphi = 500.0
 
     def __init__(self):
-
         self._load_data()
 
         vm = map_variance(healpy.smoothing(self._haslam, sigma=np.radians(0.5)), 16)
@@ -300,7 +298,6 @@ class ConstrainedGalaxy(maps.Sky3d):
             del w
 
         def ptrans(phi, freq, dfreq):
-
             dx = dfreq / freq
 
             alpha = 2.0 * phi * 3e2**2 / freq**2

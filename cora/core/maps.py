@@ -1,6 +1,6 @@
 import numpy as np
 
-from caput import units
+from caput.astro import constants
 from cora.core import skysim
 
 
@@ -37,7 +37,9 @@ class Map2d(object):
         return c
 
     def _width_array(self):
-        return np.array([self.x_width, self.y_width], dtype=np.float64) * units.degree
+        return (
+            np.array([self.x_width, self.y_width], dtype=np.float64) * constants.degree
+        )
 
     def _num_array(self):
         return np.array([self.x_num, self.y_num], dtype=int)
@@ -130,8 +132,8 @@ class Map3d(Map2d):
         return np.array(
             [
                 self.nu_upper - self.nu_lower,
-                self.x_width * units.degree,
-                self.y_width * units.degree,
+                self.x_width * constants.degree,
+                self.y_width * constants.degree,
             ],
             dtype=np.float64,
         )
@@ -245,7 +247,6 @@ class Sky3d(Map3d):
         return sky_IQU
 
     def getalms(self, lmax):
-
         cla = skysim.clarray(self.angular_powerspectrum, lmax, self.nu_pixels)
 
         return skysim.mkfullsky(cla, self.nside, alms=True)

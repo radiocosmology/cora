@@ -14,7 +14,6 @@ from cora.core import maps, gaussianfield
 
 
 class _LofarGDSE_3D(gaussianfield.RandomField):
-
     delta = -4.0
 
     def powerspectrum(self, karray):

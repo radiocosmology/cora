@@ -1,9 +1,9 @@
 import numpy as np
 import math
 
-from caput import units
-from cora.core import maps
-from cora.util import fftutil
+from caput.astro import constants
+from . import maps
+from ..util import fftutil
 
 
 class RandomField(object):
@@ -27,7 +27,6 @@ class RandomField(object):
     _w = None
 
     def __init__(self, npix=None, wsize=None):
-
         self._n = np.array(npix) if npix != None else npix
         self._w = np.array(wsize) if wsize != None else self._n
 
@@ -185,9 +184,8 @@ class Cmb(RandomFieldA2):
 
 class TestF(RandomFieldA2F):
     def powerspectrum(self, karray):
-
         return np.exp(-0.5 * (karray[..., 0] / (2 * math.pi / 250.0)) ** 2) * np.exp(
             -0.5
             * (karray[..., 1:3] ** 2).sum(axis=3)
-            / (2 * math.pi / (1.0 * units.degree)) ** 2
+            / (2 * math.pi / (1.0 * constants.degree)) ** 2
         )

@@ -12,10 +12,10 @@ import numpy.random as rnd
 import healpy
 from scipy.optimize import newton
 
-from caput import units
-from cora.core import maps
-from cora.foreground import poisson as ps
-from cora.foreground import gaussianfg
+from caput.astro import constants
+from ..core import maps
+from ..foreground import poisson as ps
+from ..foreground import gaussianfg
 
 
 def faraday_rotate(polmap, rm_map, frequencies):
@@ -40,7 +40,7 @@ def faraday_rotate(polmap, rm_map, frequencies):
     for ii, freq in enumerate(frequencies):
         qu_complex = polmap[ii, 1] + 1.0j * polmap[ii, 2]
 
-        wv = 1e-6 * units.c / freq
+        wv = 1e-6 * constants.c / freq
 
         faraday = np.exp(-2.0j * wv * rm_map)
         qu_complex = qu_complex * faraday
@@ -82,7 +82,6 @@ class PointSourceModel(maps.Map3d):
     sigma_pol_frac = 0.03
 
     def __init__(self):
-
         _data_file = join(dirname(__file__), "data", "skydata.npz")
 
         f = np.load(_data_file)
@@ -246,8 +245,8 @@ class PointSourceModel(maps.Map3d):
         sky = (
             sky
             * 1e-26
-            * units.c**2
-            / (2 * units.k_B * self.nu_pixels[:, np.newaxis] ** 2 * 1e12 * pxarea)
+            * constants.c**2
+            / (2 * constants.k_B * self.nu_pixels[:, np.newaxis] ** 2 * 1e12 * pxarea)
         )
         return sky
 
@@ -423,7 +422,6 @@ class RealPointSources(maps.Map3d):
     faraday = True
 
     def __init__(self):
-
         _data_file = join(dirname(__file__), "data", "skydata.npz")
         _catalogue_file = join(dirname(__file__), "data", "combinedps.dat")
 
@@ -434,7 +432,6 @@ class RealPointSources(maps.Map3d):
             self._catalogue = np.genfromtxt(f, names=True)
 
     def _generate_catalogue(self):
-
         flux = self._catalogue["S600"]
 
         mask_max = (
@@ -508,10 +505,10 @@ class RealPointSources(maps.Map3d):
         sky = (
             sky
             * 1e-26
-            * units.c**2
+            * constants.c**2
             / (
                 2
-                * units.k_B
+                * constants.k_B
                 * self.nu_pixels[:, np.newaxis, np.newaxis] ** 2
                 * 1e12
                 * healpy.nside2pixarea(self.nside)
@@ -558,12 +555,10 @@ class CombinedPointSources(maps.Map3d):
         flux_min = 4.0
 
     def getsky(self):
-
         # Return Stokes I part only
         return self.getpolsky()[:, 0]
 
     def getpolsky(self):
-
         # Create all intermediate objects
         obj_unresolved = self._UnresolvedBackground.like_map(self)
         obj_random = self._RandomResolved.like_map(self)

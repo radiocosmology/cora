@@ -1,9 +1,9 @@
 import numpy as np
 
-from caput import units
-from cora.core import maps
-from cora.util import cubicspline as cs
-from cora.signal import corr
+from caput.astro import constants
+from ..core import maps
+from ..util import cubicspline as cs
+from ..signal import corr
 
 
 class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
@@ -22,7 +22,6 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         from os.path import join, dirname
 
         if ps == None:
-
             psfile = join(dirname(__file__), "data/ps_z1.5.dat")
             redshift = 1.5
 
@@ -200,8 +199,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         """
 
         if not redshift:
-            z1 = units.nu21 / nu1 - 1.0
-            z2 = units.nu21 / nu2 - 1.0
+            z1 = constants.nu21 / nu1 - 1.0
+            z2 = constants.nu21 / nu2 - 1.0
         else:
             z1 = nu1
             z2 = nu2
@@ -228,8 +227,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         """
 
         if not redshift:
-            z1 = units.nu21 / nu1 - 1.0
-            z2 = units.nu21 / nu2 - 1.0
+            z1 = constants.nu21 / nu1 - 1.0
+            z2 = constants.nu21 / nu2 - 1.0
         else:
             z1 = nu1
             z2 = nu2
@@ -237,13 +236,12 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return corr.RedshiftCorrelation.angular_powerspectrum_full(self, l, z1, z2)
 
     def mean_nu(self, freq):
-
-        return self.mean(units.nu21 / freq - 1.0)
+        return self.mean(constants.nu21 / freq - 1.0)
 
     def getfield(self):
         r"""Fetch a realisation of the 21cm signal."""
-        z1 = units.nu21 / self.nu_upper - 1.0
-        z2 = units.nu21 / self.nu_lower - 1.0
+        z1 = constants.nu21 / self.nu_upper - 1.0
+        z2 = constants.nu21 / self.nu_lower - 1.0
 
         cube = self.realisation(
             z1,
@@ -260,8 +258,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
 
     def get_kiyo_field(self, refinement=1):
         r"""Fetch a realisation of the 21cm signal (NOTE: in K)"""
-        z1 = units.nu21 / self.nu_upper - 1.0
-        z2 = units.nu21 / self.nu_lower - 1.0
+        z1 = constants.nu21 / self.nu_upper - 1.0
+        z2 = constants.nu21 / self.nu_lower - 1.0
 
         cube = self.realisation(
             z1,
@@ -281,8 +279,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         r"""Fetch the power spectrum of the signal
         The effective redshift is found by averaging over 256 redshifts...
         """
-        z1 = units.nu21 / self.nu_upper - 1.0
-        z2 = units.nu21 / self.nu_lower - 1.0
+        z1 = constants.nu21 / self.nu_upper - 1.0
+        z2 = constants.nu21 / self.nu_lower - 1.0
 
         return self.powerspectrum_1D(k_vec, z1, z2, 256)
 
@@ -290,8 +288,8 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         self, refinement=1, density_only=False, no_mean=False, no_evolution=False
     ):
         r"""Fetch a realisation of the 21cm signal (NOTE: in K)"""
-        z1 = units.nu21 / self.nu_upper - 1.0
-        z2 = units.nu21 / self.nu_lower - 1.0
+        z1 = constants.nu21 / self.nu_upper - 1.0
+        z2 = constants.nu21 / self.nu_lower - 1.0
 
         (cube, rsf, d) = self.realisation(
             z1,

@@ -605,7 +605,6 @@ def coord_c2g(map_):
 
 
 def sph_ps(map1, map2=None, lmax=None):
-
     lmax = lmax if lmax is not None else (3 * healpy.get_nside(map1) - 1)
 
     alm1 = sphtrans_real(map1, lmax)

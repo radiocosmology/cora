@@ -62,7 +62,6 @@ def rfftfreqn(n, d=None):
 
 
 def rfftn(arr):
-
     if arr.shape[-1] % 2 != 0:
         warnings.warn(
             "Last axis length not multiple of 2. fftutil.irfftn will not reproduce this exactly."

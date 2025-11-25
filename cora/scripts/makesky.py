@@ -45,7 +45,6 @@ class FreqState(object):
     """Process and store the frequency spec from the command line."""
 
     def __init__(self):
-
         # Set the CHIME band as the internal default
         self.freq = (800.0, 400.0, 1025)
 
@@ -100,7 +99,6 @@ class FreqState(object):
 
     @classmethod
     def options(cls, f):
-
         FREQ = ListOfType("frequency list", int)
 
         options = [
