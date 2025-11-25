@@ -3,7 +3,8 @@ from typing import Optional, Callable
 import numpy as np
 from scipy.interpolate import CubicSpline
 
-from caput import memh5, units
+from caput import containers
+from caput.astro import constants
 
 from ..core.containers import CosmologyContainer, HealpixContainer
 from ..util.nputil import FloatArrayLike
@@ -15,7 +16,7 @@ from ..util.cosmology import Cosmology
 _INTERP_TYPES = ["linear", "log", "sinh", "linear_scipy", "sinh_scipy"]
 
 
-class InterpolatedFunction(memh5.BasicCont):
+class InterpolatedFunction(containers.Container):
     """A container for interpolated 1D functions.
 
     This is intended to allow saving to disk of functions which are expensive to
@@ -55,7 +56,6 @@ class InterpolatedFunction(memh5.BasicCont):
         # If name is in function cache, generate and store interpolator if not
         # already in cache
         if name in self._function_cache:
-
             if interp_type is None:
                 interp_type = self[name].attrs["type"]
 
@@ -67,7 +67,6 @@ class InterpolatedFunction(memh5.BasicCont):
         # If name is not in cache, check that name is valid, then generate and
         # store interpolator
         else:
-
             if name not in self:
                 raise ValueError(f"Function {name} unknown.")
 
@@ -85,7 +84,6 @@ class InterpolatedFunction(memh5.BasicCont):
     def _make_interpolator(
         self, name: str, interp_type: str
     ) -> Callable[[FloatArrayLike], FloatArrayLike]:
-
         dset = self[name]
 
         if len(dset.attrs["axis"]) != 1:
@@ -209,7 +207,6 @@ class FZXContainer(CosmologyContainer):
         *args,
         **kwargs,
     ):
-
         # Insert the Cosmological parameters
         cosmology = Cosmology(**CosmologyContainer._resolve_args(**kwargs))
 
@@ -224,7 +221,7 @@ class FZXContainer(CosmologyContainer):
         # Go through the high priority axes, and if present generate the lower priority
         # ones
         if freq is not None:
-            redshift = units.nu21 / freq - 1.0
+            redshift = constants.nu21 / freq - 1.0
 
         if redshift is not None:
             kwargs["chi"] = cosmology.comoving_distance(redshift)
@@ -292,7 +289,6 @@ class MatterPowerSpectrum(CosmologyContainer, InterpolatedFunction):
         ps_redshift: float = 0.0,
         **kwargs,
     ):
-
         # Initialise the base classes (which sets the cosmology etc)
         super().__init__(*args, **kwargs)
 
@@ -499,7 +495,6 @@ class BiasedLSS(FZXContainer, HealpixContainer):
         fixed_redshift: Optional[float] = None,
         **kwargs,
     ):
-
         super().__init__(*args, **kwargs)
 
         # Set lightcone taking into account it might have been set already by an

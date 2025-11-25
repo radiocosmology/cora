@@ -8,11 +8,11 @@ Containers
 from typing import ClassVar
 import numpy as np
 
-from caput.containers import ContainerBase, FreqContainer
+from caput.containers import ContainerPrototype, FreqContainer
 from ..util.cosmology import Cosmology
 
 
-class CosmologyContainer(ContainerBase):
+class CosmologyContainer(ContainerPrototype):
     """A baseclass for a container that is referenced to a background Cosmology.
 
     Parameters
@@ -31,7 +31,7 @@ class CosmologyContainer(ContainerBase):
     @staticmethod
     def _resolve_args(
         cosmology: Cosmology | dict | None = None,
-        attrs_from: ContainerBase | None = None,
+        attrs_from: ContainerPrototype | None = None,
         **kwargs,
     ):
         """Try and extract a Cosmology dict representation from the parameters.
@@ -63,7 +63,7 @@ class CosmologyContainer(ContainerBase):
         return self._cosmology_instance
 
 
-class HealpixContainer(ContainerBase):
+class HealpixContainer(ContainerPrototype):
     """Base class container for holding Healpix map data.
 
     Parameters

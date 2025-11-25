@@ -4,7 +4,7 @@ from typing import Callable, Optional, Union, List
 
 import numpy as np
 
-from caput import units
+from caput.astro import constants
 
 from .lssutil import FloatArrayLike
 from ..util.cosmology import Cosmology
@@ -86,7 +86,6 @@ class PolyModelSet:
 
     @staticmethod
     def evaluate_poly(x, x0, coeffs, powers=None):
-
         if powers is None:
             pc_iter = enumerate(coeffs)
         else:
@@ -303,11 +302,11 @@ def log_M_HI_g_to_n_eff(
     h = c.H0 / 100
     H0_SI = c.H(0)  # H_0 in s^-1
     omHI = omega_HI.evaluate(z, model=model)
-    M_HI_g = (10**log_M_HI_g) * units.solar_mass  # in kg
+    M_HI_g = (10**log_M_HI_g) * constants.solar_mass  # in kg
 
     # First compute M_HI / rho_HI(z) in SI units (m^3)
-    n_eff = (3.0 * omHI * H0_SI**2) / (8 * np.pi * units.G * M_HI_g)
+    n_eff = (3.0 * omHI * H0_SI**2) / (8 * np.pi * constants.G * M_HI_g)
     # Then convert to h^-3 Mpc^3
-    n_eff *= units.mega_parsec**3 / h**3
+    n_eff *= constants.mega_parsec**3 / h**3
 
     return n_eff

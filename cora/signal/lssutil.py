@@ -4,7 +4,7 @@ import numpy as np
 
 import healpy
 
-from caput import config, tools
+from caput import algorithms, config
 
 from ..util import cubicspline as cs
 from ..util import hputil
@@ -131,7 +131,6 @@ def diff2(f: np.ndarray, x: np.ndarray, axis: int = -1) -> np.ndarray:
 
     # Compute elements from i=2 to N-2
     for i in range(2, f.shape[axis] - 1):
-
         dm2 = x[i] - x[i - 2]
         dm1 = x[i] - x[i - 1]
         dp1 = x[i + 1] - x[i]
@@ -249,7 +248,6 @@ def gradient(maps: np.ndarray, x: np.ndarray, grad0: bool = True) -> np.ndarray:
     grad = np.zeros((3,) + maps.shape, dtype=maps.dtype)
 
     for i in range(nmaps):
-
         alm = healpy.map2alm(maps[i], pol=False, use_pixel_weights=True)
 
         # Get the derivatives in each angular direction
@@ -440,7 +438,7 @@ def corrfunc(
     norm = np.bincount(r_ind, minlength=(numr + 2))
     csum = np.bincount(r_ind, weights=cthetaxx.ravel(), minlength=(numr + 2))
 
-    cf = (csum * tools.invert_no_zero(norm))[1:-1].copy()
+    cf = (csum * algorithms.invert_no_zero(norm))[1:-1].copy()
 
     return cf, rcentre
 
@@ -630,7 +628,6 @@ def lognormal_transform(
 
 
 def assert_shape(arr, shape, name):
-
     if arr.ndim != len(shape):
         raise ValueError(
             f"Array {name} has wrong number of dimensions (got {arr.ndim}, "

@@ -6,7 +6,7 @@ import scipy.special as ss
 from scipy.fftpack import dct
 
 from caput import mpiarray
-from caput.coordinates import coord
+from caput.astro import coordinates
 
 import hankl
 import hankel
@@ -53,12 +53,10 @@ def richardson(
     table = []
 
     for row_ind in range(k):
-
         newrow = [estimates[row_ind]]
 
         # Cancel off each successive power at this step size using previous estimates
         for col_ind in range(1, row_ind + 1):
-
             n = col_ind * base_pow
             r = (t**n * newrow[col_ind - 1] - table[row_ind - 1][col_ind - 1]) / (
                 t**n - 1.0
@@ -163,7 +161,6 @@ def _corr_hankl_richardson(
 
     # Calculate the correlation function upsampling by a factor 2**ii
     def _work(ii):
-
         u = 2**ii
         k = np.logspace(-rhigh, -rlow, n * u, endpoint=False)
 
@@ -376,7 +373,7 @@ def corr_to_clarray(
     # Split thetas into chunks, otherwise memory will blow up
     for msec in np.array_split(np.arange(_len), _len // chunksize):
         # Index into the global index in mu
-        rc = coord.cosine_rule(mu[clo + msec], xa, xa)
+        rc = coordinates.spherical.cosine_rule(mu[clo + msec], xa, xa)
         corr1 = corr(rc)
 
         # If xromb then we need to integrate over the redshift bins which we do using

@@ -5,7 +5,9 @@ from functools import cache
 import healpy
 import numpy as np
 
-from caput import config, mpiarray, pipeline, task, units
+from caput import config, mpiarray
+from caput.astro import constants
+from caput.pipeline import exceptions, tasklib
 
 from ..core import containers, skysim
 from ..util import hputil
@@ -45,7 +47,7 @@ _POWERSPECTRA = [
 ]
 
 
-class CalculateCorrelations(task.SingleTask):
+class CalculateCorrelations(tasklib.base.ContainerTask):
     """Calculate the density and potential correlation functions from a power spectrum.
 
     To reproduce something close to the old cora results, set `powerspectrum` to be
@@ -94,7 +96,6 @@ class CalculateCorrelations(task.SingleTask):
     r_interp_type = config.enum(_INTERP_TYPES, default="sinh")
 
     def setup(self, powerspectrum: Optional[MatterPowerSpectrum] = None):
-
         if powerspectrum is None:
             fpath = Path(__file__).parent / "data" / f"ps_{self.powerspectrum}.h5"
             self.log.info(f"Loading power spectrum file {fpath}")
@@ -103,7 +104,6 @@ class CalculateCorrelations(task.SingleTask):
         self._ps = powerspectrum
 
     def _ps_n(self, n):
-
         ks = 1e10 if self.ksmooth is None else self.ksmooth
 
         # Get the power spectrum multiplied by k**-n and a the low and high cutoffs,
@@ -179,7 +179,7 @@ class CalculateCorrelations(task.SingleTask):
         return func
 
 
-class BlendNonLinearPowerSpectrum(task.SingleTask):
+class BlendNonLinearPowerSpectrum(tasklib.base.ContainerTask):
     """Generate a controllable mix between a linear and non-linear power spectrum.
 
     Blends a linear and non-linear power spectrum by computing a linear
@@ -243,7 +243,7 @@ class BlendNonLinearPowerSpectrum(task.SingleTask):
         return ps_linear
 
 
-class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
+class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
     """Calculate C_l(chi,chi') from a real-space correlation function.
 
     The output will be evaluated at constant redshift, corresponding
@@ -315,7 +315,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
         if self.frequencies is None:
             redshift = self.redshift
         else:
-            redshift = units.nu21 / self.frequencies - 1.0
+            redshift = constants.nu21 / self.frequencies - 1.0
 
         xa = cosmology.comoving_distance(redshift)
 
@@ -373,7 +373,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
         return out_cont
 
 
-class GenerateInitialLSSFromCl(task.SingleTask):
+class GenerateInitialLSSFromCl(tasklib.base.ContainerTask):
     """Generate initial LSS maps from input angular power spectrum.
 
     Attributes
@@ -431,7 +431,7 @@ class GenerateInitialLSSFromCl(task.SingleTask):
         """
         # Stop if we've already generated enough realizations
         if self.num_sims == 0:
-            raise pipeline.PipelineStopIteration()
+            raise exceptions.PipelineStopIteration()
         self.num_sims -= 1
 
         nz = len(self.aps.chi)
@@ -498,7 +498,7 @@ class GenerateInitialLSS(
         return GenerateInitialLSSFromCl.process(self)
 
 
-class GenerateBiasedFieldBase(task.SingleTask):
+class GenerateBiasedFieldBase(tasklib.base.ContainerTask):
     r"""Take the initial field and generate a biased field.
 
     Note that this applies a bias in Lagrangian space.
@@ -603,7 +603,6 @@ class GenerateBiasedFieldBase(task.SingleTask):
         return biased_field
 
     def _crop_low(self, x, cut=0.0):
-
         # Clip values in place
         mask = x < cut
         x[mask] = cut
@@ -675,7 +674,6 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
             )
 
     def _bias_1(self, z: FloatArrayLike) -> FloatArrayLike:
-
         # Evaluate the polynomial bias model to get the default bias
         bias = self._bias(z)
 
@@ -686,7 +684,7 @@ class GeneratePolynomialBias(GenerateBiasedFieldBase):
         return bias
 
 
-class DynamicsBase(task.SingleTask):
+class DynamicsBase(tasklib.base.ContainerTask):
     """Base class for generating final fields from biased fields.
 
     Attributes
@@ -920,7 +918,7 @@ class LinearDynamics(DynamicsBase):
         return final_field
 
 
-class BiasedLSSToMap(task.SingleTask):
+class BiasedLSSToMap(tasklib.base.ContainerTask):
     """Convert a BiasedLSS object into a Map object.
 
     Attributes
@@ -1052,7 +1050,6 @@ def za_density_grid(
         out = np.zeros((nchi, npix), dtype=delta_bias.dtype)
 
     for ii in range(nchi):
-
         # Initial density
         density_slice = 1 + delta_bias[ii]
         # Coordinate displacements
@@ -1099,7 +1096,7 @@ def za_density_grid(
     return out
 
 
-class FingersOfGod(task.SingleTask):
+class FingersOfGod(tasklib.base.ContainerTask):
     r"""Apply a smoothing to approximate the effects of Fingers of God.
 
     This applies an exponential smoothing kernel which is equivalent to a *squared
@@ -1188,7 +1185,7 @@ class FingersOfGod(task.SingleTask):
                 redshift = field.fixed_redshift * np.ones_like(field.redshift)
             chi = field.chi
         else:
-            redshift = units.nu21 / field.freq - 1.0
+            redshift = constants.nu21 / field.freq - 1.0
             chi = self.cosmo.comoving_distance(redshift)
 
         # Get the growth factor and smoothing scales
@@ -1223,7 +1220,7 @@ class FingersOfGod(task.SingleTask):
         return smoothed_field
 
 
-class AddCorrelatedShotNoise(task.random.RandomTask, task.SingleTask):
+class AddCorrelatedShotNoise(tasklib.random.RandomTask, tasklib.base.ContainerTask):
     """Add a correlated shot noise contribution to each input map.
 
     The shot noise realisation is deterministically generated from the LSS field, so all
@@ -1367,7 +1364,6 @@ def za_density_sph(
     radial_weight = np.zeros((npix, 3), dtype=np.float64)
 
     for ii in range(nchi):
-
         # Calculate the biased mass associated with each particle
         density_slice = 1 + delta_bias[ii]
 
@@ -1423,7 +1419,7 @@ def za_density_sph(
     return out
 
 
-class GenerateFlatSpectrumMap(task.SingleTask, task.random.RandomTask):
+class GenerateFlatSpectrumMap(tasklib.base.ContainerTask, tasklib.random.RandomTask):
     """Generate a full-frequency sky map of a flat-spectrum noise-like signal.
 
     The user can either specify the per-voxel variance or the desired value
@@ -1435,7 +1431,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, task.random.RandomTask):
     it's more accurate to use a constant V_voxel when generating the map.
 
     Although `seed` is not listed below, it can be specified by the user, since
-    this task inherits from `draco.util.random.RandomTask`.
+    this task inherits from `caput.pipeline.tasklib.random.RandomTask`.
 
     Attributes
     ----------
@@ -1501,7 +1497,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, task.random.RandomTask):
         # Form frequency map in appropriate format to feed into Map container
         freq = self.frequencies
         nfreq = len(freq)
-        redshift = units.nu21 / freq - 1
+        redshift = constants.nu21 / freq - 1
         freqmap = np.zeros(nfreq, dtype=[("centre", np.float64), ("width", np.float64)])
         freqmap["centre"][:] = freq[:]
         freqmap["width"][:] = np.abs(np.diff(freq[:])[0])
@@ -1551,7 +1547,7 @@ class GenerateFlatSpectrumMap(task.SingleTask, task.random.RandomTask):
         m.redistribute("freq")
 
         if self._count == self.num_sims:
-            raise pipeline.PipelineStopIteration
+            raise exceptions.PipelineStopIteration
 
         return m
 
@@ -1590,4 +1586,4 @@ def differential_comoving_volume(z, cosmo=None):
     # Comoving distance in unit Mpc/h
     dm = cosmo.comoving_distance(z)
 
-    return dm**2 * (units.c / 1e3) / H_z
+    return dm**2 * (constants.c / 1e3) / H_z

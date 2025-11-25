@@ -71,7 +71,6 @@ class ForegroundMap(maps.Sky3d):
         self._weight_gen = True
 
     def getfield(self):
-
         self.generate_weight()
 
         aff = np.fft.rfftn(self._ang_field.getfield())
@@ -106,7 +105,6 @@ class ForegroundSCK(ForegroundMap):
     _cf_int = None
 
     def angular_ps(self, larray):
-
         if isinstance(larray, np.ndarray):
             mask0 = np.where(larray == 0)
             larray[mask0] = 1.0
