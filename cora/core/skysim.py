@@ -7,7 +7,7 @@ from caput import mpiarray
 from cora.util import hputil, nputil
 
 
-def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
+def clarray(aps, lmax, zarray, zromb=3, zwidth=None, chunksize = 5):
     """Calculate an array of C_l(z, z').
 
     Parameters
@@ -23,6 +23,9 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
     zwidth : scalar, optional
         Width of frequency channel to integrate over. If None (default),
         calculate from the separation of the first two bins.
+    chunksize : int, optional
+        Chunk size for performing channel integral in batches of ell values.
+        Default: 5.
 
     Returns
     -------
@@ -48,7 +51,7 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
             zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]
         ).flatten()
 
-        lsections = np.array_split(np.arange(lmax + 1), lmax // 5)
+        lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
 
         cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
