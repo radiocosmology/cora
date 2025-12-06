@@ -1,28 +1,54 @@
 import numpy as np
 import scipy.linalg as la
 import scipy.integrate as si
+import scipy.special as ss
 import healpy
 
 from caput import mpiarray
 from cora.util import hputil, nputil
 
 
-def clarray(aps, lmax, zarray, zromb=3, zwidth=None, chunksize = 5):
+def clarray(
+    aps,
+    lmax,
+    zarray,
+    gauss_legendre=False,
+    zromb=3,
+    zwidth=None,
+    chunksize=5,
+):
     """Calculate an array of C_l(z, z').
+
+    The zromb parameter controls whether to integrate the angular
+    power spectrum over each frequency channel. Two schemes are
+    available: legacy Romberg integration that assumes each channel
+    has the same redshift width, or Gauss-Legendre quadrature that
+    can either assume a constant width or use the correct per-chennel
+    width. The Gauss-Legendre scheme is almost identical to the one
+    in cora.signal.corrfunc.corr_to_clarray, except that here the
+    integration is in redshift instead of comoving distance.
 
     Parameters
     ----------
     aps : function
-        The angular power spectrum to calculate.
+        The angular power spectrum to calculate, with arguments
+        (ell, z, z').
     lmax : integer
         Maximum l to calculate up to.
-    zarray : array_like
-        Array of z's to calculate at.
-    zromb : integer
-        The Romberg order for integrating over frequency samples.
+    zarray : array_like, optional
+        Array of redshifts to calculate at.
+    gauss_legendre : bool, optional
+        Use Gauss-Legendre quadrature for channel integration (as in 
+        cora.signal.corrfunc.corr_to_clarray). If False, use older 
+        Romberg scheme. Default: False.
+    zromb : integer, optional
+        The Romberg or Gauss-Legendre order for integrating over 
+        each channel. If 0, this integration is turned off. Default: 3.
     zwidth : scalar, optional
-        Width of frequency channel to integrate over. If None (default),
-        calculate from the separation of the first two bins.
+        Constant redshift width of frequency channel to integrate over. 
+        If None, calculated from the separation of the first two bins 
+        for the Romberg scheme, or computed separately for each channel
+        in the Gauss-Legendre scheme. Default: None.
     chunksize : int, optional
         Chunk size for performing channel integral in batches of ell values.
         Default: 5.
@@ -41,33 +67,81 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None, chunksize = 5):
         )
 
     else:
-        zsort = np.sort(zarray)
-        zhalf = np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
-        zlen = zarray.size
-        zint = 2**zromb + 1
-        zspace = 2.0 * zhalf / 2**zromb
+        # Gauss-Legendre scheme
+        if gauss_legendre:
 
-        za = (
-            zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]
-        ).flatten()
+            # Get number of redshifts            
+            zlen = zarray.size
 
-        lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
+            # Calculate the half-bin width
+            if zwidth is None:
+                zhalf = np.ndarray(shape=zarray.shape)
+                # Compute width for each channel, using same width for first
+                # and second channel
+                zhalf[0] = np.abs(zarray[1] - zarray[0]) / 2.0
+                zhalf[1:] = np.abs(zarray[1:] - zarray[:-1]) / 2.0
+            else:
+                # Use constant channel width
+                zhalf = np.ones(shape=zarray.shape) * zwidth / 2.0
 
-        cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
+            # Set number of quadrature points, and get points and weights
+            zint = 2**zromb + 1
+            z_r, z_w, z_wsum = ss.roots_legendre(zint, mu=True)
+            z_w /= z_wsum
 
-        for lsec in lsections:
-            clt = aps(
-                lsec[:, np.newaxis, np.newaxis],
-                za[np.newaxis, :, np.newaxis],
-                za[np.newaxis, np.newaxis, :],
-            )
+            # Calculate the extended xarray with the extra intervals to integrate over
+            za = (zarray[:, np.newaxis] + zhalf[:, np.newaxis] * z_r).flatten()
 
-            clt = clt.reshape(-1, zlen, zint, zlen, zint)
+            # Make array to store final results
+            cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
-            clt = si.romb(clt, dx=zspace, axis=4)
-            clt = si.romb(clt, dx=zspace, axis=2)
+            # Determine ell chunks
+            lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
 
-            cla[lsec] = clt / (2 * zhalf) ** 2  # Normalise
+            for lsec in lsections:
+                # Get C_ell(z, z') values for this chunk
+                clt = aps(
+                    lsec[:, np.newaxis, np.newaxis],
+                    za[np.newaxis, :, np.newaxis],
+                    za[np.newaxis, np.newaxis, :],
+                )
+
+                # Perform Gauss-Legendre quandrature via matrix multiplications
+                clt = clt.reshape(-1, zint)
+                clt = np.matmul(clt, z_w).reshape(-1, zlen, zint, zlen)
+                clt = np.matmul(clt.transpose(0, 1, 3, 2), z_w)
+
+                cla[lsec] = clt
+
+        # Romberg scheme
+        else:
+            zsort = np.sort(zarray)
+            zhalf = np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
+            zlen = zarray.size
+            zint = 2**zromb + 1
+            zspace = 2.0 * zhalf / 2**zromb
+
+            za = (
+                zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]
+            ).flatten()
+
+            lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
+
+            cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
+
+            for lsec in lsections:
+                clt = aps(
+                    lsec[:, np.newaxis, np.newaxis],
+                    za[np.newaxis, :, np.newaxis],
+                    za[np.newaxis, np.newaxis, :],
+                )
+
+                clt = clt.reshape(-1, zlen, zint, zlen, zint)
+
+                clt = si.romb(clt, dx=zspace, axis=4)
+                clt = si.romb(clt, dx=zspace, axis=2)
+
+                cla[lsec] = clt / (2 * zhalf) ** 2  # Normalise
 
         return cla
 
