@@ -534,6 +534,11 @@ def exponential_FoG_kernel(
         The smooth parameter for each radial bin.
     D
         The growth factor for each radial bin.
+    full_channel_kernel
+        Whether to integrate the continuous kernel over each radial bin for both
+        the "input" and "output" channel (True), or just the "input" channel
+        (False). The former is more correct, but the latter is the default for
+        legacy purposes. Default. False.
 
     Returns
     -------
@@ -577,6 +582,7 @@ def exponential_FoG_kernel(
 
     # Create a matrix to apply the smoothing with an exponential kernel.
     if full_channel_kernel:
+        # See CHIME doclib:XXXX for derivations of these expressions
         K = (
             (2.0 / dchi_rp)
             * np.exp(-a_r * chi_sep)
