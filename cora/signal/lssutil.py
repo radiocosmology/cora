@@ -1,6 +1,7 @@
 from typing import Callable, Union, Tuple, Optional
 
 import numpy as np
+from scipy.fftpack import dct
 
 import healpy
 
@@ -10,6 +11,7 @@ from draco.util import tools
 from ..util import cubicspline as cs
 from ..util import hputil
 from ..util.nputil import FloatArrayLike
+from ..util import bilinearmap
 
 
 def linspace(x: Union[dict, list, np.ndarray]) -> np.ndarray:
@@ -670,3 +672,114 @@ def assert_shape(arr, shape, name):
         raise ValueError(
             f"Array {name} has the wrong shape (got {arr.shape}, expected {shape}"
         )
+
+
+class Pk2d_to_Cl:
+    """Converter from 2d power spectrum to multi-frequency angular power spectrum.
+
+    This class packages the algorithm from the angular_powerspectrum_fft
+    method from the cora.signal.corr.RedshiftCorrelation class in a
+    self-contained way, suitable for working with an externally-defined
+    power spectrum in terms of k_parallel and k_perp. These different
+    implementations should eventually be refactored, but will remain
+    separate for now.
+
+    Parameters
+    ----------
+    pk2d : function
+        Power spectrum function, with arguments (k_parallel, k_perp).
+    chi_of_z : function
+        Function to convert redshift to comoving distance.
+    kparmax : float, optional
+        Maximum k_parallel for integration. (Note that the minimum
+        k_parallel is 0.) Default: 50.
+    nkpar : int, optional
+        Number of k_parallel values to use in discrete cosine transform.
+        Default: 32768.
+    kperpmin, kperpmax : float, optional
+        Minimum and maximum k_perp values. These determine the minimum
+        and maximum ell values that are accessible. Default: 1e-4 and 40.
+    nkperp : int, optional
+        Number of k_perp values to interpolate between. Default: 500.
+    k_meshgrid : bool, optional
+        Whether pk2d function can accept (kpar, kperp) values evaluated
+        on a numpy meshgrid. Default: True.
+    """
+
+    def __init__(
+        self, 
+        pk2d,
+        chi_of_z,
+        kparmax=50.,
+        nkpar=32768,
+        kperpmin=1e-4,
+        kperpmax=40.0,
+        nkperp=500,
+        k_meshgrid=True,
+    ):
+        
+        self.kparmax = kparmax
+        self.nkpar = nkpar
+        self.kperpmin = kperpmin
+        self.kperpmax = kperpmax
+        self.nkperp = nkperp
+        self.chi_of_z = chi_of_z
+
+        kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)
+        kpar = np.linspace(0, kparmax, nkpar)
+
+        if k_meshgrid:
+            kperp, kpar = np.meshgrid(kperp, kpar, indexing='ij')
+        else:
+            kperp = kperp[:, np.newaxis]
+            kpar = kpar[np.newaxis, :]
+
+        dd = pk2d(kpar, kperp)
+
+        self.aps_cache = dct(dd, type=1) * kparmax / (2 * nkpar)
+
+    def eval(self, la, za1, za2):
+        """Evaluate C_ell(z, z').
+
+        Parameters
+        ----------
+        la : array_like
+            Ell values to evaluate at.
+        za1, za2 : array_like
+            Redshifts to evaluate at
+
+        Returns
+        -------
+        cl : array_like
+            Array of C_ell(z, z') values.
+        """
+
+        xa1 = self.chi_of_z(za1)
+        xa2 = self.chi_of_z(za2)
+
+        xc = 0.5 * (xa1 + xa2)
+        rpar = np.abs(xa2 - xa1)
+
+        # Bump anything that is zero upwards to avoid a log zero warning.
+        la = np.where(la == 0.0, 1e-10, la)
+
+        x = (
+            (np.log10(la) - np.log10(xc * self.kperpmin))
+            / np.log10(self.kperpmax / self.kperpmin)
+            * (self.nkperp - 1)
+        )
+        y = rpar / (np.pi / self.kparmax)
+
+        def _interp2d(arr, x, y):
+            x, y = np.broadcast_arrays(x, y)
+            sh = x.shape
+
+            x, y = x.flatten(), y.flatten()
+            v = np.zeros_like(x)
+            bilinearmap.interp(arr, x, y, v)
+
+            return v.reshape(sh)
+
+        psdd = _interp2d(self.aps_cache, x, y)
+
+        return 1 / (xc**2 * np.pi) * psdd
