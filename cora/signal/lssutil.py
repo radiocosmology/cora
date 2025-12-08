@@ -707,17 +707,17 @@ class Pk2d_to_Cl:
     """
 
     def __init__(
-        self, 
+        self,
         pk2d,
         chi_of_z,
-        kparmax=50.,
+        kparmax=50.0,
         nkpar=32768,
         kperpmin=1e-4,
         kperpmax=40.0,
         nkperp=500,
         k_meshgrid=True,
     ):
-        
+
         self.kparmax = kparmax
         self.nkpar = nkpar
         self.kperpmin = kperpmin
@@ -729,7 +729,7 @@ class Pk2d_to_Cl:
         kpar = np.linspace(0, kparmax, nkpar)
 
         if k_meshgrid:
-            kperp, kpar = np.meshgrid(kperp, kpar, indexing='ij')
+            kperp, kpar = np.meshgrid(kperp, kpar, indexing="ij")
         else:
             kperp = kperp[:, np.newaxis]
             kpar = kpar[np.newaxis, :]
