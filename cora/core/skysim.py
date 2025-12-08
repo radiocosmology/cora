@@ -38,15 +38,15 @@ def clarray(
     zarray : array_like, optional
         Array of redshifts to calculate at.
     gauss_legendre : bool, optional
-        Use Gauss-Legendre quadrature for channel integration (as in 
-        cora.signal.corrfunc.corr_to_clarray). If False, use older 
+        Use Gauss-Legendre quadrature for channel integration (as in
+        cora.signal.corrfunc.corr_to_clarray). If False, use older
         Romberg scheme. Default: False.
     zromb : integer, optional
-        The Romberg or Gauss-Legendre order for integrating over 
+        The Romberg or Gauss-Legendre order for integrating over
         each channel. If 0, this integration is turned off. Default: 3.
     zwidth : scalar, optional
-        Constant redshift width of frequency channel to integrate over. 
-        If None, calculated from the separation of the first two bins 
+        Constant redshift width of frequency channel to integrate over.
+        If None, calculated from the separation of the first two bins
         for the Romberg scheme, or computed separately for each channel
         in the Gauss-Legendre scheme. Default: None.
     chunksize : int, optional
@@ -70,7 +70,7 @@ def clarray(
         # Gauss-Legendre scheme
         if gauss_legendre:
 
-            # Get number of redshifts            
+            # Get number of redshifts
             zlen = zarray.size
 
             # Calculate the half-bin width
@@ -116,7 +116,9 @@ def clarray(
         # Romberg scheme
         else:
             zsort = np.sort(zarray)
-            zhalf = np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
+            zhalf = (
+                np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
+            )
             zlen = zarray.size
             zint = 2**zromb + 1
             zspace = 2.0 * zhalf / 2**zromb
