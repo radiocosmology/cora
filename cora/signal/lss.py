@@ -862,7 +862,16 @@ class ZeldovichDynamics(DynamicsBase):
 
 
 class LinearDynamics(DynamicsBase):
-    """Generate a simulated LSS field using first order standard perturbation theory."""
+    """Generate a simulated LSS field using first order standard perturbation theory.
+
+    Attributes
+    ----------
+    output_kaiser_only : bool
+        Only save the Kaiser velocity term instead of the full field. (Useful for
+        testing.) Default: False.
+    """
+
+    output_kaiser_only = config.Property(proptype=bool, default=False)
 
     def process(self, initial_field: InitialLSS, biased_field: BiasedLSS) -> BiasedLSS:
         """Apply Eulerian linear dynamics to the biased field to get the final field.
@@ -916,7 +925,10 @@ class LinearDynamics(DynamicsBase):
             vterm = lssutil.diff2(iphi, chi[:], axis=0)
             vterm *= -(D * fr)[:, np.newaxis]
 
-            fdelta[:] += vterm
+            if self.output_kaiser_only:
+                fdelta[:] = vterm[:]
+            else:
+                fdelta[:] += vterm
 
         final_field.redistribute("chi")
 
