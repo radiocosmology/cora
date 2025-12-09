@@ -181,7 +181,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         return np.ones_like(z) * 1.0
 
     # Override angular_power spectrum to switch to allow using frequency
-    def angular_powerspectrum(self, l, nu1, nu2, redshift=False):
+    def angular_powerspectrum(self, l, nu1, nu2, redshift=False, const_redshift=None):
         """Calculate the angular powerspectrum.
 
         Parameters
@@ -193,6 +193,10 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         redshift : boolean, optional
             If `False` (default) interperet `nu1`, `nu2` as frequencies,
             otherwise they are redshifts (relative to the 21cm line).
+        const_redshift : float, optional
+            If specified, evaluate 3d power spectrum at this redshift,
+            still using distances corresponding to z1 and z2 in conversion
+            to angular power spectrum. Default: None.
 
         Returns
         -------
@@ -206,7 +210,9 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
             z1 = nu1
             z2 = nu2
 
-        return corr.RedshiftCorrelation.angular_powerspectrum(self, l, z1, z2)
+        return corr.RedshiftCorrelation.angular_powerspectrum(
+            self, l, z1, z2, const_redshift=const_redshift
+        )
 
     # Override angular_power spectrum to switch to allow using frequency
     def angular_powerspectrum_full(self, l, nu1, nu2, redshift=False):

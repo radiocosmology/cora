@@ -886,7 +886,7 @@ class RedshiftCorrelation(object):
 
     _freq_window = 0.0
 
-    def angular_powerspectrum_fft(self, la, za1, za2):
+    def angular_powerspectrum_fft(self, la, za1, za2, const_redshift=None):
         """The angular powerspectrum C_l(z1, z2) in a flat-sky limit.
 
         Uses FFT based method to generate a lookup table for fast computation.
@@ -897,6 +897,10 @@ class RedshiftCorrelation(object):
             The multipole moments to return at.
         z1, z2 : array_like
             The redshift slices to correlate.
+        const_redshift : float, optional
+            If specified, evaluate 3d power spectrum at this redshift,
+            still using distances corresponding to z1 and z2 in conversion
+            to angular power spectrum. Default: None.
 
         Returns
         -------
@@ -943,11 +947,18 @@ class RedshiftCorrelation(object):
         xa1 = self.cosmology.comoving_distance(za1)
         xa2 = self.cosmology.comoving_distance(za2)
 
-        b1, b2 = self.bias_z(za1), self.bias_z(za2)
-        f1, f2 = self.growth_rate(za1), self.growth_rate(za2)
-        pf1, pf2 = self.prefactor(za1), self.prefactor(za2)
-        D1 = self.growth_factor(za1) / self.growth_factor(self.ps_redshift)
-        D2 = self.growth_factor(za2) / self.growth_factor(self.ps_redshift)
+        if const_redshift is not None:
+            zeval1 = const_redshift
+            zeval2 = const_redshift
+        else:
+            zeval1 = za1
+            zeval2 = za2
+
+        b1, b2 = self.bias_z(zeval1), self.bias_z(zeval2)
+        f1, f2 = self.growth_rate(zeval1), self.growth_rate(zeval2)
+        pf1, pf2 = self.prefactor(zeval1), self.prefactor(zeval2)
+        D1 = self.growth_factor(zeval1) / self.growth_factor(self.ps_redshift)
+        D2 = self.growth_factor(zeval2) / self.growth_factor(self.ps_redshift)
 
         xc = 0.5 * (xa1 + xa2)
         rpar = np.abs(xa2 - xa1)
