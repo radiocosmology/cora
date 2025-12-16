@@ -256,8 +256,7 @@ def mkconstrained(corr, constraints, nside):
 
     numz = corr.shape[1]
     maxl = corr.shape[0] - 1
-    larr, marr = healpy.Alm.getlm(maxl)
-    matshape = larr.shape + (numz,)
+    larr, _ = healpy.Alm.getlm(maxl)
 
     # The number of constraints
     nmodes = len(constraints)
@@ -286,11 +285,11 @@ def mkconstrained(corr, constraints, nside):
 
     # Solve for the eigenmode amplitudes to satisfy constraints, and project
     # each mode across the whole frequency range.
-    for i, l in enumerate(larr):
-        if l == 0:
+    for i, ell in enumerate(larr):
+        if ell == 0:
             cv[:, i] = 0.0
         else:
-            cv[:, i] = np.dot(trans[l].T, la.solve(tmat[l].T, cmap[i]))
+            cv[:, i] = np.dot(trans[ell].T, la.solve(tmat[ell].T, cmap[i]))
 
     hpmaps = np.empty((numz, healpy.nside2npix(nside)))
 
