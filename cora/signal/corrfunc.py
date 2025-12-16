@@ -14,6 +14,8 @@ import pyfftlog
 from ..util import bilinearmap, coord
 from ..util.nputil import FloatArrayLike
 
+from .lssutil import diff2
+
 
 def richardson(
     estimates: List[FloatArrayLike],
@@ -297,6 +299,8 @@ def corr_to_clarray(
     xwidth: Optional[float] = None,
     q: int = 2,
     chunksize: int = 50,
+    chi1_2nd_derivative: bool = False,
+    chi2_2nd_derivative: bool = False,
 ):
     """Calculate an array of :math:`C_l(\chi_1, \chi_2)`.
 
@@ -323,6 +327,11 @@ def corr_to_clarray(
     chunksize
         Chunk size for evaluating discrete samples of angular integrand in batches.
         Default: 50.
+    chi1_2nd_derivative, chi2_2nd_derivative
+        Whether to take finite-differenced 2nd derivatives of the integrand in chi_1
+        or chi_2 prior to integrating. This is useful for computing angular power
+        spectra involving the Kaiser redshift-space distortion term by
+        differentiating power spectra involving the gravitational potential.
 
     Returns
     -------
@@ -377,6 +386,10 @@ def corr_to_clarray(
         # Index into the global index in mu
         rc = coord.cosine_rule(mu[clo + msec], xa, xa)
         corr1 = corr(rc)
+        if chi1_2nd_derivative:
+            corr1 = diff2(corr1, xa, axis=1)
+        if chi2_2nd_derivative:
+            corr1 = diff2(corr1, xa, axis=2)
 
         # If xromb then we need to integrate over the redshift bins which we do using
         # Gauss-Legendre quadrature implemented as a matrix multiply
