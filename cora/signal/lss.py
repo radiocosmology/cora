@@ -252,6 +252,13 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     The output will be evaluated at constant redshift, corresponding
     to the redshift of the input correlation functions.
 
+    Spectra will be calculated for delta-delta, phi-delta, and phi-phi,
+    where delta is the matter overdensity and phi is the gravitational
+    potential (including numerical prefactors from the Poisson equation).
+    If `use_d2phi` is set, the second line-of-sight derivative of phi
+    will be used instead of phi. (This is useful to simulating maps of
+    the Kaiser redshift-space distortion term.)
+
     Attributes
     ----------
     nside : int
@@ -272,13 +279,16 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
         computation. When dealing with nonlinear matter power spectrum,
         for sub-percent accuracy up to l ~ 1500, leg_q = 16 is recommended.
         Default: 4.
-    leg_chunksize: int, optional
+    leg_chunksize : int, optional
         Chunk size for evaluating samples of C_ell integrand. Changing
         from default value is unlikely to affect performance. Default: 50.
-    corrfunc_interp_type: str, optional
+    corrfunc_interp_type : str, optional
         Interpolation method to use for correlation function in C_ell
         integrand. If None, the default method stored in the
         CorrelationFunction container is used. Default: None.
+    use_d2phi : bool, optional
+        Compute spectra corresponding to the second line-of-sight
+        derivative of phi instead of phi itself. Default: False.
     """
 
     nside = config.Property(proptype=int)
@@ -288,6 +298,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     leg_q = config.Property(proptype=int, default=4)
     leg_chunksize = config.Property(proptype=int, default=50)
     corrfunc_interp_type = config.enum(_INTERP_TYPES, default=None)
+    use_d2phi = config.Property(proptype=bool, default=False)
 
     def process(
         self, correlation_functions: CorrelationFunction
@@ -326,6 +337,8 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
         # power will alias back down when the map is transformed later on
         lmax = 3 * self.nside - 1
 
+        phi_label = "d2phi" if self.use_d2phi else "phi"
+
         self.log.debug("Generating C_l(x, x') for delta-delta")
         cla0 = corrfunc.corr_to_clarray(
             corr0,
@@ -336,7 +349,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
             chunksize=self.leg_chunksize,
         )
 
-        self.log.debug("Generating C_l(x, x') for phi-delta")
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}-delta")
         cla2 = corrfunc.corr_to_clarray(
             corr2,
             lmax,
@@ -344,9 +357,10 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            chi1_2nd_derivative=self.use_d2phi,
         )
 
-        self.log.debug("Generating C_l(x, x') for phi-phi")
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}-{phi_label}")
         cla4 = corrfunc.corr_to_clarray(
             corr4,
             lmax,
@@ -354,6 +368,8 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            chi1_2nd_derivative=self.use_d2phi,
+            chi2_2nd_derivative=self.use_d2phi,
         )
 
         if self.frequencies is not None:
@@ -361,12 +377,14 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
                 cosmology=cosmology,
                 freq=self.frequencies,
                 lmax=lmax,
+                d2phi=self.use_d2phi,
             )
         else:
             out_cont = MultiFrequencyAngularPowerSpectrum(
                 cosmology=cosmology,
                 redshift=redshift,
                 lmax=lmax,
+                d2phi=self.use_d2phi,
             )
 
         out_cont.Cl_delta_delta[:] = cla0
@@ -444,7 +462,7 @@ class GenerateInitialLSSFromCl(task.SingleTask):
         cla = mpiarray.zeros((len(self.aps.ell), 2 * nz, 2 * nz), axis=0)
         cla[:, nz:, nz:] = self.aps.Cl_delta_delta[:]
         cla[:, :nz, nz:] = self.aps.Cl_phi_delta[:]
-        cla[:, nz:, :nz] = self.aps.Cl_phi_delta[:]
+        cla[:, nz:, :nz] = self.aps.Cl_phi_delta[:].transpose(0, 2, 1)
         cla[:, :nz, :nz] = self.aps.Cl_phi_phi[:]
 
         # Generate map
@@ -458,12 +476,14 @@ class GenerateInitialLSSFromCl(task.SingleTask):
                 cosmology=self.cosmology,
                 nside=self.nside,
                 freq=self.aps.freq,
+                d2phi=self.aps.d2phi,
             )
         else:
             f = InitialLSS(
                 cosmology=self.cosmology,
                 nside=self.nside,
                 redshift=self.aps.redshift,
+                d2phi=self.aps.d2phi,
             )
 
         # Redistribute over the pixel axis to properly
@@ -798,6 +818,12 @@ class ZeldovichDynamics(DynamicsBase):
         initial_field.redistribute("chi")
         biased_field.redistribute("chi")
 
+        if initial_field.d2phi:
+            raise NotImplementedError(
+                "Cannot compute Zel'dovich dynamics from InitialLSS object that "
+                "stores phi radial derivative."
+            )
+
         lsel = initial_field.phi[:].local_bounds
 
         self._validate_fields(initial_field, biased_field)
@@ -922,7 +948,10 @@ class LinearDynamics(DynamicsBase):
 
         if self.redshift_space:
             fr = c.growth_rate(za)
-            vterm = lssutil.diff2(iphi, chi[:], axis=0)
+            if initial_field.d2phi:
+                vterm = iphi.copy()
+            else:
+                vterm = lssutil.diff2(iphi, chi[:], axis=0)
             vterm *= -(D * fr)[:, np.newaxis]
 
             if self.output_kaiser_only:

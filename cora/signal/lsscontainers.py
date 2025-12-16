@@ -376,11 +376,13 @@ class MultiFrequencyAngularPowerSpectrum(FZXContainer):
         self,
         lmax: float,
         *args,
+        d2phi: Optional[bool] = False,
         **kwargs,
     ):
         # Set ell axis to span from ell=0 to lmax
         kwargs["ell"] = lmax + 1
         super().__init__(*args, **kwargs)
+        self.attrs["d2phi"] = d2phi
 
     _dataset_spec = {
         "Cl_phi_phi": {
@@ -426,12 +428,29 @@ class MultiFrequencyAngularPowerSpectrum(FZXContainer):
         """Ell values for stored angular power spectra."""
         return self.index_map["ell"]
 
+    @property
+    def d2phi(self) -> bool:
+        """Whether phi is actually the 2nd radial derivative of phi."""
+        if "d2phi" not in self.attrs.keys():
+            return False
+        else:
+            return self.attrs["d2phi"]
+
 
 class InitialLSS(FZXContainer, containers.HealpixContainer):
     """Container for holding initial LSS fields used for simulation.
 
     These fields are all implicitly the linear fields at redshift z=0.
     """
+
+    def __init__(
+        self,
+        *args,
+        d2phi: Optional[bool] = False,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.attrs["d2phi"] = d2phi
 
     _dataset_spec = {
         "delta": {
@@ -467,8 +486,19 @@ class InitialLSS(FZXContainer, containers.HealpixContainer):
         This is related to the linear gravitational potential :math:`\phi_G` by:
 
         .. math:: \phi = \frac{3}{3 \mathcal{H}^2} \phi_G
+
+        If `d2phi` is set, the second radial derivative of phi is stored,
+        rather than phi itself.
         """
         return self.datasets["phi"]
+
+    @property
+    def d2phi(self) -> bool:
+        """Whether phi is actually the 2nd radial derivative of phi."""
+        if "d2phi" not in self.attrs.keys():
+            return False
+        else:
+            return self.attrs["d2phi"]
 
 
 class BiasedLSS(FZXContainer, containers.HealpixContainer):
