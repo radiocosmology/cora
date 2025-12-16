@@ -6,6 +6,7 @@ import healpy
 
 from caput import mpiarray
 from cora.util import hputil, nputil
+from cora.signal.lssutil import diff2
 
 
 def clarray(
@@ -16,6 +17,8 @@ def clarray(
     zromb=3,
     zwidth=None,
     chunksize=5,
+    second_chi_deriv=False,
+    chi_func=None,
 ):
     """Calculate an array of C_l(z, z').
 
@@ -52,12 +55,24 @@ def clarray(
     chunksize : int, optional
         Chunk size for performing channel integral in batches of ell values.
         Default: 5.
+    second_chi_deriv : bool, optional
+        Whether to compute second derivative of computed C_l(z,z') in each
+        of z and z', as derivatives in comoving distance. This can be used
+        for testing computations involving the Kaiser redshift-space
+        distorition term. Default: False.
+    chi_func : function, optional
+        If `second_chi_deriv` is True, this is the function that converts
+        redshift to comoving distance that is used in the finite-difference
+        computation. Default: None.
 
     Returns
     -------
     aps : np.ndarray[lmax+1, len(zarray), len(zarray)]
         Array of the C_l(z,z') values.
     """
+
+    if second_chi_deriv and chi_func is None:
+        raise RuntimeError("Must specify chi_func if using second_chi_deriv")
 
     if zromb == 0:
         return aps(
@@ -105,6 +120,11 @@ def clarray(
                     za[np.newaxis, :, np.newaxis],
                     za[np.newaxis, np.newaxis, :],
                 )
+
+                if second_chi_deriv:
+                    xarray = chi_func(za)
+                    clt = diff2(clt, xarray, axis=1)
+                    clt = diff2(clt, xarray, axis=2)
 
                 # Perform Gauss-Legendre quandrature via matrix multiplications
                 clt = clt.reshape(-1, zint)
