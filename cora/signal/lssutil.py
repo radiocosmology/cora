@@ -738,7 +738,7 @@ class Pk2d_to_Cl:
 
         self.aps_cache = dct(dd, type=1) * kparmax / (2 * nkpar)
 
-    def eval(self, la, za1, za2):
+    def eval(self, la, za1, za2, const_chi=False):
         """Evaluate C_ell(z, z').
 
         Parameters
@@ -747,6 +747,9 @@ class Pk2d_to_Cl:
             Ell values to evaluate at.
         za1, za2 : array_like
             Redshifts to evaluate at
+        const_chi : bool, optional
+            Evaluate k-ell relationship and prefactor at
+            constant comoving distance. Default: False.
 
         Returns
         -------
@@ -758,6 +761,8 @@ class Pk2d_to_Cl:
         xa2 = self.chi_of_z(za2)
 
         xc = 0.5 * (xa1 + xa2)
+        if const_chi:
+            xc = np.mean(xc)
         rpar = np.abs(xa2 - xa1)
 
         # Bump anything that is zero upwards to avoid a log zero warning.
