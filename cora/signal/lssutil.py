@@ -2,6 +2,7 @@ from typing import Callable, Union, Tuple, Optional
 
 import numpy as np
 from scipy.fftpack import dct
+import scipy.integrate as si
 
 import healpy
 
@@ -518,6 +519,96 @@ def calculate_width(centres: np.ndarray) -> np.ndarray:
     widths[-1] = 2 * (centres[-1] - (widths[-2] / 2.0) - centres[-2])
 
     return np.abs(widths)
+
+
+def integrate_uniform_into_bins(
+    y: np.ndarray,
+    x: np.ndarray,
+    xedges: np.ndarray,
+    axis: Optional[int] = -1,
+    mean: Optional[bool] = False,
+) -> np.ndarray:
+    """Integrate a uniformly-sampled function into bins with arbitrary edges.
+
+    This function uses Simpson's rule to integrate over the
+    samples falling within each bin, and then uses the trapezoid
+    rule to add the contributions between the lowest/highest samples
+    per bin and the bin boundaries.
+
+    X values and bin edges must be strictly increasing.
+
+    Parameters
+    ----------
+    y
+        Function values on uniform grid.
+    x
+        Grid values on which function was evaluated.
+    xedges
+        Edges of bins to integrate within.
+    axis
+        Axis to integrate over.
+    mean
+        Whether to compute the mean of the function over each bin (True)
+        or the integral (False).
+
+    Returns
+    -------
+    y_int
+        Bin-integrated function.
+    """
+
+    nbins = len(xedges) - 1
+    dx = x[1] - x[0]
+
+    # Move integration axis to the end, to make slicing easier
+    axis = axis % y.ndim
+    y = np.moveaxis(y, axis, -1)
+
+    # Determine array indices corresponding to x values that are
+    # just above each lower bin boundary and just below each upper
+    # bin boundary. (The lowest idx_lo and highest idx_hi
+    # indices will correspond to lowest and highest bin boundaries.)
+    idx_lo = np.searchsorted(x, xedges[:-1], side="left")
+    idx_hi = np.concatenate([idx_lo[1:] - 1, [len(x) - 1]])
+
+    # Perform cumulative Simpson integration over full x range
+    y_int = si.cumulative_simpson(y, x=x, axis=-1, initial=0)
+
+    # Compute differences between cumulative-integral values at indices
+    # corresponding to highest and lowest x values within each bin, to obtain
+    # integrals over samples that lie solely within each bin.
+    y_int = y_int[..., idx_hi] - y_int[..., idx_lo]
+
+    # The above differences will miss contributions to each bin integral
+    # between the lowest/highest samples and the bin boundaries.
+    # To incorporate these contributions, we first use linear interpolation
+    # to estimate the y values at the bin boundaries, excluding the
+    # lower boundary of the lowest bin and the upper boundary of the higest
+    # bin (since they correspond to the first and last y samples).
+    y_at_bounds = (
+        y[..., idx_lo[1:]]
+        - (y[..., idx_lo[1:]] - y[..., idx_lo[1:] - 1])
+        * (x[idx_lo[1:]] - xedges[1:-1])
+        / dx
+    )
+
+    # We then use these interpolated y values, along with the y values
+    # at the lowest and highest samples within the bin, to integrate
+    # the missing edge contributions using the trapezoid rule, and add
+    # them to the results from above
+    y_int[..., 1:nbins] += (
+        0.5 * (x[idx_lo[1:]] - xedges[1:-1]) * (y_at_bounds + y[..., idx_lo[1:]])
+    )
+    y_int[..., : nbins - 1] += (
+        0.5 * (xedges[1:-1] - x[idx_hi[:-1]]) * (y_at_bounds + y[..., idx_hi[:-1]])
+    )
+
+    # If desired, divide by the bin widths to compute the mean
+    if mean:
+        y_int /= np.diff(xedges)
+
+    # Move integration axis back to original position
+    return np.moveaxis(y_int, -1, axis)
 
 
 def exponential_FoG_kernel(
