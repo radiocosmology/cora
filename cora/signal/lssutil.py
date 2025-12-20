@@ -611,6 +611,50 @@ def integrate_uniform_into_bins(
     return np.moveaxis(y_int, -1, axis)
 
 
+def exponential_FoG_kernel_1d(
+    dchi: np.ndarray,
+    sigmaP: float,
+    cut: Optional[float] = 1e-5,
+    normalize: Optional[bool] = False,
+) -> np.ndarray:
+    """Compute analytical position-space Finger-of-God kernel.
+
+    Parameters
+    ----------
+    dchi
+        Comoving distance differences at which to evaluate kernel.
+    sigmaP
+        Damping scale parameter.
+    cut
+        Only compute kernel values that are above this fraction of the maximum
+        kernel value (to avoid underflow errors). Zeros are returned for lower
+        values.
+    normalize
+        Whether to normalize the returned kernel values by their sum.
+
+    Returns
+    -------
+    kernel
+        Array of kernel values evaluated at input dchi values.
+    """
+    a = 2**0.5 / sigmaP
+    denom = a * sigmaP**2
+
+    kernel = np.zeros_like(dchi, dtype=np.float64)
+
+    # Make mask that selects kernel values above cut
+    arg = a * np.abs(dchi)
+    mask = arg <= -np.log(cut)
+
+    # Compute relevant kernel values
+    kernel[mask] = np.exp(-arg[mask]) / denom
+
+    if normalize:
+        kernel[mask] /= np.sum(kernel[mask])
+
+    return kernel
+
+
 def exponential_FoG_kernel(
     chi: np.ndarray,
     sigmaP: FloatArrayLike,
