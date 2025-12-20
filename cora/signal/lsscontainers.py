@@ -370,12 +370,14 @@ class MultiFrequencyAngularPowerSpectrum(FZXContainer):
         lmax: float,
         *args,
         d2phi: Optional[bool] = False,
+        nfreq_pad: Optional[int] = 0,
         **kwargs,
     ):
         # Set ell axis to span from ell=0 to lmax
         kwargs["ell"] = lmax + 1
         super().__init__(*args, **kwargs)
         self.attrs["d2phi"] = d2phi
+        self.attrs["nfreq_pad"] = nfreq_pad
 
     _dataset_spec = {
         "Cl_phi_phi": {
@@ -428,6 +430,14 @@ class MultiFrequencyAngularPowerSpectrum(FZXContainer):
             return False
         else:
             return self.attrs["d2phi"]
+
+    @property
+    def nfreq_pad(self) -> int:
+        """Number of padding frequencies used when computing spectra."""
+        if "nfreq_pad" not in self.attrs.keys():
+            return 0
+        else:
+            return self.attrs["nfreq_pad"]
 
 
 class InitialLSS(FZXContainer, HealpixContainer):
