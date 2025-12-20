@@ -259,6 +259,11 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     will be used instead of phi. (This is useful to simulating maps of
     the Kaiser redshift-space distortion term.)
 
+    If `FoG_convolve` is set, the integrand of the C_l expression will
+    be convolved with the position-space Finger-of-God damping kernel.
+    Sky maps generated with the output C_l will then include this
+    damping.
+
     Attributes
     ----------
     nside : int
@@ -268,12 +273,21 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     frequencies : np.ndarray
         The frequencies to evaulate at. Overrides redshift property if
         specified.
+    channel_method : str, one of ["gauss_legendre", "uniform"]
+        Method for integrating within radial bins: Gauss-Legendre quadrature
+        ("gauss-legendre") or a combination of Simpson's rule and the trapezoid rule
+        ("uniform") based on uniform sampling of the entire comoving-distance
+        range being considered. (The latter is needed for Finger-of-God damping
+        to be incorporated.)
     xromb : int, optional
-        Gauss-Legendre quadrature order for integrating C_ell over radial
-        bins. (Used Romberg integration in a previous version, hence the
-        name xromb.) xromb=0 turns off this integral. When dealing with
-        nonlinear matter power spectrum, for sub-percent accuracy up to
-        l ~ 1500, xromb = 3 is recommended. Default: 2.
+        The order for integrating within radial bins, related to the number of samples
+        within each bin by `2**xromb + 1`. This generates an exponentially increasing
+        amount of work, so increase carefully. Note that despite the parameter name
+        this no longer uses a Romberg integrator, but either a Gauss-Legendre
+        quadrature rule or a combination of Simpson's rule and the trapezoid rule,
+        depending on `channel_method`. xromb = 0 turns off this integral. When
+        dealing with a nonlinear matter power spectrum, for sub-percent accuracy
+        up to l ~ 1500 with nside = 1024, xromb = 3 is recommended. Default: 2.
     leg_q : int, optional
         Integration accuracy parameter for Legendre transform for C_ell
         computation. When dealing with nonlinear matter power spectrum,
@@ -289,16 +303,48 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     use_d2phi : bool, optional
         Compute spectra corresponding to the second line-of-sight
         derivative of phi instead of phi itself. Default: False.
+    FoG_convolve : bool, optional
+        Whether to convolve the integrand with the Finger-of-God damping kernel
+        prior to integration. Must choose `channel_method = "uniform"`.
+        Default: False.
+    alpha_FoG : float
+        A parameter to control the strength of the effect by adjusting the damping
+        scale. A value of 1 (default) applies the nominal damping, 0 turns the
+        damping off entirely, and any other values adjust the scale appropriately.
+    FoG_model : str, optional
+        Use an inbuilt model for the Finger-of-God damping. If None (default), a
+        specific model is expected to be set via `FoG_coeff` and `z_eff`. See
+        `lssmodels.sigma_P` for available models and details about them.
+    FoG_coeff : list, optional
+        A list of coefficients in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`.
+        If None (default), `FoG_model` must be set.
+    FoG_z_eff : float, optional
+        The effective redshift of the polynomial expansion. Default: None.
+    FoG_z_eval : float, optional
+        Redshift at which to evaluate FoG damping model. If not set, mean redshift
+        of input container is used. Default: None.
     """
 
     nside = config.Property(proptype=int)
     redshift = config.Property(proptype=lssutil.linspace, default=None)
     frequencies = config.Property(proptype=lssutil.linspace, default=None)
+
+    channel_method = config.enum(
+        ["gauss-legendre", "uniform"], default="gauss-legendre"
+    )
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
     leg_chunksize = config.Property(proptype=int, default=50)
     corrfunc_interp_type = config.enum(_INTERP_TYPES, default=None)
+
     use_d2phi = config.Property(proptype=bool, default=False)
+
+    FoG_convolve = config.Property(proptype=bool, default=False)
+    alpha_FoG = config.Property(proptype=float, default=1.0)
+    FoG_model = config.enum(lssmodels.sigma_P.models(), default=None)
+    FoG_coeff = config.list_type(type_=float, default=None)
+    FoG_z_eff = config.Property(proptype=float, default=None)
+    FoG_z_eval = config.Property(proptype=float, default=None)
 
     def process(
         self, correlation_functions: CorrelationFunction
@@ -337,6 +383,38 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
         # power will alias back down when the map is transformed later on
         lmax = 3 * self.nside - 1
 
+        # If alpha_FoG is 0, don't do FoG convolution even if requested
+        # by user
+        if self.alpha_FoG == 0:
+            self.FoG_convolve = False
+
+        # If using FoG, initialize fiducial model for damping scale.
+        if self.FoG_convolve:
+
+            if self.FoG_z_eval is not None:
+                z_eval = self.FoG_z_eval
+            else:
+                z_eval = np.mean(redshift)
+
+            if self.FoG_z_eff is not None and self.FoG_coeff is not None:
+
+                def s(z):
+                    return lssmodels.PolyModelSet.evaluate_poly(
+                        z, self.FoG_z_eff, self.FoG_coeff
+                    )
+
+                sigma_P = self.alpha_FoG * s(z_eval)
+
+            elif self.FoG_model is not None:
+                sigma_P = lssmodels.sigma_P[self.FoG_model](z_eval)
+            else:
+                raise config.CaputConfigError(
+                    "Either `FoG_model` must be set, or `FoG_z_eff` and `FoG_coeff`"
+                )
+
+        else:
+            sigma_P = None
+
         phi_label = "d2phi" if self.use_d2phi else "phi"
 
         self.log.debug("Generating C_l(x, x') for delta-delta")
@@ -347,6 +425,9 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_P,
         )
 
         self.log.debug(f"Generating C_l(x, x') for {phi_label}-delta")
@@ -357,6 +438,9 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_P,
             chi1_2nd_derivative=self.use_d2phi,
         )
 
@@ -368,6 +452,9 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_P,
             chi1_2nd_derivative=self.use_d2phi,
             chi2_2nd_derivative=self.use_d2phi,
         )

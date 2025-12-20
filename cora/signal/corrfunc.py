@@ -1,8 +1,9 @@
-from typing import Callable, Union, Optional, Tuple, List
+from typing import Callable, Union, Tuple, List
 
 import numpy as np
 import scipy.integrate as si
 import scipy.special as ss
+import scipy.ndimage as sn
 from scipy.fftpack import dct
 
 from caput import mpiarray
@@ -14,7 +15,12 @@ import pyfftlog
 from ..util import bilinearmap, coord
 from ..util.nputil import FloatArrayLike
 
-from .lssutil import diff2
+from .lssutil import (
+    diff2,
+    calculate_width,
+    integrate_uniform_into_bins,
+    exponential_FoG_kernel_1d,
+)
 
 
 def richardson(
@@ -296,108 +302,251 @@ def corr_to_clarray(
     lmax: int,
     xarray: np.ndarray,
     xromb: int = 3,
-    xwidth: Optional[float] = None,
+    xwidth: float = None,
     q: int = 2,
     chunksize: int = 50,
+    channel_method: str = "gauss-legendre",
     chi1_2nd_derivative: bool = False,
     chi2_2nd_derivative: bool = False,
+    FoG_convolve: bool = False,
+    FoG_sigmaP: float = None,
 ):
-    """Calculate an array of :math:`C_l(\chi_1, \chi_2)`.
+    r"""Calculate an array of :math:`C_\ell(\chi_1, \chi_2)`.
+
+    This routine compute the following triple integral:
+
+    .. math::
+        C_\ell(\chi_1, \chi_2) = 2\pi \int_{-1}^1 P_\ell(\mu)
+        \int d\chi_1' W_1(\chi_1') \int d\chi_2' W_2(\chi_2')
+        \xi(r[\mu, \chi_1', \chi_2'])
+
+    where :math:`W_1` and :math:`W_2` are normalized top-hats centered on
+    :math:`\chi_1` and :math:`\chi_2`.
 
     Parameters
     ----------
     corr
         The real space correlation function.
-    c
-        The cosmology object.
     lmax
-        Maximum l to calculate up to.
+        Maximum ell to calculate up to.
     xarray
         Array of comoving distances to calculate at.
     xromb
-        The order for integrating over radial bins, uses `2**xromb + 1` points. This
-        generates an exponentially increasing amount of work, so increase carefully.
-        Note that despite the parameter name this no longer uses a Romberg integrator,
-        but a Gauss-Legendre quadrature rule.
+        The order for integrating within radial bins, related to the number of samples
+        within each bin by `2**xromb + 1`. This generates an exponentially increasing
+        amount of work, so increase carefully. Note that despite the parameter name
+        this no longer uses a Romberg integrator, but either a Gauss-Legendre
+        quadrature rule or a combination of Simpson's rule and the trapezoid rule,
+        depending on `channel_method`.
     xwidth
-        Width of radial bin to integrate over. If None (default),
-        calculate from the separation of the first two bins.
+        Assume each radial bin has this width when integrating. If None (default),
+        use nonuniform bin width determined from `xarray`.
     q
-        Integration accuracy parameter for the Legendre transform
+        Integration accuracy parameter for the integral over mu. The number of mu
+        samples is equal to `q * lmax`.
     chunksize
         Chunk size for evaluating discrete samples of angular integrand in batches.
         Default: 50.
+    channel_method
+        Method for integrating within radial bins: Gauss-Legendre quadrature
+        ("gauss-legendre") or a combination of Simpson's rule and the trapezoid rule
+        ("uniform") based on uniform sampling of the entire comoving-distance
+        range being considered. (The latter is needed for Finger-of-God damping
+        to be incorporated.)
     chi1_2nd_derivative, chi2_2nd_derivative
-        Whether to take finite-differenced 2nd derivatives of the integrand in chi_1
+        Whether to take finite-difference 2nd derivatives of the integrand in chi_1
         or chi_2 prior to integrating. This is useful for computing angular power
         spectra involving the Kaiser redshift-space distortion term by
-        differentiating power spectra involving the gravitational potential.
+        differentiating power spectra of the gravitational potential.
+    FoG_convolve
+        Whether to convolve the integrand with the Finger-of-God damping kernel
+        prior to integration. Must choose `channel_method = "uniform"`.
+    FoG_sigmaP
+        Finger-of-God damping scale to use in kernel.
 
     Returns
     -------
     clxx
-        Array of the :math:`C_l(\chi_1, \chi_2)` values, with l as the first axis.
+        Array of the :math:`C_\ell(\chi_1, \chi_2)` values, with l as the first axis.
+
+    Notes
+    -----
+    The integration scheme over radial bins evaluates a point at :math:`\xi(r=0)`,
+    which can have an outsized influence for very blue input power spectra, because
+    the number of samples in the integration is quite small and the correlation
+    function can diverge quite strongly as :math:`r \to 0`. While this could
+    make a difference in the point variance, in practice this doesn't seem to make
+    much difference to the output maps, as the transform from :math:`\theta \to \ell`
+    seems to wash out this impact.
     """
 
-    # The integration over angle will be performed by Gauss-Legendre integration. Here
-    # we calculate the points that it will be evaluated at....
+    if channel_method not in ["gauss-legendre", "uniform"]:
+        raise RuntimeError("channel method must be one of 'gauss-legendre', 'uniform'")
+
+    if channel_method == "gauss-legendre" and FoG_convolve:
+        raise NotImplementedError(
+            "Finger-of-God damping is not implemented for Gauss-Legendre "
+            "channel integration"
+        )
+
+    if channel_method == "uniform" and xromb == 0:
+        raise NotImplementedError(
+            "Need xromb > 0 if using Simpson-trapezoid channel integration scheme"
+        )
+
+    if channel_method == "uniform" and xwidth is not None:
+        raise NotImplementedError(
+            "Uniform channel width not implemented for Simpson-trapezoid "
+            "channel integration scheme"
+        )
+
+    # The integration over mu will be performed by Gauss-Legendre quadrature.
+    # Here we calculate the points that it will be evaluated at.
     M = q * lmax
     mu, w, wsum = ss.roots_legendre(M, mu=True)
 
-    # If xromb > 0 we need to integrate over the radial bin width, start by modifying
-    # the array of distances to add extra points over which we'll integrate
-    #
-    # NOTE: the integration scheme over radial bins evaluates a point at C(r=0) which
-    # can have an outsized influence for very blue input power spectra because the
-    # number of samples in the integration is quite small and the correlation function
-    # can diverge quite strongly as r->0. While this could make a difference in the
-    # point variance, in practice this doesn't seem to make much difference to the
-    # *output* maps as it the transform from theta -> l seems to wash it out
-    if xromb > 0:
-        # Calculate the half bin width
-        if xwidth is None:
-            xhalf = np.ndarray(shape=xarray.shape)
-            # width for first and second bin are same
-            xhalf[0] = np.abs(xarray[1] - xarray[0]) / 2.0
-            xhalf[1:] = np.abs(xarray[1:] - xarray[:-1]) / 2.0
-        else:
-            # for continuity with previous convention of allowing to choose xwidth
-            xhalf = np.ones(shape=xarray.shape) * xwidth / 2.0
-
-        xint = 2**xromb + 1
-
-        # Get the quadrature points and weights.
-        x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
-        x_w /= x_wsum
-
-        # Calculate the extended z-array with the extra intervals to integrate over
-        xa = (xarray[:, np.newaxis] + xhalf[:, np.newaxis] * x_r).flatten()
-
+    # Some of the logic below depends on xarray being in increasing order,
+    # so if it's not, we operate on a reversed version and then reverse
+    # the final results at the end
+    sorted_xarray = np.sort(xarray)
+    if np.array_equal(xarray, sorted_xarray):
+        flipped_xarray = False
+    elif np.array_equal(xarray[::-1], sorted_xarray):
+        flipped_xarray = True
     else:
-        xa = xarray
+        raise RuntimeError("xarray must be strictly increasing or decreasing")
 
+    # Make MPIArray to store channel-integrated correlation function
     xlen = xarray.size
     corr_array = mpiarray.zeros((M, xlen, xlen), axis=0)
     clo = corr_array.local_offset[0]
     _len = corr_array.local_array.shape[0]
 
-    # Split thetas into chunks, otherwise memory will blow up
-    for msec in np.array_split(np.arange(_len), _len // chunksize):
-        # Index into the global index in mu
-        rc = coord.cosine_rule(mu[clo + msec], xa, xa)
-        corr1 = corr(rc)
-        if chi1_2nd_derivative:
-            corr1 = diff2(corr1, xa, axis=1)
-        if chi2_2nd_derivative:
-            corr1 = diff2(corr1, xa, axis=2)
+    # Determine full set of chi values for integrand
+    if channel_method == "gauss-legendre":
 
-        # If xromb then we need to integrate over the redshift bins which we do using
-        # Gauss-Legendre quadrature implemented as a matrix multiply
         if xromb > 0:
-            corr1 = corr1.reshape(-1, xint)
-            corr1 = np.matmul(corr1, x_w).reshape(-1, xlen, xint, xlen)
-            corr1 = np.matmul(corr1.transpose(0, 1, 3, 2), x_w)
+            # Calculate the half bin width
+            if xwidth is None:
+                xhalf = 0.5 * calculate_width(sorted_xarray)
+            else:
+                xhalf = np.ones(shape=xarray.shape) * xwidth / 2.0
 
+            xint = 2**xromb + 1
+
+            # Get the quadrature points and weights
+            x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
+            x_w /= x_wsum
+
+            # Calculate the extended chi array, with the extra intervals
+            # to integrate over
+            xarray_full = (
+                sorted_xarray[:, np.newaxis] + xhalf[:, np.newaxis] * x_r
+            ).flatten()
+
+        else:
+            xarray_full = sorted_xarray
+
+    else:
+
+        # Determine half-channel widths and channel boundaries in chi
+        xhalf = 0.5 * calculate_width(sorted_xarray)
+        xedges = np.concatenate(
+            [sorted_xarray - xhalf, [sorted_xarray[-1] + xhalf[-1]]]
+        )
+
+        # Generate uniformly-spaced array of chi values over full chi range
+        xint = 2**xromb + 1
+        xarray_full = np.linspace(
+            xedges[0], xedges[-1], len(xarray) * xint, endpoint=True
+        )
+
+        # If convolving with Finger-of-God kernel, precompute kernel
+        if FoG_convolve:
+            # Make array of dchi for evaluating kernel,
+            # from -(chi_max-chi_min)/2 to (chi_max-chi_min)/2
+            dxarray = xarray_full[: len(xarray_full) // 2] - xarray_full[0]
+            dxarray = np.concatenate([-dxarray[1:][::-1], dxarray])
+
+            # Evaluate kernel, and downselect to nonzero elements.
+            # (Some elements may be zero due to small-value truncation
+            # within exponential_FoG_kernel_1d.)
+            FoG_kernel = exponential_FoG_kernel_1d(dxarray, FoG_sigmaP)
+            FoG_kernel = FoG_kernel[FoG_kernel > 0.0]
+
+            # Compute sum of kernel values that will be used in convolution
+            # at every element of xarray_full. This will be used to normalize
+            # the kernel later.
+            FoG_kernel_norm = sn.convolve1d(
+                np.ones_like(xarray_full),
+                weights=FoG_kernel,
+                mode="constant",
+                cval=0.0,
+            )
+
+    # Split mu values into chunks, to avoid memory usage blowing up
+    for msec in np.array_split(np.arange(_len), _len // chunksize):
+        # Index into the global index in mu, and evaluate the correlation
+        # function at the relevant (mu,chi_1,chi_2) values
+        rc = coord.cosine_rule(mu[clo + msec], xarray_full, xarray_full)
+        corr1 = corr(rc)
+
+        # If desired, compute second derivatives in chi_1 and/or chi_2.
+        # (Numerical stability is better if this is done before the FoG
+        # convolution rather than after.)
+        if chi1_2nd_derivative:
+            corr1 = diff2(corr1, xarray_full, axis=1)
+        if chi2_2nd_derivative:
+            corr1 = diff2(corr1, xarray_full, axis=2)
+
+        # Integrate over each channel
+        if channel_method == "gauss-legendre":
+
+            # If xromb>0, we integrate using Gauss-Legendre quadrature,
+            # implemented as a matrix multiply
+            if xromb > 0:
+                corr1 = corr1.reshape(-1, xint)
+                corr1 = np.matmul(corr1, x_w).reshape(-1, xlen, xint, xlen)
+                corr1 = np.matmul(corr1.transpose(0, 1, 3, 2), x_w)
+
+        else:
+
+            # If desired, convolve with Finger-of-God kernel in chi and chi'.
+            # We normalize the kernel such that it integrates to unity, by
+            # dividing by the sums computed earlier.
+            if FoG_convolve:
+                corr1 = (
+                    sn.convolve1d(
+                        corr1,
+                        weights=FoG_kernel,
+                        axis=1,
+                        mode="constant",
+                        cval=0.0,
+                    )
+                    / FoG_kernel_norm[np.newaxis, :, np.newaxis]
+                )
+                corr1 = (
+                    sn.convolve1d(
+                        corr1,
+                        weights=FoG_kernel,
+                        axis=2,
+                        mode="constant",
+                        cval=0.0,
+                    )
+                    / FoG_kernel_norm[..., :]
+                )
+
+            # Perform channel integrals in chi_1
+            corr1 = integrate_uniform_into_bins(
+                corr1, xarray_full, xedges, axis=1, mean=True
+            )
+
+            # Perform channel integrals in chi_2
+            corr1 = integrate_uniform_into_bins(
+                corr1, xarray_full, xedges, axis=2, mean=True
+            )
+
+        # Save results
         corr_array.local_array[msec] = corr1
 
     # Perform the dot product split over ranks for
@@ -409,10 +558,17 @@ def corr_to_clarray(
     # perform the dot product
     corr_array = corr_array.reshape(None, -1).redistribute(axis=1)
 
+    # Carry out Gauss-Legendre integration over mu, via matrix multiplication
     clxx = np.dot(lm, corr_array.local_array)
     clxx = mpiarray.MPIArray.wrap(clxx, axis=1).redistribute(axis=0)
+    clxx = clxx.reshape(None, xlen, xlen)
 
-    return clxx.reshape(None, xlen, xlen)
+    # If we reversed the input order of xarray, reverse the x axes
+    # in the final output
+    if flipped_xarray:
+        clxx = clxx[:, ::-1, ::-1]
+
+    return clxx
 
 
 def ps_to_aps_flat(
