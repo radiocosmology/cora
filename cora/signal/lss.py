@@ -426,7 +426,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
                 sigma_P = self.alpha_FoG * s(z_eval)
 
             elif self.FoG_model is not None:
-                sigma_P = lssmodels.sigma_P[self.FoG_model](z_eval)
+                sigma_P = self.alpha_FoG * lssmodels.sigma_P[self.FoG_model](z_eval)
             else:
                 raise config.CaputConfigError(
                     "Either `FoG_model` must be set, or `FoG_z_eff` and `FoG_coeff`"
