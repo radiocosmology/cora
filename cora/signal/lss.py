@@ -456,7 +456,8 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
                 # Find number of extra frequencies required to cover
                 # requested fraction of kernel integral
                 nfreq_pad = max(
-                    len(kernel_cumsum > 1 - self.FoG_freq_padding_threshold) - nfreq, 0
+                    np.sum(kernel_cumsum > 1 - self.FoG_freq_padding_threshold) - nfreq,
+                    0,
                 )
                 if self.FoG_freq_padding_maxnum is not None:
                     nfreq_pad = min(nfreq_pad, self.FoG_freq_padding_maxnum)
