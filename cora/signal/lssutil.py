@@ -13,6 +13,7 @@ from ..util import cubicspline as cs
 from ..util import hputil
 from ..util.nputil import FloatArrayLike
 from ..util import bilinearmap
+from ..util import cosmology as cora_cosmology
 
 
 def linspace(x: Union[dict, list, np.ndarray]) -> np.ndarray:
@@ -755,6 +756,119 @@ def exponential_FoG_kernel(
     K *= D[:, np.newaxis]
 
     return K
+
+
+def pad_frequencies(
+    frequencies: np.ndarray,
+    num: int = 1,
+    use_FoG_kernel: bool = False,
+    cosmology: cora_cosmology.Cosmology = None,
+    sigma_P: float = None,
+    FoG_threshold: float = 0.99,
+    maxnum: int = None,
+):
+    """Pad list of frequencies.
+
+    Input frequency list will be extended by an equal number of frequencies
+    at the high and low ends.
+
+    Parameters
+    ----------
+    frequencies
+        Array of frequencies to pad.
+    num
+        Number of frequencies to pad by. If determining padding using FoG
+        kernel, this number is treated as the minimum number of frequencies
+        to pad by.
+    use_FoG_kernel
+        Whether to use the FoG kernel to determine the number of padding
+        frequencies. The number of extra frequencies is computed such that the
+        FoG convolution for lowest frequency in the input list captures
+        contributions from some fraction of the integral of the FoG kernel,
+        specified by `FoG_threshold`.
+    cosmology
+        Cosmology object to use for computing comoving distances.
+    sigma_P
+        FoG damping scale for kernel.
+    FoG_threshold
+        See description of `use_FoG_kernel`.
+    maxnum
+        Maximum number of padding frequencies.
+
+    Returns
+    -------
+    padded_frequencies
+        Padded list of frequencies.
+    n_pad
+        Number of frequencies added at each end of input list.
+    n_pad_raw
+        Number of frequencies that would have been if `maxnum` was not set.
+    kernel_frac
+        Fraction of kernel integral covered by padded frequencies at lowest
+        input frequency. (Can be compared with `FoG_threshold` to determine
+        how much of the kernel was cut off by the specified `maxnum`.)
+    """
+
+    if use_FoG_kernel and ((cosmology is None) or (sigma_P is None)):
+        raise RuntimeError(
+            "If using FoG kernel to determine padding, "
+            "cosmology and sigmaP must both be specified"
+        )
+
+    # Sort frequencies and find spacing
+    nfreq = len(frequencies)
+    freqs_sorted = np.sort(frequencies)
+    dfreq = np.median(np.diff(freqs_sorted))
+
+    if not use_FoG_kernel:
+        n_pad_raw = num
+        n_pad = num
+        kernel_frac = 1.
+    else:
+        # Generate list of frequencies that's extended by a factor
+        # of 2 at the low end
+        freqs_extended = np.concatenate([freqs_sorted - nfreq * dfreq, freqs_sorted])
+
+        # Compute corresponding extended list of comoving-distance
+        # differences from lowest frequency in original list
+        dx_extended = cosmology.comoving_distance(freqs_extended)
+        dx_extended -= dx_extended[nfreq]
+
+        # Evaluate normalized FoG kernel at values in this list
+        # and evaluate cumulative sum
+        kernel_extended = exponential_FoG_kernel_1d(
+            dx_extended, sigma_P, normalize=True
+        )
+        kernel_cumsum = np.cumsum(kernel_extended)
+
+        # Find number of extra frequencies required to cover
+        # requested fraction of kernel integral
+        n_pad_raw = max(
+            np.sum(kernel_cumsum > 1 - FoG_threshold) - nfreq,
+            0,
+        )
+        if maxnum is None:
+            maxnum = nfreq + 1
+        n_pad = min(n_pad_raw, maxnum)
+
+        # Save fraction of kernel covered by padded frequencies
+        # at lowest input frequency
+        kernel_frac = (1 - kernel_cumsum)[nfreq - n_pad]
+
+    # Make new frequency list
+    padded_frequencies = np.concatenate(
+        [
+            freqs_sorted[0] - np.arange(1, n_pad + 1)[::-1] * dfreq,
+            freqs_sorted,
+            freqs_sorted[-1] + np.arange(1, n_pad + 1) * dfreq,
+        ]
+    )
+
+    # Reverse order if initial sorting had an effect
+    if not np.array_equal(padded_frequencies, frequencies):
+        padded_frequencies = padded_frequencies[::-1]
+
+    return padded_frequencies, n_pad, n_pad_raw, kernel_frac
 
 
 def lognormal_transform(

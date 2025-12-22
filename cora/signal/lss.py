@@ -303,6 +303,18 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     use_d2phi : bool, optional
         Compute spectra corresponding to the second line-of-sight
         derivative of phi instead of phi itself. Default: False.
+    freq_padding : bool, optional
+        Add extra high and low frequencies so that Kaiser-term derivatives and
+        FoG convolution are accurately performed at highest and lowest frequencies
+        specified in `frequencies` or `redshift`. If `FoG_convolve` is False,
+        `d2phi_freq_padding` extra frequencies are added at each end.
+        If `FoG_convolve` is True, the number of extra frequencies is computed
+        such that the FoG convolution for the requested edge frequencies captures
+        contributions from some fraction of the integral of the FoG kernel,
+        specified by `FoG_freq_padding_threshold`. Default: False.
+    d2phi_freq_padding : int, optional
+        Fixed number of padding frequencies. Overridden if `FoG_convolve` is True.
+        Default: 1.
     FoG_convolve : bool, optional
         Whether to convolve the integrand with the Finger-of-God damping kernel
         prior to integration. Must choose `channel_method = "uniform"`.
@@ -323,13 +335,6 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
     FoG_z_eval : float, optional
         Redshift at which to evaluate FoG damping model. If not set, mean redshift
         of input container is used. Default: None.
-    FoG_freq_padding : bool, optional
-        Add extra high and low frequencies so that FoG convolution is accurately
-        performed at highest and lowest frequencies specified in `frequencies` or
-        `redshift`. The number of extra frequencies is computed such that the FoG
-        convolution for the requested edge frequencies captures contributions
-        from some fraction of the integral of the FoG kernel, specified by
-        `FoG_freq_padding_threshold`. Default: False.
     FoG_freq_padding_threshold : float, optional
         Requested frequency range is padded such that this fraction of the
         integral of the FoG kernel is captured. Default: 0.99.
@@ -352,13 +357,15 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
 
     use_d2phi = config.Property(proptype=bool, default=False)
 
+    freq_padding = config.Property(proptype=bool, default=False)
+    d2phi_freq_padding = config.Property(proptype=int, default=1)
+
     FoG_convolve = config.Property(proptype=bool, default=False)
     alpha_FoG = config.Property(proptype=float, default=1.0)
     FoG_model = config.enum(lssmodels.sigma_P.models(), default=None)
     FoG_coeff = config.list_type(type_=float, default=None)
     FoG_z_eff = config.Property(proptype=float, default=None)
     FoG_z_eval = config.Property(proptype=float, default=None)
-    FoG_freq_padding = config.Property(proptype=bool, default=False)
     FoG_freq_padding_threshold = config.Property(proptype=float, default=0.99)
     FoG_freq_padding_maxnum = config.Property(proptype=int, default=None)
 
@@ -398,6 +405,12 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
 
         nfreq_pad = 0
 
+        # If padding frequencies, set number to default to ensure accurate
+        # Kaiser-term derivatives at lowest and highest frequency. This is
+        # overridden below if FoG convolution is turned on.
+        if self.freq_padding:
+            nfreq_pad = self.d2phi_freq_padding
+
         # NOTE: it is important not to set this any higher. Otherwise,
         # power will alias back down when the map is transformed later on
         lmax = 3 * self.nside - 1
@@ -407,7 +420,17 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
         if self.alpha_FoG == 0:
             self.FoG_convolve = False
 
-        if self.FoG_convolve:
+        # Set FoG damping scale and padding frequencies, if needed
+        if not self.FoG_convolve:
+
+            sigma_P = None
+
+            if nfreq_pad > 0:
+                freqs_new, nfreq_pad, _, _ = lssutil.pad_frequencies(
+                    self.frequencies, num=nfreq_pad
+                )
+
+        else:
 
             # Set redshift at which to evaluate model for damping scale
             if self.FoG_z_eval is not None:
@@ -432,55 +455,34 @@ class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
                     "Either `FoG_model` must be set, or `FoG_z_eff` and `FoG_coeff`"
                 )
 
-            if self.FoG_freq_padding:
-                # Generate list of frequencies that's extended at the low end
-                nfreq = len(self.frequencies)
-                freqs_sorted = np.sort(self.frequencies)
-                dfreq = np.median(np.diff(freqs_sorted))
-                freqs_extended = np.concatenate(
-                    [freqs_sorted - dfreq * nfreq, freqs_sorted]
+            if self.freq_padding:
+                # Pad frequencies to ensure adequate coverage of FoG kernel
+                freqs_new, nfreq_pad, nfreq_pad_raw, FoG_kernel_frac = (
+                    lssutil.pad_frequencies(
+                        self.frequencies,
+                        use_FoG_kernel=True,
+                        cosmology=cosmology,
+                        sigma_P=sigma_P,
+                        FoG_threshold=self.FoG_freq_padding_threshold,
+                        maxnum=self.FoG_freq_padding_maxnum,
+                    )
                 )
-
-                # Compute corresponding extended list of comoving-distance
-                # differences from lowest frequency in original list
-                dx_extended = cosmology.comoving_distance(freqs_extended)
-                dx_extended -= dx_extended[nfreq]
-
-                # Evaluate normalized FoG kernel at values in this list
-                # and evaluate cumulative sum
-                kernel_extended = lssutil.exponential_FoG_kernel_1d(
-                    dx_extended, sigma_P, normalize=True
-                )
-                kernel_cumsum = np.cumsum(kernel_extended)
-
-                # Find number of extra frequencies required to cover
-                # requested fraction of kernel integral
-                nfreq_pad = max(
-                    np.sum(kernel_cumsum > 1 - self.FoG_freq_padding_threshold) - nfreq,
-                    0,
-                )
-                if self.FoG_freq_padding_maxnum is not None:
-                    nfreq_pad = min(nfreq_pad, self.FoG_freq_padding_maxnum)
-
-                # Make new arrays of frequencies, redshifts, and comoving distances
-                freqs_new = np.concatenate(
-                    [
-                        freqs_sorted[0] - np.arange(1, nfreq_pad + 1)[::-1] * dfreq,
-                        freqs_sorted,
-                        freqs_sorted[-1] + np.arange(1, nfreq_pad + 1) * dfreq,
-                    ]
-                )
-                if not np.array_equal(freqs_sorted, self.frequencies):
-                    freqs_new = freqs_new[::-1]
-                redshift_new = units.nu21 / freqs_new - 1.0
-                xa = cosmology.comoving_distance(redshift_new)
-
                 self.log.info(
-                    f"Padded frequency range with {nfreq_pad} elements at each end"
+                    "Fraction of FoG kernel covered by "
+                    f"padded frequencies: {FoG_kernel_frac}"
                 )
+                if nfreq_pad != nfreq_pad_raw:
+                    self.log.info(
+                        "Number of raw padding frequencies, "
+                        f"prior to cutting off: {nfreq_pad_raw}"
+                    )
 
-        else:
-            sigma_P = None
+        # If necessary, generate new comoving-distance array from padded frequencies
+        if nfreq_pad > 0:
+            redshift_new = units.nu21 / freqs_new - 1.0
+            xa = cosmology.comoving_distance(redshift_new)
+
+            self.log.info(f"Number of padding frequencies: {nfreq_pad}")
 
         phi_label = "d2phi" if self.use_d2phi else "phi"
 
