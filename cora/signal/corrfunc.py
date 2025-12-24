@@ -310,6 +310,7 @@ def corr_to_clarray(
     chi2_2nd_derivative: bool = False,
     FoG_convolve: bool = False,
     FoG_sigmaP: float = None,
+    FoG_kernel_max_nchannels: int = None,
 ):
     r"""Calculate an array of :math:`C_\ell(\chi_1, \chi_2)`.
 
@@ -363,6 +364,10 @@ def corr_to_clarray(
         prior to integration. Must choose `channel_method = "uniform"`.
     FoG_sigmaP
         Finger-of-God damping scale to use in kernel.
+    FoG_kernel_max_nchannels
+        Restrict the width of the Finger-of-God kernel to the comoving distance
+        interval equal to twice this number of frequency channels. This reduces
+        the computational cost of the convolution.
 
     Returns
     -------
@@ -463,9 +468,24 @@ def corr_to_clarray(
 
         # If convolving with Finger-of-God kernel, precompute kernel
         if FoG_convolve:
-            # Make array of dchi for evaluating kernel,
-            # from -(chi_max-chi_min)/2 to (chi_max-chi_min)/2
-            dxarray = xarray_full[: len(xarray_full) // 2] - xarray_full[0]
+
+            # Compute the maximum number of |dchi| values at which to
+            # evaluate the kernel
+            if FoG_kernel_max_nchannels is None:
+                # Just use half of the full xarray
+                n_dx = len(xarray_full) // 2
+            else:
+                # Compute the maximum number of xarray_full elements
+                # corresponding to the number of padding channels,
+                # considering the higher and lower sets of padding
+                # channels
+                n_dx = max(
+                    np.sum(xarray_full < xedges[FoG_kernel_max_nchannels + 1]),
+                    np.sum(xarray_full > xedges[-FoG_kernel_max_nchannels]),
+                )
+
+            # Make array of dchi for evaluating kernel
+            dxarray = xarray_full[:n_dx] - xarray_full[0]
             dxarray = np.concatenate([-dxarray[1:][::-1], dxarray])
 
             # Evaluate kernel, and downselect to nonzero elements.
