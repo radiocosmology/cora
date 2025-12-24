@@ -475,9 +475,12 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
                     )
 
         # If necessary, generate new comoving-distance array from padded frequencies
+        nfreq_pad_for_kernel = None
         if nfreq_pad > 0:
             redshift_new = units.nu21 / freqs_new - 1.0
             xa = cosmology.comoving_distance(redshift_new)
+
+            nfreq_pad_for_kernel = nfreq_pad
 
             self.log.info(f"Number of padding frequencies: {nfreq_pad}")
 
@@ -494,6 +497,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             channel_method=self.channel_method,
             FoG_convolve=self.FoG_convolve,
             FoG_sigmaP=sigma_P,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
         )
 
         self.log.debug(f"Generating C_l(x, x') for {phi_label}-delta")
@@ -507,6 +511,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             channel_method=self.channel_method,
             FoG_convolve=self.FoG_convolve,
             FoG_sigmaP=sigma_P,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
             chi1_2nd_derivative=self.use_d2phi,
         )
 
@@ -521,6 +526,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             channel_method=self.channel_method,
             FoG_convolve=self.FoG_convolve,
             FoG_sigmaP=sigma_P,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
             chi1_2nd_derivative=self.use_d2phi,
             chi2_2nd_derivative=self.use_d2phi,
         )
