@@ -3,7 +3,7 @@ from typing import Callable, Union, Tuple, List
 import numpy as np
 import scipy.integrate as si
 import scipy.special as ss
-import scipy.ndimage as sn
+import scipy.signal as ssig
 from scipy.fftpack import dct
 
 from caput import mpiarray
@@ -497,11 +497,10 @@ def corr_to_clarray(
             # Compute sum of kernel values that will be used in convolution
             # at every element of xarray_full. This will be used to normalize
             # the kernel later.
-            FoG_kernel_norm = sn.convolve1d(
+            FoG_kernel_norm = ssig.oaconvolve(
                 np.ones_like(xarray_full),
-                weights=FoG_kernel,
-                mode="constant",
-                cval=0.0,
+                FoG_kernel,
+                mode="same",
             )
 
     # Split mu values into chunks, to avoid memory usage blowing up
@@ -536,22 +535,20 @@ def corr_to_clarray(
             # dividing by the sums computed earlier.
             if FoG_convolve:
                 corr1 = (
-                    sn.convolve1d(
+                    ssig.oaconvolve(
                         corr1,
-                        weights=FoG_kernel,
-                        axis=1,
-                        mode="constant",
-                        cval=0.0,
+                        FoG_kernel[np.newaxis, :],
+                        axes=(1,),
+                        mode="same",
                     )
                     / FoG_kernel_norm[np.newaxis, :, np.newaxis]
                 )
                 corr1 = (
-                    sn.convolve1d(
+                    ssig.oaconvolve(
                         corr1,
-                        weights=FoG_kernel,
-                        axis=2,
-                        mode="constant",
-                        cval=0.0,
+                        FoG_kernel[np.newaxis, np.newaxis, :],
+                        axes=(2,),
+                        mode="same",
                     )
                     / FoG_kernel_norm[..., :]
                 )
