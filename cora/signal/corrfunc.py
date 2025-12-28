@@ -537,7 +537,7 @@ def corr_to_clarray(
                 corr1 = (
                     ssig.oaconvolve(
                         corr1,
-                        FoG_kernel[np.newaxis, :],
+                        FoG_kernel[np.newaxis, :, np.newaxis],
                         axes=(1,),
                         mode="same",
                     )
