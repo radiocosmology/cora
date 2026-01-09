@@ -19,6 +19,7 @@ def clarray(
     chunksize=5,
     second_chi_deriv=False,
     chi_func=None,
+    channel_profile=None,
 ):
     """Calculate an array of C_l(z, z').
 
@@ -64,6 +65,10 @@ def clarray(
         If `second_chi_deriv` is True, this is the function that converts
         redshift to comoving distance that is used in the finite-difference
         computation. Default: None.
+    channel_profile : function, optional
+        The frequency channel profile to use in the channel integration.
+        The profile function must be defined on [-0.5, 0.5] and integrate
+        to unity over this range. Default: None.
 
     Returns
     -------
@@ -107,6 +112,14 @@ def clarray(
             # Calculate the extended xarray with the extra intervals to integrate over
             za = (zarray[:, np.newaxis] + zhalf[:, np.newaxis] * z_r).flatten()
 
+            # If using a channel profile, evaluate it at the integrand sampling points
+            if channel_profile is not None:
+                za_profile = (
+                    np.zeros_like(zarray)[:, np.newaxis]
+                    + 0.5 * np.ones_like(zhalf)[:, np.newaxis] * z_r
+                ).flatten()
+                profile = channel_profile(za_profile)
+
             # Make array to store final results
             cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
@@ -125,6 +138,10 @@ def clarray(
                     xarray = chi_func(za)
                     clt = diff2(clt, xarray, axis=1)
                     clt = diff2(clt, xarray, axis=2)
+
+                if channel_profile is not None:
+                    clt *= profile[np.newaxis, :, np.newaxis]
+                    clt *= profile[np.newaxis, np.newaxis, :]
 
                 # Perform Gauss-Legendre quandrature via matrix multiplications
                 clt = clt.reshape(-1, zint)
@@ -147,6 +164,14 @@ def clarray(
                 zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]
             ).flatten()
 
+            # If using a channel profile, evaluate it at the integrand sampling points
+            if channel_profile is not None:
+                za_profile = (
+                    np.zeros_like(zarray)[:, np.newaxis]
+                    + np.linspace(-0.5, 0.5, zint)[np.newaxis, :]
+                ).flatten()
+                profile = channel_profile(za_profile)
+
             lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
 
             cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
@@ -157,6 +182,10 @@ def clarray(
                     za[np.newaxis, :, np.newaxis],
                     za[np.newaxis, np.newaxis, :],
                 )
+
+                if channel_profile is not None:
+                    clt *= profile[np.newaxis, :, np.newaxis]
+                    clt *= profile[np.newaxis, np.newaxis, :]
 
                 clt = clt.reshape(-1, zlen, zint, zlen, zint)
 
