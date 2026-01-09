@@ -5,7 +5,7 @@ from functools import cache
 import healpy
 import numpy as np
 
-from caput import config, mpiarray, pipeline
+from caput import config, mpiarray, pipeline, pfb
 from cora.core import skysim
 from cora.util import hputil, units
 from cora.util.cosmology import Cosmology
@@ -22,6 +22,7 @@ from draco.core.containers import Map, CosmologyContainer
 from ..util.nputil import FloatArrayLike
 from . import corrfunc, lssutil, lssmodels
 from .lsscontainers import (
+    InterpolatedFunction,
     BiasedLSS,
     CorrelationFunction,
     MultiFrequencyAngularPowerSpectrum,
@@ -244,6 +245,73 @@ class BlendNonLinearPowerSpectrum(task.SingleTask):
         self.done = True
 
         return ps_linear
+
+
+class CalculatePFBChannelProfile(task.SingleTask):
+    """Compute frequency channel profile for CASPER PFB.
+
+    The output is an `InterpolatedFunction` container containing
+    the squared magnitude of the profile computed by
+    `caput.pfb.PFB.channel_profile`, which corresponds to the
+    frequency channel profile associataed with a measured
+    visibility.
+
+    Attributes
+    ----------
+    ntap : int
+        Number of taps (i.e. blocks) used in one step of the PFB.
+    lblock : int
+        The length of a block that gets transformed. This is twice the number
+        of output frequencies.
+    window : str, optional
+        The window function being used. Must be one of "sinc", "sinc_hann",
+        or "sinc_hamming". Default: "sinc-hamming" (which is used for CHIME).
+    oversample : int, optional
+        The amount to oversample when calculating the decorrelation ratio.
+        This will improve accuracy. The default (16) is typically
+        sufficient for CHIME.
+    """
+
+    ntap = config.Property(proptype=int)
+    lblock = config.Property(proptype=int)
+    window = config.enum(["sinc", "sinc_hann", "sinc_hamming"], default="sinc_hamming")
+    oversample = config.Property(proptype=int, default=16)
+
+    def process(self) -> InterpolatedFunction:
+        """Construct the profile interpolating function.
+
+        Returns
+        -------
+        profile_cont
+            Container with interpolating function for profile.
+        """
+
+        # Mapping from input string to window routine in caput.pfb
+        _window_function = {
+            "sinc": pfb.sinc_window,
+            "sinc_hann": pfb.sinc_hann,
+            "sinc_hamming": pfb.sinc_hamming,
+        }
+
+        # Instantiate PFB object
+        pfb_ = pfb.PFB(
+            self.ntap,
+            self.lblock,
+            _window_function[self.window],
+            oversample=self.oversample,
+        )
+
+        # Compute voltage profile and square to obtain profile for visibility
+        rel_freq, profile_vals = pfb_.compute_channel_profile(norm=True)
+        profile_vals = np.abs(profile_vals) ** 2
+
+        # Create output container
+        profile_cont = CorrelationFunction()
+        profile_cont.add_function("profile", rel_freq, profile_vals, type="linear")
+
+        self.done = True
+
+        return profile_cont
 
 
 class CalculateMultiFrequencyAngularPowerSpectrum(task.SingleTask):
