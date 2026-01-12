@@ -845,7 +845,7 @@ def pad_frequencies(
     if not use_FoG_kernel:
         n_pad_raw = num
         n_pad = num
-        kernel_frac = 1.
+        kernel_frac = 1.0
     else:
         # Generate list of frequencies that's extended by a factor
         # of 2 at the low end
