@@ -306,7 +306,7 @@ class CalculatePFBChannelProfile(task.SingleTask):
         profile_vals = np.abs(profile_vals) ** 2
 
         # Create output container
-        profile_cont = CorrelationFunction()
+        profile_cont = InterpolatedFunction()
         profile_cont.add_function("profile", rel_freq, profile_vals, type="linear")
 
         self.done = True
