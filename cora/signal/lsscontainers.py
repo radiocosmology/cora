@@ -440,7 +440,7 @@ class MultiFrequencyAngularPowerSpectrum(FZXContainer):
 
     @property
     def nfreq_pad(self) -> int:
-        """Whether phi is actually the 2nd radial derivative of phi."""
+        """Number of padding frequencies used when computing spectra."""
         if "nfreq_pad" not in self.attrs.keys():
             return 0
         else:
