@@ -435,6 +435,20 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
     FoG_freq_padding_threshold = config.Property(proptype=float, default=0.99)
     FoG_freq_padding_maxnum = config.Property(proptype=int, default=None)
 
+    def setup(self, profile_cont: Optional[InterpolatedFunction] = None):
+        """Set up frequency channel profile.
+
+        Parameters
+        ----------
+        profile_cont: InterpolatedFunction, optional
+            `InterpolatedFunction` container with frequency channel profile.
+            If None, a top-hat is used. Default: None.
+        """
+
+        self.channel_profile_func = None
+        if profile_cont is not None:
+            self.channel_profile_func = profile_cont.get_function("profile")
+
     def process(
         self, correlation_functions: CorrelationFunction
     ) -> MultiFrequencyAngularPowerSpectrum:
@@ -567,6 +581,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             FoG_convolve=self.FoG_convolve,
             FoG_sigmaP=sigma_P,
             FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
         )
 
         self.log.debug(f"Generating C_l(x, x') for {phi_label}-delta")
@@ -581,6 +596,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             FoG_convolve=self.FoG_convolve,
             FoG_sigmaP=sigma_P,
             FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
             chi1_2nd_derivative=self.use_d2phi,
         )
 
@@ -596,6 +612,7 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             FoG_convolve=self.FoG_convolve,
             FoG_sigmaP=sigma_P,
             FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
             chi1_2nd_derivative=self.use_d2phi,
             chi2_2nd_derivative=self.use_d2phi,
         )
