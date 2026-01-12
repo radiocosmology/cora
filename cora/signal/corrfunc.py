@@ -311,17 +311,18 @@ def corr_to_clarray(
     FoG_convolve: bool = False,
     FoG_sigmaP: float = None,
     FoG_kernel_max_nchannels: int = None,
+    channel_profile: Callable[[np.ndarray], np.ndarray] = None,
 ):
     r"""Calculate an array of :math:`C_\ell(\chi_1, \chi_2)`.
 
-    This routine compute the following triple integral:
+    This routine computes the following triple integral:
 
     .. math::
         C_\ell(\chi_1, \chi_2) = 2\pi \int_{-1}^1 P_\ell(\mu)
         \int d\chi_1' W_1(\chi_1') \int d\chi_2' W_2(\chi_2')
         \xi(r[\mu, \chi_1', \chi_2'])
 
-    where :math:`W_1` and :math:`W_2` are normalized top-hats centered on
+    where :math:`W_1` and :math:`W_2` are normalized channel profiles centered on
     :math:`\chi_1` and :math:`\chi_2`.
 
     Parameters
@@ -368,6 +369,10 @@ def corr_to_clarray(
         Restrict the width of the Finger-of-God kernel to the comoving distance
         interval equal to twice this number of frequency channels. This reduces
         the computational cost of the convolution.
+    channel_profile
+        Frequency channel profile to use in the channel integration.
+        The profile function must be defined on [-0.5, 0.5].
+        If None, a top-hat profile is used. Default: None.
 
     Returns
     -------
@@ -388,22 +393,29 @@ def corr_to_clarray(
     if channel_method not in ["gauss-legendre", "uniform"]:
         raise RuntimeError("channel method must be one of 'gauss-legendre', 'uniform'")
 
-    if channel_method == "gauss-legendre" and FoG_convolve:
-        raise NotImplementedError(
-            "Finger-of-God damping is not implemented for Gauss-Legendre "
-            "channel integration"
-        )
+    # Catch combinations of parameters that are not implemented
+    if channel_method == "gauss-legendre":
+        if FoG_convolve:
+            raise NotImplementedError(
+                "Finger-of-God damping is not implemented for Gauss-Legendre "
+                "channel integration"
+            )
+        if channel_profile is not None:
+            raise NotImplementedError(
+                "Integration over a nontrivial channel profile is not implemented "
+                "for Gauss-Legendre channel integration"
+            )
 
-    if channel_method == "uniform" and xromb == 0:
-        raise NotImplementedError(
-            "Need xromb > 0 if using Simpson-trapezoid channel integration scheme"
-        )
-
-    if channel_method == "uniform" and xwidth is not None:
-        raise NotImplementedError(
-            "Uniform channel width not implemented for Simpson-trapezoid "
-            "channel integration scheme"
-        )
+    elif channel_method == "uniform":
+        if xromb == 0:
+            raise NotImplementedError(
+                "Need xromb > 0 if using Simpson-trapezoid channel integration scheme"
+            )
+        if xwidth is not None:
+            raise NotImplementedError(
+                "Uniform channel width not implemented for Simpson-trapezoid "
+                "channel integration scheme"
+            )
 
     # The integration over mu will be performed by Gauss-Legendre quadrature.
     # Here we calculate the points that it will be evaluated at.
@@ -466,6 +478,31 @@ def corr_to_clarray(
             xedges[0], xedges[-1], len(xarray) * xint, endpoint=True
         )
 
+        if channel_profile is not None:
+            # Determine the channel index of each point in xarray_full
+            chan_idx = np.searchsorted(xedges, xarray_full, side="right") - 1
+            chan_idx = np.clip(chan_idx, 0, xlen - 1)
+
+            # Compute the distance of each point from the channel center,
+            # divided by the channel width
+            rel_dx_full = (xarray_full - sorted_xarray[chan_idx]) / (
+                2 * xhalf[chan_idx]
+            )
+
+            # Evaluate the channel profile at these values
+            profile_full = channel_profile(rel_dx_full)
+
+            # Integrate channel profile within each channel.
+            # (We'll use these values to normalize our final channel
+            # integrals.)
+            norm = 2 * xhalf * si.quad(channel_profile, -0.5, 0.5)[0]
+        else:
+            profile_full = None
+
+            # For top-hat profile, normalization factors are just the
+            # channel widths
+            norm = 2 * xhalf
+
         # If convolving with Finger-of-God kernel, precompute kernel
         if FoG_convolve:
 
@@ -520,19 +557,16 @@ def corr_to_clarray(
 
         # Integrate over each channel
         if channel_method == "gauss-legendre":
-
             # If xromb>0, we integrate using Gauss-Legendre quadrature,
             # implemented as a matrix multiply
             if xromb > 0:
                 corr1 = corr1.reshape(-1, xint)
                 corr1 = np.matmul(corr1, x_w).reshape(-1, xlen, xint, xlen)
                 corr1 = np.matmul(corr1.transpose(0, 1, 3, 2), x_w)
-
         else:
-
-            # If desired, convolve with Finger-of-God kernel in chi and chi'.
-            # We normalize the kernel such that it integrates to unity, by
-            # dividing by the sums computed earlier.
+            # If desired, convolve with Finger-of-God kernel in chi_1 and
+            # chi_2. We normalize the kernel such that it integrates to
+            # unity, by dividing by the sums computed earlier.
             if FoG_convolve:
                 corr1 = (
                     ssig.oaconvolve(
@@ -555,12 +589,12 @@ def corr_to_clarray(
 
             # Perform channel integrals in chi_1
             corr1 = integrate_uniform_into_bins(
-                corr1, xarray_full, xedges, axis=1, mean=True
+                corr1, xarray_full, xedges, axis=1, norm=norm, window=profile_full
             )
 
             # Perform channel integrals in chi_2
             corr1 = integrate_uniform_into_bins(
-                corr1, xarray_full, xedges, axis=2, mean=True
+                corr1, xarray_full, xedges, axis=2, norm=norm, window=profile_full
             )
 
         # Save results

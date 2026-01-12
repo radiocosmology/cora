@@ -527,7 +527,8 @@ def integrate_uniform_into_bins(
     x: np.ndarray,
     xedges: np.ndarray,
     axis: Optional[int] = -1,
-    mean: Optional[bool] = False,
+    norm: Optional[np.ndarray] = None,
+    window: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """Integrate a uniformly-sampled function into bins with arbitrary edges.
 
@@ -535,6 +536,11 @@ def integrate_uniform_into_bins(
     samples falling within each bin, and then uses the trapezoid
     rule to add the contributions between the lowest/highest samples
     per bin and the bin boundaries.
+
+    The user can optionally provide an array of window function values
+    that the function should be multiplied by prior to integration.
+    (The hybrid Simpson-trapezoid scheme does not work if the product
+    of the window and function is passed directly to this routine.)
 
     X values and bin edges must be strictly increasing.
 
@@ -548,15 +554,21 @@ def integrate_uniform_into_bins(
         Edges of bins to integrate within.
     axis
         Axis to integrate over.
-    mean
-        Whether to compute the mean of the function over each bin (True)
-        or the integral (False).
+    norm
+        Array of values to divide each bin by after integration.
+        If no window is used, passing `norm=np.diff(xedges)` will
+        compute the mean over each bin. Default: None.
+    window
+        Array of window function values. Must have the same shape as `x`.
 
     Returns
     -------
     y_int
         Bin-integrated function.
     """
+
+    if window is None:
+        window = np.ones_like(x)
 
     nbins = len(xedges) - 1
     dx = x[1] - x[0]
@@ -572,8 +584,9 @@ def integrate_uniform_into_bins(
     idx_lo = np.searchsorted(x, xedges[:-1], side="left")
     idx_hi = np.concatenate([idx_lo[1:] - 1, [len(x) - 1]])
 
-    # Perform cumulative Simpson integration over full x range
-    y_int = si.cumulative_simpson(y, x=x, axis=-1, initial=0)
+    # Perform cumulative Simpson integration over full x range, with
+    # the integrand multiplied by the window if one is provided.
+    y_int = si.cumulative_simpson(y * window, x=x, axis=-1, initial=0)
 
     # Compute differences between cumulative-integral values at indices
     # corresponding to highest and lowest x values within each bin, to obtain
@@ -586,6 +599,9 @@ def integrate_uniform_into_bins(
     # to estimate the y values at the bin boundaries, excluding the
     # lower boundary of the lowest bin and the upper boundary of the higest
     # bin (since they correspond to the first and last y samples).
+    # This interpolation is done on the unwindowed function values, because
+    # the window may vary more rapidly than the function, and this would
+    # make interpolation of the windowed function unreliable.
     y_at_bounds = (
         y[..., idx_lo[1:]]
         - (y[..., idx_lo[1:]] - y[..., idx_lo[1:] - 1])
@@ -596,17 +612,23 @@ def integrate_uniform_into_bins(
     # We then use these interpolated y values, along with the y values
     # at the lowest and highest samples within the bin, to integrate
     # the missing edge contributions using the trapezoid rule, and add
-    # them to the results from above
+    # them to the results from above. If specified, the appropriate
+    # window values are incorporated here.
+    w_edge = window[0]
     y_int[..., 1:nbins] += (
-        0.5 * (x[idx_lo[1:]] - xedges[1:-1]) * (y_at_bounds + y[..., idx_lo[1:]])
+        0.5
+        * (x[idx_lo[1:]] - xedges[1:-1])
+        * (w_edge * y_at_bounds + window[idx_lo[1:]] * y[..., idx_lo[1:]])
     )
     y_int[..., : nbins - 1] += (
-        0.5 * (xedges[1:-1] - x[idx_hi[:-1]]) * (y_at_bounds + y[..., idx_hi[:-1]])
+        0.5
+        * (xedges[1:-1] - x[idx_hi[:-1]])
+        * (w_edge * y_at_bounds + window[idx_hi[:-1]] * y[..., idx_hi[:-1]])
     )
 
-    # If desired, divide by the bin widths to compute the mean
-    if mean:
-        y_int /= np.diff(xedges)
+    # Divide by normalization factors, if specified
+    if norm is not None:
+        y_int /= norm
 
     # Move integration axis back to original position
     return np.moveaxis(y_int, -1, axis)
