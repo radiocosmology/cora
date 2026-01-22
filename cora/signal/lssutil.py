@@ -586,7 +586,7 @@ def integrate_uniform_into_bins(
 
     # Perform cumulative Simpson integration over full x range, with
     # the integrand multiplied by the window if one is provided.
-    y_int = si.cumulative_simpson(y * window, x=x, axis=-1, initial=0)
+    y_int = si.cumulative_simpson(y * window, dx=dx, axis=-1, initial=0)
 
     # Compute differences between cumulative-integral values at indices
     # corresponding to highest and lowest x values within each bin, to obtain
