@@ -20,6 +20,7 @@ def clarray(
     second_chi_deriv=False,
     chi_func=None,
     channel_profile=None,
+    channel_profile_limit=0.5,
 ):
     """Calculate an array of C_l(z, z').
 
@@ -47,7 +48,9 @@ def clarray(
         Romberg scheme. Default: False.
     zromb : integer, optional
         The Romberg or Gauss-Legendre order for integrating over
-        each channel. If 0, this integration is turned off. Default: 3.
+        each channel. If 0, this integration is turned off.
+        5 is recommended for roughly percent-level accuracy in final
+        spectrum, given CHIME frequency channels. Default: 3.
     zwidth : scalar, optional
         Constant redshift width of frequency channel to integrate over.
         If None, calculated from the separation of the first two bins
@@ -66,9 +69,15 @@ def clarray(
         redshift to comoving distance that is used in the finite-difference
         computation. Default: None.
     channel_profile : function, optional
-        The frequency channel profile to use in the channel integration.
-        The profile function must be defined on [-0.5, 0.5] and integrate
-        to unity over this range. Default: None.
+        Frequency channel profile to use in the channel integration.
+        The profile function must be defined in terms of frequency relative
+        to channel center, in units of channel width (e.g. center = 0,
+        edges = [-0.5, 0.5]). The input profile must integrate to unity
+        over the range [-channel_profile_limit, channel_profile_limit].
+        If None, a top-hat profile is used. Default: None.
+    channel_profile_limit : float, optional
+        Determines within which to integrate the channel profile.
+        Default: 0.5.
 
     Returns
     -------
@@ -78,6 +87,9 @@ def clarray(
 
     if second_chi_deriv and chi_func is None:
         raise RuntimeError("Must specify chi_func if using second_chi_deriv")
+
+    # Set coordinate rescaling factor based on channel integration limits
+    coord_scale = channel_profile_limit / 0.5
 
     if zromb == 0:
         return aps(
@@ -108,15 +120,18 @@ def clarray(
             zint = 2**zromb + 1
             z_r, z_w, z_wsum = ss.roots_legendre(zint, mu=True)
             z_w /= z_wsum
+            z_w *= coord_scale
 
             # Calculate the extended xarray with the extra intervals to integrate over
-            za = (zarray[:, np.newaxis] + zhalf[:, np.newaxis] * z_r).flatten()
+            za = (
+                zarray[:, np.newaxis] + coord_scale * zhalf[:, np.newaxis] * z_r
+            ).flatten()
 
             # If using a channel profile, evaluate it at the integrand sampling points
             if channel_profile is not None:
                 za_profile = (
                     np.zeros_like(zarray)[:, np.newaxis]
-                    + 0.5 * np.ones_like(zhalf)[:, np.newaxis] * z_r
+                    + 0.5 * coord_scale * np.ones_like(zhalf)[:, np.newaxis] * z_r
                 ).flatten()
                 profile = channel_profile(za_profile)
 
@@ -161,14 +176,19 @@ def clarray(
             zspace = 2.0 * zhalf / 2**zromb
 
             za = (
-                zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]
+                zarray[:, np.newaxis]
+                + np.linspace(-coord_scale * zhalf, coord_scale * zhalf, zint)[
+                    np.newaxis, :
+                ]
             ).flatten()
 
             # If using a channel profile, evaluate it at the integrand sampling points
             if channel_profile is not None:
                 za_profile = (
                     np.zeros_like(zarray)[:, np.newaxis]
-                    + np.linspace(-0.5, 0.5, zint)[np.newaxis, :]
+                    + np.linspace(-channel_profile_limit, channel_profile_limit, zint)[
+                        np.newaxis, :
+                    ]
                 ).flatten()
                 profile = channel_profile(za_profile)
 
@@ -192,7 +212,7 @@ def clarray(
                 clt = si.romb(clt, dx=zspace, axis=4)
                 clt = si.romb(clt, dx=zspace, axis=2)
 
-                cla[lsec] = clt / (2 * zhalf) ** 2  # Normalise
+                cla[lsec] = clt / (2 * zhalf / coord_scale) ** 2  # Normalise
 
         return cla
 
