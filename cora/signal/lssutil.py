@@ -3,6 +3,7 @@ from typing import Callable, Union, Tuple, Optional
 import numpy as np
 from scipy.fftpack import dct
 import scipy.integrate as si
+import scipy.sparse as ssparse
 
 import healpy
 
@@ -632,6 +633,183 @@ def integrate_uniform_into_bins(
 
     # Move integration axis back to original position
     return np.moveaxis(y_int, -1, axis)
+
+
+def integrate_uniform_into_tapered_channels(
+    y: np.ndarray,
+    x: np.ndarray,
+    xcenters: np.ndarray,
+    xwidths: np.ndarray,
+    channel_profile: Callable[[np.ndarray], np.ndarray],
+    axis: Optional[int] = -1,
+    n_overlap: Optional[int] = 1,
+    use_cached_weights: Optional[bool] = False,
+):
+    """Integrate a uniformly-sampled function into channels with tapered profiles.
+
+    This function uses Simpson's rule to integrate a uniformly-sampled
+    function against a set of identical profiles defined with respect
+    to a list of profile centers. The profile must taper smoothly to
+    a small amplitude, such that the results are not sensitive to
+    the precise integration bounds as long as they enclose most of
+    the profile's support. The profiles are allowed to overlap; otherwise,
+    `integrate_uniform_into_bins` should be used instead.
+
+    X values and centers must be strictly increasing.
+
+    The integration weights can be cached and re-used in subsequent
+    calls if `use_cached_weights` is set. The weights will be recomputed
+    if the function is evaluated with different coordinate arguments
+    or a different profile.
+
+    Parameters
+    ----------
+    y
+        Function values on uniform grid.
+    x
+        Grid values on which function was evaluated.
+    xcenters
+        Coordinates of channel centers. These values don't need
+        to be elements of `x`.
+    xwidths
+        Coordinate widths of each channel.
+    channel_profile
+        Channel profile to use in the channel integration.
+        The profile function must be defined in terms of coordinate relative
+        to channel center, in units of channel width (e.g. center = 0,
+        edges = [-0.5, 0.5]). The profile can extend beyond the
+        channel width, but is still defined relative to this width.
+    axis
+        Axis to integrate over.
+    n_overlap
+        Number of channels on either side of the channel of interest
+        to integrate over. Should be chosen to cover most of profile's
+        support.
+    use_cached_weights
+        Store integration weights for subsequent re-use if function is
+        called again with same coordinate arguments and profile.
+
+    Returns
+    -------
+    y_int
+        Bin-integrated function.
+    """
+
+    nx = len(x)
+    dx = x[1] - x[0]
+    nchan = len(xcenters)
+
+    if not use_cached_weights or not hasattr(
+        integrate_uniform_into_tapered_channels, "_weights"
+    ):
+        recompute_weights = True
+    else:
+        recompute_weights = (
+            not np.isclose(integrate_uniform_into_tapered_channels._x0, x[0])
+            or not np.isclose(integrate_uniform_into_tapered_channels._dx, dx)
+            or integrate_uniform_into_tapered_channels._nx != nx
+            or not np.allclose(
+                integrate_uniform_into_tapered_channels._xcenters, xcenters
+            )
+            or not np.allclose(
+                integrate_uniform_into_tapered_channels._xwidths, xwidths
+            )
+            or integrate_uniform_into_tapered_channels._channel_profile
+            is not channel_profile
+            or integrate_uniform_into_tapered_channels._n_overlap != n_overlap
+        )
+
+    # Generate weights for each channel integral, if not cached
+    # and/or not using cache
+    if recompute_weights:
+
+        # Compute channel edges based on centers and widths
+        xedges = np.concatenate(
+            [xcenters - 0.5 * xwidths, [xcenters[-1] + 0.5 * xwidths[-1]]]
+        )
+
+        # Determine the channel index of each point in x
+        chan_idx = np.searchsorted(xedges, x, side="right") - 1
+        chan_idx = np.clip(chan_idx, 0, nx - 1)
+
+        # Create arrays for building sparse weight array
+        weight_vals = []
+        weight_idx = []
+        weight_idxptr = [0]
+
+        # Loop over channels
+        for c in range(nchan):
+            # Find indices of elements in x that are within
+            # n_overlap channels of current channel
+            x_mask = (chan_idx >= c - n_overlap) & (chan_idx <= c + n_overlap)
+            x_idx = np.where(x_mask)[0]
+
+            # Ensure set of indices has odd length (so we can apply
+            # Simpson's rule). If even, remove lowest index from set.
+            # As long as we're probing far enough into the tail of
+            # the channel profile, this should incur a small amount
+            # of numerical error.
+            if len(x_idx) % 2 == 0:
+                x_idx = x_idx[1:]
+
+            # Compute distance of each point from center of current
+            # channel, divided by the channel width
+            rel_dx_full = (x[x_idx] - xcenters[c]) / xwidths[c]
+
+            # Evaluate the channel profile at these values
+            w = channel_profile(rel_dx_full)
+
+            # Multiply channel profile by Simpson-rule weights:
+            # [1, 4, 2, 4, ..., 1] * dx / 3
+            w[1:-1:2] *= 4
+            w[2:-1:2] *= 2
+            w *= dx / 3
+
+            # Integrate channel profile within each channel, using
+            # Simpson's rule, and use this to normalize the weights.
+            # (This ensures that the final integrals are means over
+            # each channel's profile.)
+            norm = np.sum(w)
+            w /= norm
+
+            # Store weights and indices in format appropriate for
+            # sparse (CSR) array
+            weight_vals.append(w)
+            weight_idx.append(x_idx)
+            weight_idxptr.append(weight_idxptr[-1] + len(x_idx))
+
+        # Concatenate weight values and index arrays
+        weight_vals = np.concatenate(weight_vals)
+        weight_idx = np.concatenate(weight_idx)
+
+        # Construct sparse array of weights
+        integrate_uniform_into_tapered_channels._weights = ssparse.csr_array(
+            (weight_vals, weight_idx, weight_idxptr), dtype=np.float64
+        )
+
+        # Save relevant input arguments
+        integrate_uniform_into_tapered_channels._x0 = x[0]
+        integrate_uniform_into_tapered_channels._dx = dx
+        integrate_uniform_into_tapered_channels._nx = nx
+        integrate_uniform_into_tapered_channels._xcenters = xcenters
+        integrate_uniform_into_tapered_channels._xwidths = xwidths
+        integrate_uniform_into_tapered_channels._channel_profile = channel_profile
+        integrate_uniform_into_tapered_channels._n_overlap = n_overlap
+
+    # Move integration axis to the beginning, in preparation for multiplication
+    # by sparse array
+    axis = axis % y.ndim
+    y = np.moveaxis(y, axis, 0)
+    shp = y.shape
+
+    # Multiply y by matrix of weights. In the result, the first axis is
+    # channel number. Need to first reshape y, because only 2d x 2d matrix
+    # multiplication is supported for sparse arrays.
+    y_int = integrate_uniform_into_tapered_channels._weights @ y.reshape(shp[0], -1)
+    y_int = y_int.reshape((y_int.shape[0],) + shp[1:])
+
+    # Move channel axis back to original position
+    return np.moveaxis(y_int, 0, axis)
 
 
 def exponential_FoG_kernel_1d(

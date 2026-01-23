@@ -19,6 +19,7 @@ from .lssutil import (
     diff2,
     calculate_width,
     integrate_uniform_into_bins,
+    integrate_uniform_into_tapered_channels,
     exponential_FoG_kernel_1d,
 )
 
@@ -312,6 +313,7 @@ def corr_to_clarray(
     FoG_sigmaP: float = None,
     FoG_kernel_max_nchannels: int = None,
     channel_profile: Callable[[np.ndarray], np.ndarray] = None,
+    overlapping_channels: int = 0,
 ):
     r"""Calculate an array of :math:`C_\ell(\chi_1, \chi_2)`.
 
@@ -371,8 +373,15 @@ def corr_to_clarray(
         the computational cost of the convolution.
     channel_profile
         Frequency channel profile to use in the channel integration.
-        The profile function must be defined on [-0.5, 0.5].
-        If None, a top-hat profile is used. Default: None.
+        The profile function must be defined in terms of frequency relative
+        to channel center, in units of channel width (e.g. center = 0,
+        edges = [-0.5, 0.5]). If None, a top-hat profile is used.
+        Default: None.
+    overlapping_channels
+        If > 0, use a special algorithm that integrates the channel profile
+        over this number of neighboring channels on either side of the channel
+        of interest, to capture contributions from the channel profile that
+        extend beyond the nominal channel boundaries. Default: 0.
 
     Returns
     -------
@@ -478,7 +487,11 @@ def corr_to_clarray(
             xedges[0], xedges[-1], len(xarray) * xint, endpoint=True
         )
 
-        if channel_profile is not None:
+        # If we're using a channel profile with overlap of neighboring channels,
+        # we'll use a routine that accepts the profile function as an argument.
+        # If our profile has no overlap, we need to precompute some profile
+        # quantities here.
+        if channel_profile is not None and overlapping_channels == 0:
             # Determine the channel index of each point in xarray_full
             chan_idx = np.searchsorted(xedges, xarray_full, side="right") - 1
             chan_idx = np.clip(chan_idx, 0, xlen - 1)
@@ -587,15 +600,35 @@ def corr_to_clarray(
                     / FoG_kernel_norm[..., :]
                 )
 
-            # Perform channel integrals in chi_1
-            corr1 = integrate_uniform_into_bins(
-                corr1, xarray_full, xedges, axis=1, norm=norm, window=profile_full
-            )
-
-            # Perform channel integrals in chi_2
-            corr1 = integrate_uniform_into_bins(
-                corr1, xarray_full, xedges, axis=2, norm=norm, window=profile_full
-            )
+            # Perform channel integrals in chi_1, then chi_2
+            if overlapping_channels == 0:
+                corr1 = integrate_uniform_into_bins(
+                    corr1, xarray_full, xedges, axis=1, norm=norm, window=profile_full
+                )
+                corr1 = integrate_uniform_into_bins(
+                    corr1, xarray_full, xedges, axis=2, norm=norm, window=profile_full
+                )
+            else:
+                corr1 = integrate_uniform_into_tapered_channels(
+                    corr1,
+                    xarray_full,
+                    sorted_xarray,
+                    2 * xhalf,
+                    channel_profile,
+                    axis=1,
+                    n_overlap=overlapping_channels,
+                    use_cached_weights=True,
+                )
+                corr1 = integrate_uniform_into_tapered_channels(
+                    corr1,
+                    xarray_full,
+                    sorted_xarray,
+                    2 * xhalf,
+                    channel_profile,
+                    axis=2,
+                    n_overlap=overlapping_channels,
+                    use_cached_weights=True,
+                )
 
         # Save results
         corr_array.local_array[msec] = corr1
