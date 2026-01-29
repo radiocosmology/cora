@@ -21,6 +21,7 @@ def clarray(
     chi_func=None,
     channel_profile=None,
     channel_profile_limit=0.5,
+    verbose=False,
 ):
     """Calculate an array of C_l(z, z').
 
@@ -83,6 +84,9 @@ def clarray(
     channel_profile_limit : float, optional
         Determines within which to integrate the channel profile.
         Default: 0.5.
+    verbose : bool, optional
+        Whether to print status messages to track progress as a function of
+        ell. Default: False.
 
     Returns
     -------
@@ -147,6 +151,9 @@ def clarray(
             lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
 
             for lsec in lsections:
+                if verbose:
+                    print(f"Computing for ell={lsec} out of {lmax}")
+
                 # Get C_ell(z, z') values for this chunk
                 clt = aps(
                     lsec[:, np.newaxis, np.newaxis],
@@ -202,6 +209,9 @@ def clarray(
             cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
 
             for lsec in lsections:
+                if verbose:
+                    print(f"Computing for ell={lsec} out of {lmax}")
+
                 clt = aps(
                     lsec[:, np.newaxis, np.newaxis],
                     za[np.newaxis, :, np.newaxis],
