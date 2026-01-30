@@ -291,7 +291,7 @@ class Corr21cm(corr.RedshiftCorrelation, maps.Sky3d):
         z1 = constants.nu21 / self.nu_upper - 1.0
         z2 = constants.nu21 / self.nu_lower - 1.0
 
-        (cube, rsf, d) = self.realisation(
+        cube, rsf, d = self.realisation(
             z1,
             z2,
             self.x_width,

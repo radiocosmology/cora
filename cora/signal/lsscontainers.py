@@ -11,7 +11,6 @@ from ..util.nputil import FloatArrayLike
 from ..util import cubicspline as cs
 from ..util.cosmology import Cosmology
 
-
 # Types of interpolation that can be used
 _INTERP_TYPES = ["linear", "log", "sinh", "linear_scipy", "sinh_scipy"]
 
