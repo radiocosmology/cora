@@ -48,7 +48,7 @@ lss = [
     "hankl",
     "pyfftlog",
 ]
-docs = ["Sphinx", "sphinx_rtd_theme"]
+docs = ["Sphinx<9", "sphinx_rtd_theme"]
 lint = ["black"]
 test = ["pytest"]
 
