@@ -3,7 +3,6 @@ import camb
 from cora.signal import lsscontainers
 from cora.util import cosmology
 
-
 # Cosmological params taken from Planck 2018: Planck-TT,TE,EE+lowL+lensing+BAO
 background_params = {
     "ombh2": 0.02242,

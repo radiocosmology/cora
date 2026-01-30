@@ -186,7 +186,7 @@ class Map3d(Map2d):
         ra_fact = np.cos(np.pi * mapobj.info["dec_centre"] / 180.0)
         c.x_width = (max(ra_axis) - min(ra_axis)) * ra_fact
         c.y_width = max(dec_axis) - min(dec_axis)
-        (c.x_num, c.y_num) = (len(ra_axis), len(dec_axis))
+        c.x_num, c.y_num = (len(ra_axis), len(dec_axis))
 
         c.nu_lower = min(freq_axis) / 1.0e6
         c.nu_upper = max(freq_axis) / 1.0e6

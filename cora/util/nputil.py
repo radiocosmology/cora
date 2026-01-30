@@ -5,7 +5,6 @@ from typing import TypeVar
 import numpy as np
 import scipy.linalg as la
 
-
 # Type variable for ArrayLike arguments
 FloatArrayLike = TypeVar("FloatArrayLike", float, np.ndarray)
 
