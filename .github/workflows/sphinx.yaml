@@ -2,24 +2,24 @@ name: build-sphinx-to-gh-pages
 on:
   push:
     branches:
-    - master
+    - main
 
 jobs:
   build_sphinx_job:
     runs-on: ubuntu-latest
     steps:
 
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install apt dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libhdf5-serial-dev libopenmpi-dev openmpi-bin libgsl-dev
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install pip requirements
         run: |
           pip install -e .
