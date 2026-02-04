@@ -14,12 +14,23 @@ from Cython.Build import cythonize
 from setuptools import setup
 from setuptools.extension import Extension
 
+USE_LTO = True
+
 # Subset of `-ffast-math` compiler flags which should
 # preserve IEEE compliance
-FAST_MATH_ARGS = ["-O3", "-fno-math-errno", "-fno-trapping-math", "-march=native"]
+FAST_MATH_ARGS = ["-O3", "-fno-math-errno", "-fno-trapping-math"]
+# Flags required by the compiler
+COMPILE_FLAGS = ["-std=c99", "-march=native", *FAST_MATH_ARGS]
+LINK_FLAGS = []
+
+if USE_LTO:
+    COMPILE_FLAGS.append("-flto")
+    # Flags required by the linker
+    LINK_FLAGS.extend(("-flto", *FAST_MATH_ARGS))
 
 
 def _compiler_supports_openmp():
+    """Test openmp support by trying to compile a minimal piece of code."""
     cc = os.environ.get("CC", sysconfig.get_config_var("CC"))
     if cc is None:
         return False
@@ -46,11 +57,11 @@ def _compiler_supports_openmp():
     return True
 
 
-OMP_ARGS = ["-std=c99"]
-
 if not os.environ.get("CORA_NO_OPENMP"):
     if _compiler_supports_openmp():
-        OMP_ARGS.append("-fopenmp")
+        # OpenMP flags are required by both the compiler and the linker
+        COMPILE_FLAGS.append("-fopenmp")
+        LINK_FLAGS.append("-fopenmp")
     else:
         cc = os.environ.get("CC", sysconfig.get_config_var("CC"))
         print(
@@ -67,24 +78,24 @@ extensions = [
         "cora.util.cubicspline",
         ["cora/util/cubicspline.pyx"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=[*FAST_MATH_ARGS, *OMP_ARGS],
-        extra_link_args=[*FAST_MATH_ARGS, *OMP_ARGS],
+        extra_compile_args=COMPILE_FLAGS,
+        extra_link_args=LINK_FLAGS,
     ),
     # Bi-linear map extension
     Extension(
         "cora.util.bilinearmap",
         ["cora/util/bilinearmap.pyx"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=[*FAST_MATH_ARGS, *OMP_ARGS],
-        extra_link_args=[*FAST_MATH_ARGS, *OMP_ARGS],
+        extra_compile_args=COMPILE_FLAGS,
+        extra_link_args=LINK_FLAGS,
     ),
     # particle-mesh gridding extension
     Extension(
         "cora.util.pmesh",
         ["cora/util/pmesh.pyx"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=[*FAST_MATH_ARGS, *OMP_ARGS],
-        extra_link_args=[*FAST_MATH_ARGS, *OMP_ARGS],
+        extra_compile_args=COMPILE_FLAGS,
+        extra_link_args=LINK_FLAGS,
     ),
 ]
 
