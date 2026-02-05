@@ -1,0 +1,332 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.core.maps &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.core.skysim" href="cora.core.skysim.html" />
+    <link rel="prev" title="cora.core.gaussianfield" href="cora.core.gaussianfield.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="cora.core.html">cora.core</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="cora.core.gaussianfield.html">cora.core.gaussianfield</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.core.maps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.core.skysim.html">cora.core.skysim</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="cora.foreground.html">cora.foreground</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.util.html">cora.util</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.core.html">cora.core</a></li>
+      <li class="breadcrumb-item active">cora.core.maps</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.core.maps.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.core.maps">
+<span id="cora-core-maps"></span><h1>cora.core.maps<a class="headerlink" href="#module-cora.core.maps" title="Link to this heading"></a></h1>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.core.maps.Map2d" title="cora.core.maps.Map2d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Map2d</span></code></a>()</p></td>
+<td><p>A 2-d sky map.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.core.maps.Map3d" title="cora.core.maps.Map3d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Map3d</span></code></a>()</p></td>
+<td><p>A 3-d sky map.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.core.maps.Sky3d" title="cora.core.maps.Sky3d"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Sky3d</span></code></a>()</p></td>
+<td><p>Base class for generating maps of the spherical sky at multiple frequencies.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.maps.Map2d">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.maps.</span></span><span class="sig-name descname"><span class="pre">Map2d</span></span><a class="headerlink" href="#cora.core.maps.Map2d" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A 2-d sky map.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">x_width,</span> <span class="pre">y_width</span></span></dt>
+<dd><p>Angular size along each axis (in degrees).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">x_num,</span> <span class="pre">y_num</span></span></dt>
+<dd><p>Number of pixels along each angular axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.maps.Map2d.like_map">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">like_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapobj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.maps.Map2d.like_map" title="Link to this definition"></a></dt>
+<dd><p>Create a Map2d (or subclassed) object the same shape as a given object.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="cora.core.maps.Map2d.nside">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nside</span></span><a class="headerlink" href="#cora.core.maps.Map2d.nside" title="Link to this definition"></a></dt>
+<dd><p>The resolution of the Healpix map (must be power of 2).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.maps.</span></span><span class="sig-name descname"><span class="pre">Map3d</span></span><a class="headerlink" href="#cora.core.maps.Map3d" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.core.maps.Map2d" title="cora.core.maps.Map2d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map2d</span></code></a></p>
+<p>A 3-d sky map.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">x_width,</span> <span class="pre">y_width</span></span></dt>
+<dd><p>Angular size along each axis (in degrees).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">nu_upper,</span> <span class="pre">nu_lower</span></span></dt>
+<dd><p>Range of frequencies (in Mhz).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">x_num,</span> <span class="pre">y_num</span></span></dt>
+<dd><p>Number of pixels along each angular axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d.nu_num">
+<span class="sig-name descname"><span class="pre">nu_num</span></span><a class="headerlink" href="#cora.core.maps.Map3d.nu_num" title="Link to this definition"></a></dt>
+<dd><p>Number of frequency bins.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d.nside">
+<span class="sig-name descname"><span class="pre">nside</span></span><a class="headerlink" href="#cora.core.maps.Map3d.nside" title="Link to this definition"></a></dt>
+<dd><p>Resolution of Healpix map (must be power of 2).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d.freq_mode_chime">
+<span class="sig-name descname"><span class="pre">freq_mode_chime</span></span><a class="headerlink" href="#cora.core.maps.Map3d.freq_mode_chime" title="Link to this definition"></a></dt>
+<dd><p>If <cite>True</cite> then define frequency band like CHIME.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Notes</p>
+<p>The normal frequency mode uses <cite>nu_lower</cite> and <cite>nu_upper</cite> to define the far
+edges of the band, with exactly <cite>nu_num</cite> channels between them. For example
+<cite>nu_lower = 400</cite>, <cite>nu_upper = 404</cite> and <cite>nu_num = 2</cite>, creates two channels
+centred at 401 and 403 MHz. The CHIME frequency mode (which comes from the
+way the PFB is performed) defines relative to the channel centres, with the
+first channel centred on <cite>nu_lower</cite>, and the next channel after the final
+included channel centred at <cite>nu_upper</cite>. For example, with the same settings
+as above, this frequency mode would have channels at 400 and 402 MHz (with
+the not included “next” channel at 404 MHz).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d.like_map">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">like_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapobj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.maps.Map3d.like_map" title="Link to this definition"></a></dt>
+<dd><p>Create a Map3d (or subclassed) object the same shape as a given object.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d.frequencies">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">frequencies</span></span><a class="headerlink" href="#cora.core.maps.Map3d.frequencies" title="Link to this definition"></a></dt>
+<dd><p>List of frequencies in the map.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d.nu_pixels">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nu_pixels</span></span><a class="headerlink" href="#cora.core.maps.Map3d.nu_pixels" title="Link to this definition"></a></dt>
+<dd><p>List of frequencies in the map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.maps.Map3d.like_kiyo_map">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">like_kiyo_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapobj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.maps.Map3d.like_kiyo_map" title="Link to this definition"></a></dt>
+<dd><p>Crease a Map3d (or subclassed) object based on one of kiyo’s map
+objects</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.maps.Sky3d">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.maps.</span></span><span class="sig-name descname"><span class="pre">Sky3d</span></span><a class="headerlink" href="#cora.core.maps.Sky3d" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.core.maps.Map3d" title="cora.core.maps.Map3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map3d</span></code></a></p>
+<p>Base class for generating maps of the spherical sky at multiple frequencies.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.core.maps.Sky3d.oversample">
+<span class="sig-name descname"><span class="pre">oversample</span></span><a class="headerlink" href="#cora.core.maps.Sky3d.oversample" title="Link to this definition"></a></dt>
+<dd><p>Over sample the angular power spectrum in frequency/redshift and
+integrate over them to capture the effect of finite width frequency
+channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.maps.Sky3d.angular_powerspectrum">
+<span class="sig-name descname"><span class="pre">angular_powerspectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nu1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nu2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.maps.Sky3d.angular_powerspectrum" title="Link to this definition"></a></dt>
+<dd><p>C_l(nu1, nu2) for the given map.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.maps.Sky3d.getsky">
+<span class="sig-name descname"><span class="pre">getsky</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.maps.Sky3d.getsky" title="Link to this definition"></a></dt>
+<dd><p>Create a map of the unpolarised sky.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.maps.Sky3d.getpolsky">
+<span class="sig-name descname"><span class="pre">getpolsky</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.maps.Sky3d.getpolsky" title="Link to this definition"></a></dt>
+<dd><p>Create a map of the fully polarised sky (Stokes, I, Q, U and V).</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.core.gaussianfield.html" class="btn btn-neutral float-left" title="cora.core.gaussianfield" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.core.skysim.html" class="btn btn-neutral float-right" title="cora.core.skysim" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
