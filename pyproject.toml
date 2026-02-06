@@ -11,7 +11,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "cora"
 description = "Simulation and modelling of low frequency radio skies"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     { name = "The CHIME Collaboration", email = "lgray@phas.ubc.ca" }
 ]
