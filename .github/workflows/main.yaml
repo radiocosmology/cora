@@ -49,7 +49,8 @@ jobs:
         run: |
           brew update
           CC=mpicc brew install open-mpi hdf5-mpi
-      
+
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
@@ -60,7 +61,11 @@ jobs:
 
       - name: Disable OpenMP warning on macos
         if: matrix.os == 'macos-latest'
-        run: export CORA_NO_OPENMP=1
+        run: echo "CORA_NO_OPENMP=1" >> "$GITHUB_ENV"
+
+      - name: Disable zstd assembly for recent macos where prebuilt missing
+        if: matrix.os == 'macos-latest' && matrix.python-version == '3.14'
+        run: echo "CFLAGS=-DZSTD_DISABLE_ASM" >> "$GITHUB_ENV"
 
       - name: Install pip dependencies
         run: CC=mpicc pip install -e ".[test]"
