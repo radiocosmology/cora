@@ -50,7 +50,6 @@ jobs:
           brew update
           CC=mpicc brew install open-mpi hdf5-mpi
 
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
