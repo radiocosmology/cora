@@ -1,0 +1,261 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.foreground.galaxy &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.foreground.gaussianfg" href="cora.foreground.gaussianfg.html" />
+    <link rel="prev" title="cora.foreground" href="cora.foreground.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="cora.core.html">cora.core</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="cora.foreground.html">cora.foreground</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.foreground.galaxy</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.gaussianfg.html">cora.foreground.gaussianfg</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.lofar.html">cora.foreground.lofar</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.pointsource.html">cora.foreground.pointsource</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.poisson.html">cora.foreground.poisson</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.util.html">cora.util</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.foreground.html">cora.foreground</a></li>
+      <li class="breadcrumb-item active">cora.foreground.galaxy</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.foreground.galaxy.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.foreground.galaxy">
+<span id="cora-foreground-galaxy"></span><h1>cora.foreground.galaxy<a class="headerlink" href="#module-cora.foreground.galaxy" title="Link to this heading"></a></h1>
+<p>Galactic Synchrotron</p>
+<p>Generate semi-realistic simulations of the full sky synchrotron emission
+from the Milky Way.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.foreground.galaxy.chunk_var" title="cora.foreground.galaxy.chunk_var"><code class="xref py py-obj docutils literal notranslate"><span class="pre">chunk_var</span></code></a>(a)</p></td>
+<td><p>A variance routine that breaks the calculation up into chunks to save memory.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_variance</span></code>(input_map, nside)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.foreground.galaxy.ConstrainedGalaxy" title="cora.foreground.galaxy.ConstrainedGalaxy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ConstrainedGalaxy</span></code></a>()</p></td>
+<td><p>Create realistic simulations of the polarised sky.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.foreground.galaxy.FullSkyPolarisedSynchrotron" title="cora.foreground.galaxy.FullSkyPolarisedSynchrotron"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FullSkyPolarisedSynchrotron</span></code></a>()</p></td>
+<td><p>Polarised Synchrotron amplitudes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.foreground.galaxy.FullSkySynchrotron" title="cora.foreground.galaxy.FullSkySynchrotron"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FullSkySynchrotron</span></code></a>()</p></td>
+<td><p>Match up Synchrotron amplitudes to those found in La Porta et al. 2008, for galactic latitudes abs(b) &gt; 5 degrees.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.FullSkySynchrotron">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.galaxy.</span></span><span class="sig-name descname"><span class="pre">FullSkySynchrotron</span></span><a class="headerlink" href="#cora.foreground.galaxy.FullSkySynchrotron" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="cora.foreground.gaussianfg.html#cora.foreground.gaussianfg.Synchrotron" title="cora.foreground.gaussianfg.Synchrotron"><code class="xref py py-class docutils literal notranslate"><span class="pre">Synchrotron</span></code></a></p>
+<p>Match up Synchrotron amplitudes to those found in La Porta et al. 2008,
+for galactic latitudes abs(b) &gt; 5 degrees</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.FullSkyPolarisedSynchrotron">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.galaxy.</span></span><span class="sig-name descname"><span class="pre">FullSkyPolarisedSynchrotron</span></span><a class="headerlink" href="#cora.foreground.galaxy.FullSkyPolarisedSynchrotron" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="cora.foreground.gaussianfg.html#cora.foreground.gaussianfg.Synchrotron" title="cora.foreground.gaussianfg.Synchrotron"><code class="xref py py-class docutils literal notranslate"><span class="pre">Synchrotron</span></code></a></p>
+<p>Polarised Synchrotron amplitudes. Use same spectral shape,
+but with polarisation fraction=0.5, and a reduced correlation
+length (zeta=0.64), estimated from Faraday rotation=2pi, with RM=16.7 from
+<a class="reference external" href="http://adsabs.harvard.edu/abs/2009ApJ...702.1230T">http://adsabs.harvard.edu/abs/2009ApJ…702.1230T</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.chunk_var">
+<span class="sig-prename descclassname"><span class="pre">cora.foreground.galaxy.</span></span><span class="sig-name descname"><span class="pre">chunk_var</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.galaxy.chunk_var" title="Link to this definition"></a></dt>
+<dd><p>A variance routine that breaks the calculation up into chunks to save
+memory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>a</strong> (<em>np.ndarray</em>) – Array to take the variance of.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>var</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.ConstrainedGalaxy">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.galaxy.</span></span><span class="sig-name descname"><span class="pre">ConstrainedGalaxy</span></span><a class="headerlink" href="#cora.foreground.galaxy.ConstrainedGalaxy" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="cora.core.maps.html#cora.core.maps.Sky3d" title="cora.core.maps.Sky3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sky3d</span></code></a></p>
+<p>Create realistic simulations of the polarised sky.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.ConstrainedGalaxy.spectral_map">
+<span class="sig-name descname"><span class="pre">spectral_map</span></span><a class="headerlink" href="#cora.foreground.galaxy.ConstrainedGalaxy.spectral_map" title="Link to this definition"></a></dt>
+<dd><p>Specify which spectral index map to use. <cite>gsm</cite> uses a GSM derived map,
+this was the old behaviour. <cite>md</cite> uses the synchrotron index map
+derived by Miville-Deschenes et al. 2008, and is  now the default.
+<cite>gd</cite> uses the map from Giardino et al. 2002.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>one of [‘gsm’, ‘md’, ‘gd’]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.ConstrainedGalaxy.nside">
+<span class="sig-name descname"><span class="pre">nside</span></span><a class="headerlink" href="#cora.foreground.galaxy.ConstrainedGalaxy.nside" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.ConstrainedGalaxy.getsky">
+<span class="sig-name descname"><span class="pre">getsky</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celestial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.galaxy.ConstrainedGalaxy.getsky" title="Link to this definition"></a></dt>
+<dd><p>Create a realisation of the <em>unpolarised</em> sky.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>debug</strong> (<em>boolean</em><em>, </em><em>optional</em>) – Return intermediate products for debugging. Default is False.</p></li>
+<li><p><strong>celestial</strong> (<em>boolean</em><em>, </em><em>optional</em>) – Maps are returned in celestial co-ordinates.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>skymap</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[freq, pixel]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.galaxy.ConstrainedGalaxy.getpolsky">
+<span class="sig-name descname"><span class="pre">getpolsky</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">celestial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.galaxy.ConstrainedGalaxy.getpolsky" title="Link to this definition"></a></dt>
+<dd><p>Create a realisation of the <em>polarised</em> sky.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>debug</strong> (<em>boolean</em><em>, </em><em>optional</em>) – Return intermediate products for debugging. Default is False.</p></li>
+<li><p><strong>celestial</strong> (<em>boolean</em><em>, </em><em>optional</em>) – Maps are returned in celestial co-ordinates.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>skymap</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[freq, pol, pixel]</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This routine tries to make a decent simulation of the galactic
+polarised emission.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.foreground.html" class="btn btn-neutral float-left" title="cora.foreground" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.foreground.gaussianfg.html" class="btn btn-neutral float-right" title="cora.foreground.gaussianfg" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

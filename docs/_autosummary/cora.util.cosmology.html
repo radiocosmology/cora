@@ -1,0 +1,477 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.util.cosmology &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.util.cubicspline" href="cora.util.cubicspline.html" />
+    <link rel="prev" title="cora.util.bilinearmap" href="cora.util.bilinearmap.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="cora.core.html">cora.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.foreground.html">cora.foreground</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="cora.util.html">cora.util</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="cora.util.bilinearmap.html">cora.util.bilinearmap</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.util.cosmology</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.cubicspline.html">cora.util.cubicspline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.fftutil.html">cora.util.fftutil</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.hputil.html">cora.util.hputil</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.nputil.html">cora.util.nputil</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.util.html">cora.util</a></li>
+      <li class="breadcrumb-item active">cora.util.cosmology</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.util.cosmology.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.util.cosmology">
+<span id="cora-util-cosmology"></span><h1>cora.util.cosmology<a class="headerlink" href="#module-cora.util.cosmology" title="Link to this heading"></a></h1>
+<p>Cosmology routines: A module for various cosmological calculations.</p>
+<p>The bulk of the work is within the class <a class="reference internal" href="#cora.util.cosmology.Cosmology" title="cora.util.cosmology.Cosmology"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cosmology</span></code></a> which stores a
+cosmology and can calculate quantities like distance measures.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ps_nowiggle</span></code>(kh[, z, c])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sound_horizon</span></code>([c])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.cosmology.Cosmology" title="cora.util.cosmology.Cosmology"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Cosmology</span></code></a>([units, omega_b, omega_c, ...])</p></td>
+<td><p>Class to store a cosmology, and compute measures.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.util.cosmology.</span></span><span class="sig-name descname"><span class="pre">Cosmology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cosmo'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega_b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.04897</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega_c</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.26067</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega_l</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.69036</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega_g</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega_n</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">67.66</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.cosmology.Cosmology" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to store a cosmology, and compute measures.</p>
+<p>Defines a cosmology and allows calculation of a few simple
+quantities (notably distance measures and lookback time).</p>
+<p>Default params from final Planck params: Planck+TT,TE,EE+lowE+lensing+BAO
+(<a class="reference external" href="https://arxiv.org/pdf/1807.06209.pdf">https://arxiv.org/pdf/1807.06209.pdf</a>).</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.units">
+<span class="sig-name descname"><span class="pre">units</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.units" title="Link to this definition"></a></dt>
+<dd><p>The unit system to return quantities in. SI is self
+explanatory, <cite>astro</cite> has distances in Mpc and time in Myr, and
+<cite>cosmo</cite> has distances in Mpc/h and time in Myr. Defaults to ‘cosmo’.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>{‘astro’, ‘cosmo’, ‘si’}</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_b">
+<span class="sig-name descname"><span class="pre">omega_b</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_b" title="Link to this definition"></a></dt>
+<dd><p>Baryon fraction relative to the critical density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_c">
+<span class="sig-name descname"><span class="pre">omega_c</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_c" title="Link to this definition"></a></dt>
+<dd><p>Dark matter fraction relative to the critical density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_l">
+<span class="sig-name descname"><span class="pre">omega_l</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_l" title="Link to this definition"></a></dt>
+<dd><p>Dark energy fraction relative to the critical density (assumes
+a cosmological constant).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_g">
+<span class="sig-name descname"><span class="pre">omega_g</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_g" title="Link to this definition"></a></dt>
+<dd><p>Fraction of electromagnetic radiation relative to the critical density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_n">
+<span class="sig-name descname"><span class="pre">omega_n</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_n" title="Link to this definition"></a></dt>
+<dd><p>Fraction of massless neutrinos relative to the critical density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.H0">
+<span class="sig-name descname"><span class="pre">H0</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.H0" title="Link to this definition"></a></dt>
+<dd><p>The Hubble constant in km/s / Mpc</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">w_0,</span> <span class="pre">w_a</span></span></dt>
+<dd><p>Dark energy parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalars</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_k">
+<span class="sig-name descname"><span class="pre">omega_k</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_k" title="Link to this definition"></a></dt>
+<dd><p>The curvature as a fraction of the critical density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar, readonly</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_m">
+<span class="sig-name descname"><span class="pre">omega_m</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_m" title="Link to this definition"></a></dt>
+<dd><p>The total matter density as a fraction of the critical density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar, readonly</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.omega_r">
+<span class="sig-name descname"><span class="pre">omega_r</span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.omega_r" title="Link to this definition"></a></dt>
+<dd><p>The total radiation density as a fraction of the critical density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar, readonly</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.from_physical">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_physical</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ombh2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02242</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omch2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.11933</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">H0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">67.66</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omk</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">TCMB</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.7255</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nnu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.046</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#cora.util.cosmology.Cosmology" title="cora.util.cosmology.Cosmology"><span class="pre">Cosmology</span></a></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.from_physical" title="Link to this definition"></a></dt>
+<dd><p>Initialise a new cosmology from the physical parameters.</p>
+<p>This uses the CMB relevant parameterization that is commonly
+used. The dark energy density is calculated from the given
+parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ombh2</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The relative baryon density times h^2 (h = H_0 / 100).</p></li>
+<li><p><strong>omch2</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The fractional dark matter density times h^2 (h = H_0 / 100).</p></li>
+<li><p><strong>H0</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The Hubble constant</p></li>
+<li><p><strong>omk</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The curvature fraction.</p></li>
+<li><p><strong>TCMB</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The CMB temperature (used to calculate the radiation density).</p></li>
+<li><p><strong>nnu</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The number of massless neutrinos. Used to set the neutrino density.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cosmo</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>instance of <a class="reference internal" href="#cora.util.cosmology.Cosmology" title="cora.util.cosmology.Cosmology">Cosmology</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.H">
+<span class="sig-name descname"><span class="pre">H</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.H" title="Link to this definition"></a></dt>
+<dd><p>The Hubble parameter at redshift z.</p>
+<p>Return the Hubble parameter in SI units (s^-1), regardless of
+the value of <cite>self.units</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – The redshift to calculate the Hubble parameter
+at. Defaults to z = 0.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The Hubble parameter.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>H</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.comoving_distance">
+<span class="sig-name descname"><span class="pre">comoving_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.comoving_distance" title="Link to this definition"></a></dt>
+<dd><p>The comoving distance to redshift z.</p>
+<p>This routine is vectorized.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – The redshift(s) to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The comoving distance to each redshift.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dist</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.proper_distance">
+<span class="sig-name descname"><span class="pre">proper_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.proper_distance" title="Link to this definition"></a></dt>
+<dd><p>The proper distance to an event at redshift z.</p>
+<p>The proper distance can be ill defined. In this case we mean
+the comoving transverse separation between two events at the
+same redshift divided by their angular separation. This
+routine is vectorized.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – The redshift(s) to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The proper distance to each redshift.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dist</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.angular_distance">
+<span class="sig-name descname"><span class="pre">angular_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.angular_distance" title="Link to this definition"></a></dt>
+<dd><p>The angular diameter distance to redshift z.</p>
+<p>Not to be confused with the <cite>proper_distance</cite>. This is the
+<em>physical</em> transverse separation between two events at the
+same redshift divided by their angular separation. This
+routine is vectorized.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – The redshift(s) to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The angular diameter distance to each redshift.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dist</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.luminosity_distance">
+<span class="sig-name descname"><span class="pre">luminosity_distance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.luminosity_distance" title="Link to this definition"></a></dt>
+<dd><p>The luminosity distance to redshift z. This
+routine is vectorized.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – The redshift(s) to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The luminosity distance to each redshift.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dist</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.lookback_time">
+<span class="sig-name descname"><span class="pre">lookback_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.lookback_time" title="Link to this definition"></a></dt>
+<dd><p>The lookback time out to redshift z.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – The redshift(s) to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The lookback time to each redshift.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>time</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.growth_factor">
+<span class="sig-name descname"><span class="pre">growth_factor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.growth_factor" title="Link to this definition"></a></dt>
+<dd><p>Approximation for the matter growth factor.</p>
+<p>Uses a Pade approximation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – Redshift to calculate at.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>growth_factor</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>See <a class="footnote-reference brackets" href="#id2" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.</p>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="http://arxiv.org/abs/1012.2671">http://arxiv.org/abs/1012.2671</a></p>
+</aside>
+</aside>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cosmology.Cosmology.growth_rate">
+<span class="sig-name descname"><span class="pre">growth_rate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FloatArrayLike</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">FloatArrayLike</span></span></span><a class="headerlink" href="#cora.util.cosmology.Cosmology.growth_rate" title="Link to this definition"></a></dt>
+<dd><p>Approximation for the matter growth rate.</p>
+<p>From explicit differentiation of the Pade approximation for
+the growth factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> – Redshift to calculate at.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>growth_rate</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>See <a class="footnote-reference brackets" href="#id4" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a>.</p>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id4" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id3">2</a><span class="fn-bracket">]</span></span>
+<p><a class="reference external" href="http://arxiv.org/abs/1012.2671">http://arxiv.org/abs/1012.2671</a></p>
+</aside>
+</aside>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.util.bilinearmap.html" class="btn btn-neutral float-left" title="cora.util.bilinearmap" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.util.cubicspline.html" class="btn btn-neutral float-right" title="cora.util.cubicspline" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

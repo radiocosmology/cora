@@ -1,0 +1,626 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.foreground.pointsource &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.foreground.poisson" href="cora.foreground.poisson.html" />
+    <link rel="prev" title="cora.foreground.lofar" href="cora.foreground.lofar.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="cora.core.html">cora.core</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="cora.foreground.html">cora.foreground</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.galaxy.html">cora.foreground.galaxy</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.gaussianfg.html">cora.foreground.gaussianfg</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.lofar.html">cora.foreground.lofar</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.foreground.pointsource</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.foreground.poisson.html">cora.foreground.poisson</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.util.html">cora.util</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.foreground.html">cora.foreground</a></li>
+      <li class="breadcrumb-item active">cora.foreground.pointsource</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.foreground.pointsource.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.foreground.pointsource">
+<span id="cora-foreground-pointsource"></span><h1>cora.foreground.pointsource<a class="headerlink" href="#module-cora.foreground.pointsource" title="Link to this heading"></a></h1>
+<p>Simulating extra-galactic point sources.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.foreground.pointsource.faraday_rotate" title="cora.foreground.pointsource.faraday_rotate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">faraday_rotate</span></code></a>(polmap, rm_map, frequencies)</p></td>
+<td><p>Faraday rotate a set of sky maps (done inplace).</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.foreground.pointsource.CombinedPointSources" title="cora.foreground.pointsource.CombinedPointSources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CombinedPointSources</span></code></a>()</p></td>
+<td><p>Combined class for efficiently generating full sky point source maps.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.foreground.pointsource.DiMatteo" title="cora.foreground.pointsource.DiMatteo"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DiMatteo</span></code></a>()</p></td>
+<td><p>Double power-law point source model</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.foreground.pointsource.PointSourceModel" title="cora.foreground.pointsource.PointSourceModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PointSourceModel</span></code></a>()</p></td>
+<td><p>Represents a population of astrophysical point sources.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.foreground.pointsource.PowerLawModel" title="cora.foreground.pointsource.PowerLawModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PowerLawModel</span></code></a>()</p></td>
+<td><p>A simple point source model.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.foreground.pointsource.RealPointSources" title="cora.foreground.pointsource.RealPointSources"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RealPointSources</span></code></a>()</p></td>
+<td><p>Creates maps of a population of real point sources, found in NVSS and VLSS.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.faraday_rotate">
+<span class="sig-prename descclassname"><span class="pre">cora.foreground.pointsource.</span></span><span class="sig-name descname"><span class="pre">faraday_rotate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">polmap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rm_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequencies</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.faraday_rotate" title="Link to this definition"></a></dt>
+<dd><p>Faraday rotate a set of sky maps (done inplace).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>polmap</strong> (<em>np.ndarray</em><em>[</em><em>freq</em><em>, </em><em>pol</em><em>, </em><em>pixel</em><em>]</em>) – The maps of the sky (assumed to be packed as T, Q, U and optionally V.</p></li>
+<li><p><strong>rm_map</strong> (<em>np.ndarray</em><em>[</em><em>pixel</em><em>]</em>) – The rotation measure across the sky (in radians / m^2).</p></li>
+<li><p><strong>frequencies</strong> (<em>np.ndarray</em><em>[</em><em>freq</em><em>]</em>) – The frequencies in the map in MHz.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>rot_map</strong> – The Faraday rotated map.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[freq, pol, pixel]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.pointsource.</span></span><span class="sig-name descname"><span class="pre">PointSourceModel</span></span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="cora.core.maps.html#cora.core.maps.Map3d" title="cora.core.maps.Map3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map3d</span></code></a></p>
+<p>Represents a population of astrophysical point sources.</p>
+<p>This is the base class for modelling a population of point
+sources. This assumes they are described by a source count
+function, and a spectral function which may depend on the flux. To
+create a model, a source_count and spectral_realisation must be
+implemented.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.flux_min">
+<span class="sig-name descname"><span class="pre">flux_min</span></span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.flux_min" title="Link to this definition"></a></dt>
+<dd><p>The lower flux limit of sources to include. Defaults to 1 mJy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.flux_max">
+<span class="sig-name descname"><span class="pre">flux_max</span></span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.flux_max" title="Link to this definition"></a></dt>
+<dd><p>The upper flux limit of sources to include. If <cite>None</cite> then
+include all sources (with a high probability).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>{float, None}</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.faraday">
+<span class="sig-name descname"><span class="pre">faraday</span></span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.faraday" title="Link to this definition"></a></dt>
+<dd><p>Whether to Faraday rotate polarisation maps (default is True).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>boolean</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.sigma_pol_frac">
+<span class="sig-name descname"><span class="pre">sigma_pol_frac</span></span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.sigma_pol_frac" title="Link to this definition"></a></dt>
+<dd><p>The standard deviation of the polarisation fraction of sources.
+Default is 0.03. See <a class="reference external" href="http://adsabs.harvard.edu/abs/2004A&amp;A...415..549R">http://adsabs.harvard.edu/abs/2004A&amp;A…415..549R</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.source_count">
+<span class="sig-name descname"><span class="pre">source_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flux</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.source_count" title="Link to this definition"></a></dt>
+<dd><p>The expected number of sources per unit flux (Jy) per steradian.</p>
+<p>This is an abstract method that must be implemented in an actual model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>flux</strong> (<em>float</em>) – The strength of the source in Jy.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>value</strong> – The differential source count at <cite>flux</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.spectral_realisation">
+<span class="sig-name descname"><span class="pre">spectral_realisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flux</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequencies</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.spectral_realisation" title="Link to this definition"></a></dt>
+<dd><p>Generate a frequency distribution for a source of given <cite>flux</cite>.</p>
+<p>This is an abstract method that must be implemented in an
+actual model. Must be able to broadcast if <cite>flux</cite>, and
+<cite>frequencies</cite> are numpy arrays.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>flux</strong> (<em>float</em>) – The strength of the source in Jy.</p></li>
+<li><p><strong>frequencies</strong> (<em>ndarray</em>) – The frequencies to calculate the spectral distribution at.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>fluxes</strong> – The flux at each of the <cite>frequencies</cite> given.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.generate_population">
+<span class="sig-name descname"><span class="pre">generate_population</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">area</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.generate_population" title="Link to this definition"></a></dt>
+<dd><p>Create a set of point sources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>area</strong> (<em>float</em>) – The area the population is contained within (in sq degrees).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sources</strong> – The fluxes of the sources in the population.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.getfield">
+<span class="sig-name descname"><span class="pre">getfield</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalogue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.getfield" title="Link to this definition"></a></dt>
+<dd><p>Create a simulated cube of point sources.</p>
+<p>Create a pixelised realisation of the sources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>catalogue</strong> (<em>boolean</em><em>, </em><em>optional</em>) – if true return the population catalogue.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cube</strong> – An array of dimensions (<cite>numf</cite>, <cite>numx</cite> <cite>numy</cite>)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.getsky">
+<span class="sig-name descname"><span class="pre">getsky</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.getsky" title="Link to this definition"></a></dt>
+<dd><p>Simulate a map of point sources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sky</strong> – Map of the brightness temperature on the sky (in K).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ndarray [nfreq, npix]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PointSourceModel.getpolsky">
+<span class="sig-name descname"><span class="pre">getpolsky</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PointSourceModel.getpolsky" title="Link to this definition"></a></dt>
+<dd><p>Simulate polarised point sources.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.pointsource.</span></span><span class="sig-name descname"><span class="pre">PowerLawModel</span></span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.foreground.pointsource.PointSourceModel" title="cora.foreground.pointsource.PointSourceModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PointSourceModel</span></code></a></p>
+<p>A simple point source model.</p>
+<p>Use a power-law luminosity function, and power-law spectral
+distribution with a single spectral index drawn from a Gaussian.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.source_index">
+<span class="sig-name descname"><span class="pre">source_index</span></span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.source_index" title="Link to this definition"></a></dt>
+<dd><p>The spectral index of the luminosity function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.source_pivot">
+<span class="sig-name descname"><span class="pre">source_pivot</span></span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.source_pivot" title="Link to this definition"></a></dt>
+<dd><p>The pivot of the luminosity function (in Jy).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.source_amplitude">
+<span class="sig-name descname"><span class="pre">source_amplitude</span></span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.source_amplitude" title="Link to this definition"></a></dt>
+<dd><p>The amplitude of the luminosity function (number of sources /
+Jy / deg^2 at the pivot).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.spectral_mean">
+<span class="sig-name descname"><span class="pre">spectral_mean</span></span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.spectral_mean" title="Link to this definition"></a></dt>
+<dd><p>The mean index of the spectral distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.spectral_width">
+<span class="sig-name descname"><span class="pre">spectral_width</span></span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.spectral_width" title="Link to this definition"></a></dt>
+<dd><p>Width of distribution spectral indices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.spectral_pivot">
+<span class="sig-name descname"><span class="pre">spectral_pivot</span></span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.spectral_pivot" title="Link to this definition"></a></dt>
+<dd><p>Frequency of the pivot point (in Mhz). This is the frequency
+that the flux is defined at.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Notes</p>
+<p>Default source count parameters based loosely on the results of
+the 6C survey <a class="footnote-reference brackets" href="#id2" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.</p>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id2" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
+<p>Hales et al. 1988</p>
+</aside>
+</aside>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.source_count">
+<span class="sig-name descname"><span class="pre">source_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flux</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.source_count" title="Link to this definition"></a></dt>
+<dd><p>Power law luminosity function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.PowerLawModel.spectral_realisation">
+<span class="sig-name descname"><span class="pre">spectral_realisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flux</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.PowerLawModel.spectral_realisation" title="Link to this definition"></a></dt>
+<dd><p>Power-law spectral function with Gaussian distributed index.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.pointsource.</span></span><span class="sig-name descname"><span class="pre">DiMatteo</span></span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.foreground.pointsource.PointSourceModel" title="cora.foreground.pointsource.PointSourceModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">PointSourceModel</span></code></a></p>
+<p>Double power-law point source model</p>
+<p>Uses the results of Di Mattero et al. <a class="footnote-reference brackets" href="#id6" id="id3" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a></p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">gamma1,</span> <span class="pre">gamma2</span></span></dt>
+<dd><p>The two power law indices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo.S_0">
+<span class="sig-name descname"><span class="pre">S_0</span></span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo.S_0" title="Link to this definition"></a></dt>
+<dd><p>The pivot of the source count function (in Jy).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo.k1">
+<span class="sig-name descname"><span class="pre">k1</span></span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo.k1" title="Link to this definition"></a></dt>
+<dd><p>The amplitude of the luminosity function (number of sources /
+Jy / deg^2 at the pivot).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo.spectral_mean">
+<span class="sig-name descname"><span class="pre">spectral_mean</span></span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo.spectral_mean" title="Link to this definition"></a></dt>
+<dd><p>The mean index of the spectral distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo.spectral_width">
+<span class="sig-name descname"><span class="pre">spectral_width</span></span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo.spectral_width" title="Link to this definition"></a></dt>
+<dd><p>Width of distribution spectral indices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo.spectral_pivot">
+<span class="sig-name descname"><span class="pre">spectral_pivot</span></span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo.spectral_pivot" title="Link to this definition"></a></dt>
+<dd><p>Frequency of the pivot point (in Mhz). This is the frequency
+that the flux is defined at.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Notes</p>
+<p>Based on <a class="footnote-reference brackets" href="#id6" id="id4" role="doc-noteref"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></a> and clarification in <a class="footnote-reference brackets" href="#id7" id="id5" role="doc-noteref"><span class="fn-bracket">[</span>3<span class="fn-bracket">]</span></a> (footnote 6). In this
+<span class="math notranslate nohighlight">\(S_0\)</span> is both the pivot and normalising flux, which means that k1
+is rescaled by a factor of <span class="math notranslate nohighlight">\(0.88**-1.75.i\)</span></p>
+<p class="rubric">References</p>
+<aside class="footnote-list brackets">
+<aside class="footnote brackets" id="id6" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span>2<span class="fn-bracket">]</span></span>
+<span class="backrefs">(<a role="doc-backlink" href="#id3">1</a>,<a role="doc-backlink" href="#id4">2</a>)</span>
+<p>Di Matteo et al. 2002 (<a class="reference external" href="http://arxiv.org/abs/astro-ph/0109241">http://arxiv.org/abs/astro-ph/0109241</a>)</p>
+</aside>
+<aside class="footnote brackets" id="id7" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id5">3</a><span class="fn-bracket">]</span></span>
+<p>Santos et al. 2005 (<a class="reference external" href="http://arxiv.org/abs/astro-ph/0408515">http://arxiv.org/abs/astro-ph/0408515</a>)</p>
+</aside>
+</aside>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo.source_count">
+<span class="sig-name descname"><span class="pre">source_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flux</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo.source_count" title="Link to this definition"></a></dt>
+<dd><p>Power law luminosity function.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.DiMatteo.spectral_realisation">
+<span class="sig-name descname"><span class="pre">spectral_realisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flux</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">freq</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.DiMatteo.spectral_realisation" title="Link to this definition"></a></dt>
+<dd><p>Power-law spectral function with Gaussian distributed index.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.RealPointSources">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.pointsource.</span></span><span class="sig-name descname"><span class="pre">RealPointSources</span></span><a class="headerlink" href="#cora.foreground.pointsource.RealPointSources" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="cora.core.maps.html#cora.core.maps.Map3d" title="cora.core.maps.Map3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map3d</span></code></a></p>
+<p>Creates maps of a population of real point sources, found in NVSS and VLSS.</p>
+<p>See IPython notebook in <cite>cora/foreground/data</cite> directory for details on
+catalogue making.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.RealPointSources.flux_min">
+<span class="sig-name descname"><span class="pre">flux_min</span></span><a class="headerlink" href="#cora.foreground.pointsource.RealPointSources.flux_min" title="Link to this definition"></a></dt>
+<dd><p>The lower flux limit of sources to include. Defaults to 1 mJy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.RealPointSources.flux_max">
+<span class="sig-name descname"><span class="pre">flux_max</span></span><a class="headerlink" href="#cora.foreground.pointsource.RealPointSources.flux_max" title="Link to this definition"></a></dt>
+<dd><p>The upper flux limit of sources to include. If <cite>None</cite> then
+include all sources (with a high probability).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>{float, None}</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.RealPointSources.faraday">
+<span class="sig-name descname"><span class="pre">faraday</span></span><a class="headerlink" href="#cora.foreground.pointsource.RealPointSources.faraday" title="Link to this definition"></a></dt>
+<dd><p>Whether to Faraday rotate polarisation maps (default is True).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>boolean</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.RealPointSources.sigma_pol_frac">
+<span class="sig-name descname"><span class="pre">sigma_pol_frac</span></span><a class="headerlink" href="#cora.foreground.pointsource.RealPointSources.sigma_pol_frac" title="Link to this definition"></a></dt>
+<dd><p>The standard deviation of the polarisation fraction of sources.
+Default is 0.03. See <a class="reference external" href="http://adsabs.harvard.edu/abs/2004A&amp;A...415..549R">http://adsabs.harvard.edu/abs/2004A&amp;A…415..549R</a></p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.RealPointSources.getsky">
+<span class="sig-name descname"><span class="pre">getsky</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.RealPointSources.getsky" title="Link to this definition"></a></dt>
+<dd><p>Simulate a map of point sources.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sky</strong> – Map of the brightness temperature on the sky (in K).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ndarray [nfreq, npix]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.RealPointSources.getpolsky">
+<span class="sig-name descname"><span class="pre">getpolsky</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.foreground.pointsource.RealPointSources.getpolsky" title="Link to this definition"></a></dt>
+<dd><p>Simulate polarised point sources by taking real sources and giving
+them a random polarisation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.foreground.pointsource.CombinedPointSources">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.foreground.pointsource.</span></span><span class="sig-name descname"><span class="pre">CombinedPointSources</span></span><a class="headerlink" href="#cora.foreground.pointsource.CombinedPointSources" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="cora.core.maps.html#cora.core.maps.Map3d" title="cora.core.maps.Map3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map3d</span></code></a></p>
+<p>Combined class for efficiently generating full sky point source maps.</p>
+<p>For S &lt; S_{cut} use a Gaussian approximation to generate a map, and for
+S_{cut} &lt; S &lt; S_{cut2} generate a synthetic population. For S &gt; S_{cut2},
+use real point sources.</p>
+<p>The flux cuts are hardcoded as S_{cut} = 0.1 Jy, and S_{cut2} = 10 Jy,
+both at 151 MHz. This latter value is rescaled to 600 MHz before
+application.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.foreground.lofar.html" class="btn btn-neutral float-left" title="cora.foreground.lofar" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.foreground.poisson.html" class="btn btn-neutral float-right" title="cora.foreground.poisson" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

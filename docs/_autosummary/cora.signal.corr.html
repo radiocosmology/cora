@@ -1,0 +1,632 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.signal.corr &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.signal.corr21cm" href="cora.signal.corr21cm.html" />
+    <link rel="prev" title="cora.signal" href="cora.signal.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="cora.core.html">cora.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.foreground.html">cora.foreground</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="cora.signal.html">cora.signal</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.signal.corr</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.signal.corr21cm.html">cora.signal.corr21cm</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="cora.util.html">cora.util</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.signal.html">cora.signal</a></li>
+      <li class="breadcrumb-item active">cora.signal.corr</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.signal.corr.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.signal.corr">
+<span id="cora-signal-corr"></span><h1>cora.signal.corr<a class="headerlink" href="#module-cora.signal.corr" title="Link to this heading"></a></h1>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.signal.corr.inverse_approx" title="cora.signal.corr.inverse_approx"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inverse_approx</span></code></a>(f, x1, x2)</p></td>
+<td><p>Generate the inverse function on the interval x1 to x2.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.signal.corr.RedshiftCorrelation" title="cora.signal.corr.RedshiftCorrelation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RedshiftCorrelation</span></code></a>([ps_vv, ps_dd, ps_dv, ...])</p></td>
+<td><p>A class for calculating redshift-space correlations.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.signal.corr.</span></span><span class="sig-name descname"><span class="pre">RedshiftCorrelation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ps_vv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ps_dd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ps_dv</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">redshift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class for calculating redshift-space correlations.</p>
+<p>The mapping from real to redshift space produces anisotropic
+correlations, this class calculates them within the linear
+regime. As a minimum the velocity power spectrum <cite>ps_vv</cite> must be
+specified, the statistics of the observable can be specified
+explicitly (in <cite>ps_dd</cite> and <cite>ps_dv</cite>), or as a <cite>bias</cite> relative to
+the velocity spectrum.</p>
+<p>As the integrals to calculate the correlations can be slow, this
+class can construct a table for interpolating them. This table can
+be saved to a file, and reloaded as need.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ps_vv</strong> (<em>function</em><em>, </em><em>optional</em>) – A function which gives the velocity power spectrum at a
+wavenumber k (in units of h Mpc^{-1}).</p></li>
+<li><p><strong>ps_dd</strong> (<em>function</em><em>, </em><em>optional</em>) – A function which gives the power spectrum of the observable.</p></li>
+<li><p><strong>ps_dv</strong> (<em>function</em><em>, </em><em>optional</em>) – A function which gives the cross power spectrum of the
+observable and the velocity.</p></li>
+<li><p><strong>redshift</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The redshift at which the power spectra are
+calculated. Defaults to a redshift, z = 0.</p></li>
+<li><p><strong>bias</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The bias between the observable and the velocities (if the
+statistics are not specified directly). Defaults to a bias of
+1.0.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ps_vv,</span> <span class="pre">ps_dd,</span> <span class="pre">ps_dv</span></span></dt>
+<dd><p>The statistics of the obserables and velocities (see Parameters).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>function</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.ps_redshift">
+<span class="sig-name descname"><span class="pre">ps_redshift</span></span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.ps_redshift" title="Link to this definition"></a></dt>
+<dd><p>Redshift of the power spectra (see Parameters).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.bias">
+<span class="sig-name descname"><span class="pre">bias</span></span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.bias" title="Link to this definition"></a></dt>
+<dd><p>Bias of the observable (see Parameters).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scalar</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.cosmology">
+<span class="sig-name descname"><span class="pre">cosmology</span></span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.cosmology" title="Link to this definition"></a></dt>
+<dd><p>An instance of the Cosmology class to allow mapping of
+redshifts to Cosmological distances.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>instance of <a class="reference internal" href="cora.util.cosmology.html#cora.util.cosmology.Cosmology" title="cora.util.cosmology.Cosmology">Cosmology</a>()</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Notes</p>
+<p>To allow more sophisticated behaviour the four methods
+<cite>growth_factor</cite>, <cite>growth_rate</cite>, <cite>bias_z</cite> and <cite>prefactor</cite> may be
+replaced. These return their respective quantities as functions of
+redshift. See their method documentation for details. This only
+really makes sense when using <cite>_vv_only</cite>, though the functions can
+be still be used to allow some redshift scaling of individual
+terms.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.from_file_matterps">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_file_matterps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">redshift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.from_file_matterps" title="Link to this definition"></a></dt>
+<dd><p>Initialise from a cached, single power spectrum, file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fname</strong> (<em>string</em>) – Name of the cache file.</p></li>
+<li><p><strong>redshift</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Redshift that the power spectrum is defined at (default z = 0).</p></li>
+<li><p><strong>bias</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The bias of the observable relative to the velocity field.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.from_file_fullps">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_file_fullps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">redshift</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.from_file_fullps" title="Link to this definition"></a></dt>
+<dd><p>Initialise from a cached, multi power spectrum, file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fname</strong> (<em>string</em>) – Name of the cache file.</p></li>
+<li><p><strong>redshift</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Redshift that the power spectra are defined at (default z = 0).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.powerspectrum">
+<span class="sig-name descname"><span class="pre">powerspectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kpar</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kperp</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.powerspectrum" title="Link to this definition"></a></dt>
+<dd><p>A vectorized routine for calculating the redshift space powerspectrum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kpar</strong> (<em>array_like</em>) – The parallel component of the k-vector.</p></li>
+<li><p><strong>kperp</strong> (<em>array_like</em>) – The perpendicular component of the k-vector.</p></li>
+<li><p><strong>z1</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The redshifts of the wavevectors to correlate. If either
+is None, use the default redshift <cite>ps_redshift</cite>.</p></li>
+<li><p><strong>z2</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The redshifts of the wavevectors to correlate. If either
+is None, use the default redshift <cite>ps_redshift</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ps</strong> – The redshift space power spectrum at the given k-vector and redshift.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.powerspectrum_1D">
+<span class="sig-name descname"><span class="pre">powerspectrum_1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k_vec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numz</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.powerspectrum_1D" title="Link to this definition"></a></dt>
+<dd><p>A vectorized routine for calculating the real space powerspectrum.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>k_vec</strong> (<em>array_like</em>) – The magnitude of the k-vector</p></li>
+<li><p><strong>redshift</strong> (<em>scalar</em>) – Redshift at which to evaluate other parameters</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>ps</strong> (<em>array_like</em>) – The redshift space power spectrum at the given k-vector and redshift.</p></li>
+<li><p><em>Note that this uses the same ps_vv as the realisation generator until</em></p></li>
+<li><p><em>the full dd, dv, vv calculation is ready.</em></p></li>
+<li><p><strong>TODO</strong> (<em>evaluate this using the same weight function in z as the data.</em>)</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.redshiftspace_correlation">
+<span class="sig-name descname"><span class="pre">redshiftspace_correlation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.redshiftspace_correlation" title="Link to this definition"></a></dt>
+<dd><p>The correlation function in the flat-sky approximation.</p>
+<p>This is a vectorized function. The inputs <cite>pi</cite> and <cite>sigma</cite>
+must have the same shape (if arrays), or be scalars. This
+function will perform redshift dependent scaling for the
+growth and biases.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pi</strong> (<em>array_like</em>) – The separation in the radial direction (in units of h^{-1} Mpc).</p></li>
+<li><p><strong>sigma</strong> (<em>array_like</em>) – The separation in the transverse direction (in units of h^{-1} Mpc).</p></li>
+<li><p><strong>z1</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The redshift corresponding to the first point.</p></li>
+<li><p><strong>z2</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The redshift corresponding to the first point.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>corr</strong> – The correlation function evaluated at the input values.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>If neither <cite>z1</cite> or <cite>z2</cite> are provided assume that both points
+are at the same redshift as the power spectrum. If only <cite>z1</cite>
+is provided assume the second point is at the same redshift as
+the first.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.angular_correlation">
+<span class="sig-name descname"><span class="pre">angular_correlation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.angular_correlation" title="Link to this definition"></a></dt>
+<dd><p>Angular correlation function (in a flat-sky approximation).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>theta</strong> (<em>array_like</em>) – The angle between the two points in radians.</p></li>
+<li><p><strong>z1</strong> (<em>array_like</em>) – The redshift of the points.</p></li>
+<li><p><strong>z2</strong> (<em>array_like</em>) – The redshift of the points.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>corr</strong> – The correlation function at the points.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.gen_cache">
+<span class="sig-name descname"><span class="pre">gen_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rnum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.gen_cache" title="Link to this definition"></a></dt>
+<dd><p>Generate the cache.</p>
+<p>Calculate a table of the integrals required for the
+correlation functions, and save them to a named file (if
+given).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fname</strong> (<em>filename</em><em>, </em><em>optional</em>) – The file to save the cache into. If not set, the cache is
+generated but not saved.</p></li>
+<li><p><strong>rmin</strong> (<em>scalar</em>) – The minimum r-value at which to generate the integrals (in
+h^{-1} Mpc)</p></li>
+<li><p><strong>rmax</strong> (<em>scalar</em>) – The maximum r-value at which to generate the integrals (in
+h^{-1} Mpc)</p></li>
+<li><p><strong>rnum</strong> (<em>integer</em>) – The number of points to generate (using a log spacing).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.bias_z">
+<span class="sig-name descname"><span class="pre">bias_z</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.bias_z" title="Link to this definition"></a></dt>
+<dd><p>The linear bias at redshift z.</p>
+<p>The bias relative to the matter as a function of
+redshift. In this simple version the bias is assumed
+constant. Inherit, and override to use a more complicated
+model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>array_like</em>) – The redshift to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>bias</strong> – The bias at <cite>z</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.growth_factor">
+<span class="sig-name descname"><span class="pre">growth_factor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.growth_factor" title="Link to this definition"></a></dt>
+<dd><p>The growth factor D_+ as a function of redshift.</p>
+<p>The linear growth factor at a particular
+redshift, defined as:
+.. math:: delta(k; z) = D_+(z; z_0) delta(k; z_0)</p>
+<p>Normalisation can be arbitrary. For the moment
+assume that Omega_m ~ 1, and thus the growth is linear in the
+scale factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>array_like</em>) – The redshift to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>growth_factor</strong> – The growth factor at <cite>z</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.growth_rate">
+<span class="sig-name descname"><span class="pre">growth_rate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.growth_rate" title="Link to this definition"></a></dt>
+<dd><p>The growth rate f as a function of redshift.</p>
+<p>The linear growth rate at a particular redshift defined as:
+.. math:: f = frac{dln{D_+}}{dln{a}}</p>
+<p>For the moment assume that Omega_m ~ 1, and thus the growth rate is
+unity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>array_like</em>) – The redshift to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>growth_rate</strong> – The growth factor at <cite>z</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.prefactor">
+<span class="sig-name descname"><span class="pre">prefactor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.prefactor" title="Link to this definition"></a></dt>
+<dd><p>An arbitrary scaling multiplying on each perturbation.</p>
+<p>This factor can be redshift dependent. It results in scaling
+the entire correlation function by prefactor(z1) *
+prefactor(z2).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>array_like</em>) – The redshift to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>prefactor</strong> – The prefactor at <cite>z</cite>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.mean">
+<span class="sig-name descname"><span class="pre">mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.mean" title="Link to this definition"></a></dt>
+<dd><p>Mean value of the field at a given redshift.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>z</strong> (<em>array_like</em>) – redshift to calculate at.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>mean</strong> – the mean value of the field at each redshift.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.sigma_v">
+<span class="sig-name descname"><span class="pre">sigma_v</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.sigma_v" title="Link to this definition"></a></dt>
+<dd><p>Return the pairwise velocity dispersion at a given redshift.
+This is stored internally as <cite>self._sigma_v</cite> in units of km/s
+Note that e.g. WiggleZ reports sigma_v in h km/s</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.velocity_damping">
+<span class="sig-name descname"><span class="pre">velocity_damping</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kpar</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.velocity_damping" title="Link to this definition"></a></dt>
+<dd><p>The velocity damping term for the non-linear power spectrum.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.realisation">
+<span class="sig-name descname"><span class="pre">realisation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">z2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thetax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thetay</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">numy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zspace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">refinement</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">report_physical</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_mean</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">no_evolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.realisation" title="Link to this definition"></a></dt>
+<dd><p>Simulate a redshift-space volume.</p>
+<p>Generates a 3D (angle-angle-redshift) volume from the given
+power spectrum. Currently only works with simply biased power
+spectra (i.e. vv_only). This routine uses a flat sky
+approximation, and so becomes inaccurate when a large volume
+of the sky is simulated.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>z1</strong> (<em>scalar</em>) – Lower and upper redshifts of the box.</p></li>
+<li><p><strong>z2</strong> (<em>scalar</em>) – Lower and upper redshifts of the box.</p></li>
+<li><p><strong>thetax</strong> (<em>scalar</em>) – The angular size (in degrees) of the box.</p></li>
+<li><p><strong>thetay</strong> (<em>scalar</em>) – The angular size (in degrees) of the box.</p></li>
+<li><p><strong>numz</strong> (<em>integer</em>) – The number of bins in redshift.</p></li>
+<li><p><strong>numx</strong> (<em>integer</em>) – The number of angular pixels along each side.</p></li>
+<li><p><strong>numy</strong> (<em>integer</em>) – The number of angular pixels along each side.</p></li>
+<li><p><strong>zspace</strong> (<em>boolean</em><em>, </em><em>optional</em>) – If True (default) redshift bins are equally spaced in
+redshift. Otherwise space equally in the scale factor
+(useful for generating an equal range in frequency).</p></li>
+<li><p><strong>density_only</strong> (<em>boolean</em>) – no velocity contribution</p></li>
+<li><p><strong>no_mean</strong> (<em>boolean</em>) – do not add the mean temperature</p></li>
+<li><p><strong>no_evolution</strong> (<em>boolean</em>) – do not let b(z), D(z) etc. evolve: take their mean</p></li>
+<li><p><strong>pad</strong> (<em>integer</em>) – number of pixels over which to pad the physical region for
+interpolation onto freq, ra, dec; match spline order?</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cube</strong> – The volume cube.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.angular_powerspectrum_full">
+<span class="sig-name descname"><span class="pre">angular_powerspectrum_full</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">la</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">za1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">za2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.angular_powerspectrum_full" title="Link to this definition"></a></dt>
+<dd><p>The angular powerspectrum C_l(z1, z2). Calculate explicitly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>array_like</em>) – The multipole moments to return at.</p></li>
+<li><p><strong>z1</strong> (<em>array_like</em>) – The redshift slices to correlate.</p></li>
+<li><p><strong>z2</strong> (<em>array_like</em>) – The redshift slices to correlate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>arr</strong> – The values of C_l(z1, z2)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.save_fft_cache">
+<span class="sig-name descname"><span class="pre">save_fft_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.save_fft_cache" title="Link to this definition"></a></dt>
+<dd><p>Save FFT angular powerspecturm cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.load_fft_cache">
+<span class="sig-name descname"><span class="pre">load_fft_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fname</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.load_fft_cache" title="Link to this definition"></a></dt>
+<dd><p>Load FFT angular powerspectrum cache.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.angular_powerspectrum_fft">
+<span class="sig-name descname"><span class="pre">angular_powerspectrum_fft</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">la</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">za1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">za2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.angular_powerspectrum_fft" title="Link to this definition"></a></dt>
+<dd><p>The angular powerspectrum C_l(z1, z2) in a flat-sky limit.</p>
+<p>Uses FFT based method to generate a lookup table for fast computation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>array_like</em>) – The multipole moments to return at.</p></li>
+<li><p><strong>z1</strong> (<em>array_like</em>) – The redshift slices to correlate.</p></li>
+<li><p><strong>z2</strong> (<em>array_like</em>) – The redshift slices to correlate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>arr</strong> – The values of C_l(z1, z2)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.signal.corr.RedshiftCorrelation.angular_powerspectrum">
+<span class="sig-name descname"><span class="pre">angular_powerspectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">la</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">za1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">za2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.RedshiftCorrelation.angular_powerspectrum" title="Link to this definition"></a></dt>
+<dd><p>The angular powerspectrum C_l(z1, z2) in a flat-sky limit.</p>
+<p>Uses FFT based method to generate a lookup table for fast computation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>l</strong> (<em>array_like</em>) – The multipole moments to return at.</p></li>
+<li><p><strong>z1</strong> (<em>array_like</em>) – The redshift slices to correlate.</p></li>
+<li><p><strong>z2</strong> (<em>array_like</em>) – The redshift slices to correlate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>arr</strong> – The values of C_l(z1, z2)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>array_like</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.signal.corr.inverse_approx">
+<span class="sig-prename descclassname"><span class="pre">cora.signal.corr.</span></span><span class="sig-name descname"><span class="pre">inverse_approx</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.signal.corr.inverse_approx" title="Link to this definition"></a></dt>
+<dd><p>Generate the inverse function on the interval x1 to x2.</p>
+<p>Periodically sample a function and use interpolation to construct
+its inverse. Function must be monotonic on the given interval.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f</strong> (<em>callable</em>) – The function to invert, must accept a single argument.</p></li>
+<li><p><strong>x1</strong> (<em>scalar</em>) – The lower and upper bounds of the interval on which to
+construct the inverse.</p></li>
+<li><p><strong>x2</strong> (<em>scalar</em>) – The lower and upper bounds of the interval on which to
+construct the inverse.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>inv</strong> – A callable function holding the inverse.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="cora.util.cubicspline.html#cora.util.cubicspline.Interpolater" title="cora.util.cubicspline.Interpolater">cubicspline.Interpolater</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.signal.html" class="btn btn-neutral float-left" title="cora.signal" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.signal.corr21cm.html" class="btn btn-neutral float-right" title="cora.signal.corr21cm" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
