@@ -211,3 +211,23 @@ class PointSources(ForegroundSCK):
     alpha = 2.07
     beta = 1.1
     zeta = 1.0
+
+class LOFAR_NCP(ForegroundSCK):
+    r"""Gaussian foreground for wide field observations of the NCP with LOFAR.
+    Uses the results of Gehlot et al. [1]_ for A, v_0, l_0, beta, Bernardi et al. [2]_ for alpha
+    and Santos et al. [3]_ for zeta.
+
+    .. math:: A = 2 \pi \Delta^{2}(l_0 = 180) / (l (l + 1))
+
+    References
+    ----------
+    .. [1] Gehlot et al. 2022 (https://arxiv.org/pdf/2112.00721)
+    .. [2] Bernardi et al. 2009 (https://arxiv.org/abs/0904.0404)
+    .. [3] Santos et al. 2005 (http://arxiv.org/abs/astro-ph/0408515)
+    """
+    A = 0.028087265
+    alpha = 2.2
+    beta = 2.55
+    zeta = 4.0
+    v_0 = 122.0
+    l_0 = 180.0
