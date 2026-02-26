@@ -311,6 +311,7 @@ def corr_to_clarray(
     chi2_2nd_derivative: bool = False,
     FoG_convolve: bool = False,
     FoG_sigmaP: float = None,
+    FoG_sigmaP_other: float = None,
     FoG_kernel_max_nchannels: int = None,
     channel_profile: Callable[[np.ndarray], np.ndarray] = None,
     overlapping_channels: int = 0,
@@ -367,6 +368,9 @@ def corr_to_clarray(
         prior to integration. Must choose `channel_method = "uniform"`.
     FoG_sigmaP
         Finger-of-God damping scale to use in kernel.
+    FoG_sigmaP_other
+        Finger-of-God damping scale to use in kernel corresponding to `chi_2`.
+        If None, `FoG_sigmaP` is used for both `chi_1` and `chi_2`.
     FoG_kernel_max_nchannels
         Restrict the width of the Finger-of-God kernel to the comoving distance
         interval equal to twice this number of frequency channels. This reduces
@@ -553,6 +557,19 @@ def corr_to_clarray(
                 mode="same",
             )
 
+            # If FoG_sigmaP_other is specified, evaluate corresponding kernel
+            if FoG_sigmaP_other is not None:
+                FoG_kernel_other = exponential_FoG_kernel_1d(dxarray, FoG_sigmaP_other)
+                FoG_kernel_other = FoG_kernel_other[FoG_kernel_other > 0.0]
+                FoG_kernel_other_norm = ssig.oaconvolve(
+                    np.ones_like(xarray_full),
+                    FoG_kernel_other,
+                    mode="same",
+                )
+            else:
+                FoG_kernel_other = FoG_kernel
+                FoG_kernel_other_norm = FoG_kernel_norm
+
     # Split mu values into chunks, to avoid memory usage blowing up
     for msec in np.array_split(np.arange(_len), _len // chunksize):
         # Index into the global index in mu, and evaluate the correlation
@@ -593,11 +610,11 @@ def corr_to_clarray(
                 corr1 = (
                     ssig.oaconvolve(
                         corr1,
-                        FoG_kernel[np.newaxis, np.newaxis, :],
+                        FoG_kernel_other[np.newaxis, np.newaxis, :],
                         axes=(2,),
                         mode="same",
                     )
-                    / FoG_kernel_norm[..., :]
+                    / FoG_kernel_other_norm[..., :]
                 )
 
             # Perform channel integrals in chi_1, then chi_2
