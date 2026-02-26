@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 from functools import cache
 
 import healpy
@@ -26,6 +26,7 @@ from .lsscontainers import (
     BiasedLSS,
     CorrelationFunction,
     MultiFrequencyAngularPowerSpectrum,
+    MultiTracerMultiFrequencyAngularPowerSpectrum,
     InitialLSS,
     MatterPowerSpectrum,
     _INTERP_TYPES,
@@ -312,8 +313,8 @@ class CalculatePFBChannelProfile(tasklib.base.ContainerTask):
         return profile_cont
 
 
-class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
-    """Calculate C_l(chi,chi') from a real-space correlation function.
+class CalculateMultiFrequencyAngularPowerSpectrumBase(tasklib.base.ContainerTask):
+    """Base class for calculating C_l(chi,chi') (non-functional).
 
     The output will be evaluated at constant redshift, corresponding
     to the redshift of the input correlation functions.
@@ -322,13 +323,8 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
     where delta is the matter overdensity and phi is the gravitational
     potential (including numerical prefactors from the Poisson equation).
     If `use_d2phi` is set, the second line-of-sight derivative of phi
-    will be used instead of phi. (This is useful to simulating maps of
+    will be used instead of phi. (This is useful for simulating maps of
     the Kaiser redshift-space distortion term.)
-
-    If `FoG_convolve` is set, the integrand of the C_l expression will
-    be convolved with the position-space Finger-of-God damping kernel.
-    Sky maps generated with the output C_l will then include this
-    damping.
 
     Attributes
     ----------
@@ -381,26 +377,6 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
     d2phi_freq_padding : int, optional
         Fixed number of padding frequencies. Overridden if `FoG_convolve` is True.
         Default: 1.
-    FoG_convolve : bool, optional
-        Whether to convolve the integrand with the Finger-of-God damping kernel
-        prior to integration. Must choose `channel_method = "uniform"`.
-        Default: False.
-    alpha_FoG : float
-        A parameter to control the strength of the effect by adjusting the damping
-        scale. A value of 1 (default) applies the nominal damping, 0 turns the
-        damping off entirely, and any other values adjust the scale appropriately.
-    FoG_model : str, optional
-        Use an inbuilt model for the Finger-of-God damping. If None (default), a
-        specific model is expected to be set via `FoG_coeff` and `z_eff`. See
-        `lssmodels.sigma_P` for available models and details about them.
-    FoG_coeff : list, optional
-        A list of coefficients in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`.
-        If None (default), `FoG_model` must be set.
-    FoG_z_eff : float, optional
-        The effective redshift of the polynomial expansion. Default: None.
-    FoG_z_eval : float, optional
-        Redshift at which to evaluate FoG damping model. If not set, mean redshift
-        of input container is used. Default: None.
     FoG_freq_padding_threshold : float, optional
         Requested frequency range is padded such that this fraction of the
         integral of the FoG kernel is captured. Default: 0.99.
@@ -429,12 +405,6 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
     freq_padding = config.Property(proptype=bool, default=False)
     d2phi_freq_padding = config.Property(proptype=int, default=1)
 
-    FoG_convolve = config.Property(proptype=bool, default=False)
-    alpha_FoG = config.Property(proptype=float, default=1.0)
-    FoG_model = config.enum(lssmodels.sigma_P.models(), default=None)
-    FoG_coeff = config.list_type(type_=float, default=None)
-    FoG_z_eff = config.Property(proptype=float, default=None)
-    FoG_z_eval = config.Property(proptype=float, default=None)
     FoG_freq_padding_threshold = config.Property(proptype=float, default=0.99)
     FoG_freq_padding_maxnum = config.Property(proptype=int, default=None)
 
@@ -454,9 +424,10 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
         if profile_cont is not None:
             self.channel_profile_func = profile_cont.get_function("profile")
 
-    def process(
-        self, correlation_functions: CorrelationFunction
-    ) -> MultiFrequencyAngularPowerSpectrum:
+    def process(self, correlation_functions: CorrelationFunction) -> Union[
+        MultiFrequencyAngularPowerSpectrum,
+        MultiTracerMultiFrequencyAngularPowerSpectrum,
+    ]:
         """Compute the angular power spectra.
 
         Returns
@@ -500,60 +471,37 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
         # power will alias back down when the map is transformed later on
         lmax = 3 * self.nside - 1
 
-        # If alpha_FoG is 0, don't do FoG convolution even if requested
-        # by user
-        if self.alpha_FoG == 0:
-            self.FoG_convolve = False
+        # Compute FoG damping scale(s). "None" corresponds to no damping.
+        sigma_P_arr = self._compute_FoG_damping_scales(redshift)
 
-        # Set FoG damping scale and padding frequencies, if needed
-        if not self.FoG_convolve:
-
-            sigma_P = None
-
+        # Pad frequencies
+        if all(x is None for x in sigma_P_arr):
+            # If all sigma_P values are None, there's no FoG damping,
+            # pad by nfreq_pad frequencies if nonzero
             if nfreq_pad > 0:
                 freqs_new, nfreq_pad, _, _ = lssutil.pad_frequencies(
                     self.frequencies, num=nfreq_pad
                 )
-
         else:
-
-            # Set redshift at which to evaluate model for damping scale
-            if self.FoG_z_eval is not None:
-                z_eval = self.FoG_z_eval
-            else:
-                z_eval = np.mean(redshift)
-
-            # Compute damping scale
-            if self.FoG_z_eff is not None and self.FoG_coeff is not None:
-
-                def s(z):
-                    return lssmodels.PolyModelSet.evaluate_poly(
-                        z, self.FoG_z_eff, self.FoG_coeff
-                    )
-
-                sigma_P = self.alpha_FoG * s(z_eval)
-
-            elif self.FoG_model is not None:
-                sigma_P = self.alpha_FoG * lssmodels.sigma_P[self.FoG_model](z_eval)
-            else:
-                raise config.CaputConfigError(
-                    "Either `FoG_model` must be set, or `FoG_z_eff` and `FoG_coeff`"
-                )
+            # If there's at least one nontrivial sigma_P, find the maximum
+            # value, and pad frequencies based on this value
+            nonzero_sigma_P_arr = np.array([x for x in sigma_P_arr if x is not None])
+            sigma_P_max = np.max(nonzero_sigma_P_arr)
 
             if self.freq_padding:
-                # Pad frequencies to ensure adequate coverage of FoG kernel
+                # Pad frequencies to ensure adequate coverage of widest FoG kernel
                 freqs_new, nfreq_pad, nfreq_pad_raw, FoG_kernel_frac = (
                     lssutil.pad_frequencies(
                         self.frequencies,
                         use_FoG_kernel=True,
                         cosmology=cosmology,
-                        sigma_P=sigma_P,
+                        sigma_P=sigma_P_max,
                         FoG_threshold=self.FoG_freq_padding_threshold,
                         maxnum=self.FoG_freq_padding_maxnum,
                     )
                 )
                 self.log.info(
-                    "Fraction of FoG kernel covered by "
+                    "Fraction of widest FoG kernel with covered by "
                     f"padded frequencies: {FoG_kernel_frac}"
                 )
                 if nfreq_pad != nfreq_pad_raw:
@@ -572,7 +520,118 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
 
             self.log.info(f"Number of padding frequencies: {nfreq_pad}")
 
+        # Compute angular power spectra and assemble into output container
+        out_cont = self._compute_spectra(
+            cosmology,
+            redshift,
+            corr0,
+            corr2,
+            corr4,
+            lmax,
+            xa,
+            nfreq_pad,
+            nfreq_pad_for_kernel,
+            sigma_P_arr,
+        )
+
+        return out_cont
+
+
+class CalculateSingleTracerMultiFrequencyAngularPowerSpectrum(
+    CalculateMultiFrequencyAngularPowerSpectrumBase
+):
+    """Calculate C_l(chi,chi') for a single tracer.
+
+    If `FoG_convolve` is set, the integrand of the C_l expression will
+    be convolved with the position-space Finger-of-God damping kernel.
+    Sky maps generated with the output C_l will then include this
+    damping.
+
+    See docstring for `CalculateMultiFrequencyAngularPowerSpectrumBase`
+    for other attributes not listed below.
+
+    Attributes
+    ----------
+    FoG_convolve : bool, optional
+        Whether to convolve the integrand with the Finger-of-God damping kernel
+        prior to integration. Must choose `channel_method = "uniform"`.
+        Default: False.
+    alpha_FoG : float
+        A parameter to control the strength of the effect by adjusting the damping
+        scale. A value of 1 (default) applies the nominal damping, 0 turns the
+        damping off entirely, and any other values adjust the scale appropriately.
+    FoG_model : str, optional
+        Use an inbuilt model for the Finger-of-God damping. If None (default), a
+        specific model is expected to be set via `FoG_coeff` and `z_eff`. See
+        `lssmodels.sigma_P` for available models and details about them.
+    FoG_coeff : list, optional
+        A list of coefficients in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`.
+        If None (default), `FoG_model` must be set.
+    FoG_z_eff : float, optional
+        The effective redshift of the polynomial expansion. Default: None.
+    FoG_z_eval : float, optional
+        Redshift at which to evaluate FoG damping model. If not set, mean redshift
+        of input container is used. Default: None.
+    """
+
+    FoG_convolve = config.Property(proptype=bool, default=False)
+    alpha_FoG = config.Property(proptype=float, default=1.0)
+    FoG_model = config.enum(lssmodels.sigma_P.models(), default=None)
+    FoG_coeff = config.list_type(type_=float, default=None)
+    FoG_z_eff = config.Property(proptype=float, default=None)
+    FoG_z_eval = config.Property(proptype=float, default=None)
+
+    def _compute_FoG_damping_scales(self, redshift: np.ndarray) -> np.ndarray:
+        """Compute FoG damping scale for desired tracer."""
+
+        # If alpha_FoG is 0, return "None" for damping scale,
+        # indicating that damping should not be applied
+        if self.alpha_FoG == 0 or not self.FoG_convolve:
+            return np.array([None])
+
+        # Set redshift at which to evaluate model for damping scale
+        if self.FoG_z_eval is not None:
+            z_eval = self.FoG_z_eval
+        else:
+            z_eval = np.mean(redshift)
+
+        # Compute damping scale
+        if self.FoG_z_eff is not None and self.FoG_coeff is not None:
+
+            def s(z):
+                return lssmodels.PolyModelSet.evaluate_poly(
+                    z, self.FoG_z_eff, self.FoG_coeff
+                )
+
+            sigma_P = self.alpha_FoG * s(z_eval)
+
+        elif self.FoG_model is not None:
+            sigma_P = self.alpha_FoG * lssmodels.sigma_P[self.FoG_model](z_eval)
+        else:
+            raise config.CaputConfigError(
+                "Either `FoG_model`, or `FoG_z_eff` and `FoG_coeff`, must be set"
+            )
+
+        return np.array([sigma_P])
+
+    def _compute_spectra(
+        self,
+        cosmology,
+        redshift,
+        corr0,
+        corr2,
+        corr4,
+        lmax,
+        xa,
+        nfreq_pad,
+        nfreq_pad_for_kernel,
+        sigma_P_arr,
+    ):
+        """Compute angular power spectra for desired tracer."""
+
         phi_label = "d2phi" if self.use_d2phi else "phi"
+
+        sigma_P = sigma_P_arr[0]
 
         self.log.debug("Generating C_l(x, x') for delta-delta")
         cla0 = corrfunc.corr_to_clarray(
@@ -652,6 +711,335 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
         out_cont.Cl_delta_delta[:] = cla0[:, slc, slc]
         out_cont.Cl_phi_delta[:] = cla2[:, slc, slc]
         out_cont.Cl_phi_phi[:] = cla4[:, slc, slc]
+
+        return out_cont
+
+
+# Alias for legacy compatibility
+CalculateMultiFrequencyAngularPowerSpectrum = (
+    CalculateSingleTracerMultiFrequencyAngularPowerSpectrum
+)
+
+
+class CalculateDoubleTracerMultiFrequencyAngularPowerSpectrum(
+    CalculateMultiFrequencyAngularPowerSpectrumBase
+):
+    """Calculate C_l(chi,chi') for two correlated tracers.
+
+    If `FoG_convolve` is set, the integrand of the C_l expression will
+    be convolved with the position-space Finger-of-God damping kernel.
+    Sky maps generated with the output C_l will then include this
+    damping.
+
+    See docstring for `CalculateMultiFrequencyAngularPowerSpectrumBase`
+    for other attributes not listed below.
+
+    Attributes
+    ----------
+    FoG_convolve : bool, optional
+        Whether to convolve the integrand with the Finger-of-God damping kernel
+        prior to integration. Must choose `channel_method = "uniform"`.
+        Default: False.
+    alpha_FoG_A, alpha_FoG_B : float
+        A parameter to control the strength of the effect by adjusting the damping
+        scale for each tracer. A value of 1 (default) applies the nominal damping,
+        0 turns the damping off entirely, and any other values adjust the scale
+        appropriately.
+    FoG_model_A, FoG_model_B : str, optional
+        Use an inbuilt model for the Finger-of-God damping. If None (default), a
+        specific model is expected to be set via `FoG_coeff` and `z_eff`. See
+        `lssmodels.sigma_P` for available models and details about them.
+    FoG_coeff_A, FoG_coeff_B : list, optional
+        A list of coefficients in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`.
+        If None (default), `FoG_model` must be set.
+    FoG_z_eff_A, FoG_z_eff_B : float, optional
+        The effective redshift of the polynomial expansion. Default: None.
+    FoG_z_eval_A, FoG_z_eval_B : float, optional
+        Redshift at which to evaluate FoG damping model. If not set, mean redshift
+        of input container is used. Default: None.
+    """
+
+    FoG_convolve = config.Property(proptype=bool, default=False)
+
+    alpha_FoG_A = config.Property(proptype=float, default=1.0)
+    FoG_model_A = config.enum(lssmodels.sigma_P.models(), default=None)
+    FoG_coeff_A = config.list_type(type_=float, default=None)
+    FoG_z_eff_A = config.Property(proptype=float, default=None)
+    FoG_z_eval_A = config.Property(proptype=float, default=None)
+
+    alpha_FoG_B = config.Property(proptype=float, default=1.0)
+    FoG_model_B = config.enum(lssmodels.sigma_P.models(), default=None)
+    FoG_coeff_B = config.list_type(type_=float, default=None)
+    FoG_z_eff_B = config.Property(proptype=float, default=None)
+    FoG_z_eval_B = config.Property(proptype=float, default=None)
+
+    def _compute_FoG_damping_scales(self, redshift: np.ndarray) -> np.ndarray:
+        """Compute FoG damping scales for both tracers."""
+
+        sigma_P_arr = [None, None]
+
+        for i, (alpha_FoG, FoG_model, FoG_coeff, FoG_z_eff, FoG_z_eval) in enumerate(
+            zip(
+                [self.alpha_FoG_A, self.alpha_FoG_B],
+                [self.FoG_model_A, self.FoG_model_B],
+                [self.FoG_coeff_A, self.FoG_coeff_B],
+                [self.FoG_z_eff_A, self.FoG_z_eff_B],
+                [self.FoG_z_eval_A, self.FoG_z_eval_B],
+            )
+        ):
+            # If alpha_FoG is 0, leave damping scale as "None",
+            # indicating that damping should not be applied
+            if alpha_FoG == 0 or not self.FoG_convolve:
+                continue
+
+            # Set redshift at which to evaluate model for damping scale
+            if FoG_z_eval is not None:
+                z_eval = FoG_z_eval
+            else:
+                z_eval = np.mean(redshift)
+
+            # Compute damping scale
+            if FoG_z_eff is not None and FoG_coeff is not None:
+
+                def s(z):
+                    return lssmodels.PolyModelSet.evaluate_poly(z, FoG_z_eff, FoG_coeff)
+
+                sigma_P_arr[i] = alpha_FoG * s(z_eval)
+
+            elif FoG_model is not None:
+                sigma_P_arr[i] = alpha_FoG * lssmodels.sigma_P[FoG_model](z_eval)
+            else:
+                raise config.CaputConfigError(
+                    "Either `FoG_model`, or `FoG_z_eff` and `FoG_coeff`, must be set"
+                )
+
+        return np.array(sigma_P_arr)
+
+    def _compute_spectra(
+        self,
+        cosmology,
+        redshift,
+        corr0,
+        corr2,
+        corr4,
+        lmax,
+        xa,
+        nfreq_pad,
+        nfreq_pad_for_kernel,
+        sigma_P_arr,
+    ):
+        """Compute multi-tracer angular power spectra."""
+
+        _SMALL_NONZERO_DAMPING = 1e-5
+
+        phi_label = "d2phi" if self.use_d2phi else "phi"
+
+        # If extra frequencies were added, slice back to original
+        # set of frequencies
+        if nfreq_pad > 0:
+            slc = slice(nfreq_pad, -nfreq_pad)
+        else:
+            slc = slice(None)
+
+        # Create output container
+        if self.frequencies is not None:
+            out_cont = MultiTracerMultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                freq=self.frequencies,
+                lmax=lmax,
+                n_tracer=2,
+                d2phi=self.use_d2phi,
+                nfreq_pad=nfreq_pad,
+            )
+        else:
+            out_cont = MultiTracerMultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                redshift=redshift,
+                lmax=lmax,
+                n_tracer=2,
+                d2phi=self.use_d2phi,
+                nfreq_pad=nfreq_pad,
+            )
+
+        sigma_A, sigma_B = sigma_P_arr
+
+        # Convert "None" to 0.0 for purposes of numerical comparison
+        def _norm_sigma(x):
+            return 0.0 if x is None else x
+
+        sigma_A_num = _norm_sigma(sigma_A)
+        sigma_B_num = _norm_sigma(sigma_B)
+
+        # If one sigma is zero and the other is not, bump zero to small nonzero
+        # value
+        if (
+            np.isclose(sigma_A_num, 0.0) or np.isclose(sigma_B_num, 0.0)
+        ) and not np.isclose(sigma_A_num, sigma_B_num):
+            sigma_A = _SMALL_NONZERO_DAMPING if sigma_A is None else sigma_A
+            sigma_B = _SMALL_NONZERO_DAMPING if sigma_B is None else sigma_A
+
+        # Check whether the two damping scales are identical
+        identical_damping = np.isclose(sigma_A_num, sigma_B_num)
+
+        self.log.debug("Generating C_l(x, x') for deltaA-deltaA")
+        cla = corrfunc.corr_to_clarray(
+            corr0,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_A,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+        )
+        # Cl_delta_delta[0] -> A-A
+        out_cont.Cl_delta_delta[0, :] = cla[:, slc, slc]
+
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}A-deltaA")
+        cla = corrfunc.corr_to_clarray(
+            corr2,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_A,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+            chi1_2nd_derivative=self.use_d2phi,
+        )
+        # Cl_phi_delta[0] -> A-A
+        out_cont.Cl_phi_delta[0, :] = cla[:, slc, slc]
+
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}A-{phi_label}A")
+        cla = corrfunc.corr_to_clarray(
+            corr4,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_A,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+            chi1_2nd_derivative=self.use_d2phi,
+            chi2_2nd_derivative=self.use_d2phi,
+        )
+        # Cl_phi_phi[0] -> A-A
+        out_cont.Cl_phi_phi[0, :] = cla[:, slc, slc]
+
+        # If the FoG scales are identical for each tracer, then we can re-use the
+        # A auto spectra. Otherwise, we need to compute A-B and B-B spectra.
+        if identical_damping:
+
+            self.log.debug(
+                "Identical FoG damping scales detected "
+                "- re-using A-A spectra for A-B and B-B"
+            )
+            for i in range(1, 3):
+                out_cont.Cl_delta_delta[i, :] = out_cont.Cl_delta_delta[0, :]
+                out_cont.Cl_phi_phi[i, :] = out_cont.Cl_phi_phi[0, :]
+
+            for i in range(1, 4):
+                out_cont.Cl_phi_delta[i, :] = out_cont.Cl_phi_delta[0, :]
+
+        else:
+
+            # Cl_delta_delta[1] -> A-B
+            # Cl_delta_delta[2] -> B-B
+            for i, label, sigma_1, sigma_2 in zip(
+                [1, 2],
+                ["deltaA-deltaB", "deltaB-deltaB"],
+                [sigma_A, sigma_B],
+                [sigma_B, None],
+            ):
+                self.log.debug(f"Generating C_l(x, x') for {label}")
+                cla = corrfunc.corr_to_clarray(
+                    corr0,
+                    lmax,
+                    xa,
+                    xromb=self.xromb,
+                    q=self.leg_q,
+                    chunksize=self.leg_chunksize,
+                    channel_method=self.channel_method,
+                    FoG_convolve=self.FoG_convolve,
+                    FoG_sigmaP=sigma_1,
+                    FoG_sigmaP_other=sigma_2,
+                    FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+                    channel_profile=self.channel_profile_func,
+                    overlapping_channels=self.overlapping_channels,
+                )
+                out_cont.Cl_delta_delta[i, :] = cla[:, slc, slc]
+
+            # Cl_phi_delta[1] -> A-B
+            # Cl_phi_delta[2] -> B-A
+            # Cl_phi_delta[3] -> B-B
+            for i, label, sigma_1, sigma_2 in zip(
+                [1, 2, 3],
+                [
+                    f"{phi_label}A-deltaB",
+                    f"{phi_label}B-deltaA",
+                    f"{phi_label}B-deltaB",
+                ],
+                [sigma_A, sigma_B, sigma_B],
+                [sigma_B, sigma_A, sigma_B],
+            ):
+                self.log.debug(f"Generating C_l(x, x') for {label}")
+                cla = corrfunc.corr_to_clarray(
+                    corr2,
+                    lmax,
+                    xa,
+                    xromb=self.xromb,
+                    q=self.leg_q,
+                    chunksize=self.leg_chunksize,
+                    channel_method=self.channel_method,
+                    FoG_convolve=self.FoG_convolve,
+                    FoG_sigmaP=sigma_1,
+                    FoG_sigmaP_other=sigma_2,
+                    FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+                    channel_profile=self.channel_profile_func,
+                    overlapping_channels=self.overlapping_channels,
+                    chi1_2nd_derivative=self.use_d2phi,
+                )
+                out_cont.Cl_phi_delta[i, :] = cla[:, slc, slc]
+
+            # Cl_phi_phi[1] -> A-B
+            # Cl_phi_phi[2] -> B-B
+            for i, label, sigma_1, sigma_2 in zip(
+                [1, 2],
+                [f"{phi_label}A-{phi_label}B", f"{phi_label}B-{phi_label}B"],
+                [sigma_A, sigma_B],
+                [sigma_B, None],
+            ):
+                self.log.debug(f"Generating C_l(x, x') for {label}")
+                cla = corrfunc.corr_to_clarray(
+                    corr4,
+                    lmax,
+                    xa,
+                    xromb=self.xromb,
+                    q=self.leg_q,
+                    chunksize=self.leg_chunksize,
+                    channel_method=self.channel_method,
+                    FoG_convolve=self.FoG_convolve,
+                    FoG_sigmaP=sigma_1,
+                    FoG_sigmaP_other=sigma_2,
+                    FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+                    channel_profile=self.channel_profile_func,
+                    overlapping_channels=self.overlapping_channels,
+                    chi1_2nd_derivative=self.use_d2phi,
+                    chi2_2nd_derivative=self.use_d2phi,
+                )
+                out_cont.Cl_phi_phi[i, :] = cla[:, slc, slc]
 
         return out_cont
 
