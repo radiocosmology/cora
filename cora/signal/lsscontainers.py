@@ -447,6 +447,110 @@ class MultiFrequencyAngularPowerSpectrum(FZXContainer):
             return self.attrs["nfreq_pad"]
 
 
+class MultiTracerMultiFrequencyAngularPowerSpectrum(FZXContainer):
+    """Container for holding C_ell(chi,chi') for correlated tracers."""
+
+    _axes = (
+        "auto",
+        "cross",
+        "ell",
+    )
+
+    def __init__(
+        self,
+        lmax: float,
+        *args,
+        n_tracer: Optional[int] = 1,
+        d2phi: Optional[bool] = False,
+        nfreq_pad: Optional[int] = 0,
+        **kwargs,
+    ):
+        # Set ell axis to span from ell=0 to lmax
+        kwargs["ell"] = lmax + 1
+
+        # Set auto and cross axes to count number of distinct
+        # delta-delta/phi-phi and phi-delta spectra.
+        # Any code that uses this container must define its
+        # own conventions for which index maps to which
+        # spectrum.
+        kwargs["auto"] = n_tracer * (n_tracer + 1) // 2
+        kwargs["cross"] = n_tracer**2
+
+        super().__init__(*args, **kwargs)
+        self.attrs["d2phi"] = d2phi
+        self.attrs["nfreq_pad"] = nfreq_pad
+
+    _dataset_spec = {
+        "Cl_phi_phi": {
+            "axes": ["auto", "ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+        "Cl_phi_delta": {
+            "axes": ["cross", "ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+        "Cl_delta_delta": {
+            "axes": ["auto", "ell", "chi", "chi"],
+            "dtype": np.float64,
+            "initialise": True,
+            "distributed": True,
+            "distributed_axis": "ell",
+        },
+    }
+
+    @property
+    def Cl_phi_phi(self):
+        """Phi-phi angular power spectrum."""
+        return self.datasets["Cl_phi_phi"]
+
+    @property
+    def Cl_phi_delta(self):
+        """Phi-delta angular power spectrum."""
+        return self.datasets["Cl_phi_delta"]
+
+    @property
+    def Cl_delta_delta(self):
+        """Delta-delta angular power spectrum."""
+        return self.datasets["Cl_delta_delta"]
+
+    @property
+    def auto(self):
+        """Indices for stored delta-delta or phi-phi spectra."""
+        return self.index_map["auto"]
+
+    @property
+    def cross(self):
+        """Indices for stored phi-delta spectra."""
+        return self.index_map["cross"]
+
+    @property
+    def ell(self):
+        """Ell values for stored angular power spectra."""
+        return self.index_map["ell"]
+
+    @property
+    def d2phi(self) -> bool:
+        """Whether phi is actually the 2nd radial derivative of phi."""
+        if "d2phi" not in self.attrs.keys():
+            return False
+        else:
+            return self.attrs["d2phi"]
+
+    @property
+    def nfreq_pad(self) -> int:
+        """Number of padding frequencies used when computing spectra."""
+        if "nfreq_pad" not in self.attrs.keys():
+            return 0
+        else:
+            return self.attrs["nfreq_pad"]
+
+
 class InitialLSS(FZXContainer, containers.HealpixContainer):
     """Container for holding initial LSS fields used for simulation.
 
