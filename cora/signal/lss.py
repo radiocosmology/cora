@@ -1046,7 +1046,7 @@ class CalculateDoubleTracerMultiFrequencyAngularPowerSpectrum(
         return out_cont
 
 
-class GenerateInitialLSSFromCl(task.SingleTask):
+class GenerateSingleTracerInitialLSSFromCl(task.SingleTask):
     """Generate initial LSS maps from input angular power spectrum.
 
     Attributes
@@ -1153,9 +1153,120 @@ class GenerateInitialLSSFromCl(task.SingleTask):
         return f
 
 
+# Alias for legacy compatibility
+GenerateInitialLSSFromCl = GenerateSingleTracerInitialLSSFromCl
+
+
+class GenerateDoubleTracerInitialLSSFromCl(GenerateSingleTracerInitialLSSFromCl):
+    """Generate initial LSS maps for two correlated tracers.
+
+    See `GenerateSingleTracerInitialLSSFromCl` docstring for attribute descriptions.
+    """
+
+    def process(self) -> Tuple[InitialLSS, InitialLSS]:
+        """Generate correlated realisations of the LSS initial conditions.
+
+        Returns
+        -------
+        fA, fB
+            The LSS initial conditions for each tracer.
+        """
+        # Stop if we've already generated enough realizations
+        if self.num_sims == 0:
+            raise pipeline.PipelineStopIteration()
+        self.num_sims -= 1
+
+        nz = len(self.aps.chi)
+
+        # Create extended covariance matrix capturing cross-correlations
+        # between the phi and delta fields for the two tracers:
+        #  pA-pA dA-pA pB-pA dB-pA
+        #  pA-dA dA-dA pB-dA dB-dA
+        #  pA-pB dA-pB pB-pB dB-pB
+        #  pA-dB dA-dB pB-dB dB-dB
+        cla = mpiarray.zeros((len(self.aps.ell), 4 * nz, 4 * nz), axis=0)
+
+        cla[:, :nz, :nz] = self.aps.Cl_phi_phi[0, :]
+        cla[:, nz : 2 * nz, :nz] = self.aps.Cl_phi_delta[0, :]
+        cla[:, 2 * nz : 3 * nz, :nz] = self.aps.Cl_phi_phi[1, :]
+        cla[:, 3 * nz : 4 * nz, :nz] = self.aps.Cl_phi_delta[1, :]
+
+        cla[:, :nz, nz : 2 * nz] = self.aps.Cl_phi_delta[0, :].transpose(0, 2, 1)
+        cla[:, nz : 2 * nz, nz : 2 * nz] = self.aps.Cl_delta_delta[0, :]
+        cla[:, 2 * nz : 3 * nz, nz : 2 * nz] = self.aps.Cl_phi_delta[2, :].transpose(
+            0, 2, 1
+        )
+        cla[:, 3 * nz : 4 * nz, nz : 2 * nz] = self.aps.Cl_delta_delta[1, :]
+
+        cla[:, :nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_phi[1, :].transpose(0, 2, 1)
+        cla[:, nz : 2 * nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_delta[2, :]
+        cla[:, 2 * nz : 3 * nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_phi[2, :]
+        cla[:, 3 * nz : 4 * nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_delta[3, :]
+
+        cla[:, :nz, 3 * nz : 4 * nz] = self.aps.Cl_phi_delta[1, :].transpose(0, 2, 1)
+        cla[:, nz : 2 * nz, 3 * nz : 4 * nz] = self.aps.Cl_delta_delta[1, :].transpose(
+            0, 2, 1
+        )
+        cla[:, 2 * nz : 3 * nz, 3 * nz : 4 * nz] = self.aps.Cl_phi_delta[
+            3, :
+        ].transpose(0, 2, 1)
+        cla[:, 3 * nz : 4 * nz, 3 * nz : 4 * nz] = self.aps.Cl_delta_delta[2, :]
+
+        # Generate map
+        self.log.info(f"Generating realisation of fields using seed {self.seed}")
+        rng = np.random.default_rng(self.seed)
+        sky = skysim.mkfullsky(cla, self.nside, rng=rng)
+
+        # Make container for output
+        if self.aps.freq is not None:
+            fA = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                freq=self.aps.freq,
+                d2phi=self.aps.d2phi,
+            )
+            fB = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                freq=self.aps.freq,
+                d2phi=self.aps.d2phi,
+            )
+        else:
+            fA = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                redshift=self.aps.redshift,
+                d2phi=self.aps.d2phi,
+            )
+            fB = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                redshift=self.aps.redshift,
+                d2phi=self.aps.d2phi,
+            )
+
+        # Redistribute over the pixel axis to properly
+        # index the sky nz axis
+        fA.redistribute("pixel")
+        fB.redistribute("pixel")
+        sky = sky.redistribute(axis=1)
+
+        fA.phi[:] = sky[:nz]
+        fA.delta[:] = sky[nz : 2 * nz]
+        fB.phi[:] = sky[2 * nz : 3 * nz]
+        fB.delta[:] = sky[3 * nz : 4 * nz]
+
+        fA.redistribute("chi")
+        fB.redistribute("chi")
+
+        self.seed += 1
+
+        return fA, fB
+
+
 class GenerateInitialLSS(
-    CalculateMultiFrequencyAngularPowerSpectrum,
-    GenerateInitialLSSFromCl,
+    CalculateSingleTracerMultiFrequencyAngularPowerSpectrum,
+    GenerateSingleTracerInitialLSSFromCl,
 ):
     """Generate initial LSS maps from a correlation function.
 
@@ -1164,13 +1275,13 @@ class GenerateInitialLSS(
     """
 
     def setup(self, correlation_functions: CorrelationFunction):
-        aps = CalculateMultiFrequencyAngularPowerSpectrum.process(
+        aps = CalculateSingleTracerMultiFrequencyAngularPowerSpectrum.process(
             self, correlation_functions
         )
-        GenerateInitialLSSFromCl.setup(self, aps)
+        GenerateSingleTracerInitialLSSFromCl.setup(self, aps)
 
     def process(self):
-        return GenerateInitialLSSFromCl.process(self)
+        return GenerateSingleTracerInitialLSSFromCl.process(self)
 
 
 class GenerateBiasedFieldBase(task.SingleTask):
