@@ -338,9 +338,7 @@ def corr_to_clarray(
         The order for integrating within radial bins, related to the number of samples
         within each bin by `2**xromb + 1`. This generates an exponentially increasing
         amount of work, so increase carefully. Note that despite the parameter name
-        this no longer uses a Romberg integrator, but either a Gauss-Legendre
-        quadrature rule or a combination of Simpson's rule and the trapezoid rule,
-        depending on `channel_method`.
+        this no longer uses a Romberg integrator; see `channel_method` for details.
     xwidth
         Assume each radial bin has this width when integrating. If None (default),
         use nonuniform bin width determined from `xarray`.
@@ -351,11 +349,13 @@ def corr_to_clarray(
         Chunk size for evaluating discrete samples of angular integrand in batches.
         Default: 50.
     channel_method
-        Method for integrating within radial bins: Gauss-Legendre quadrature
-        ("gauss-legendre") or a combination of Simpson's rule and the trapezoid rule
-        ("uniform") based on uniform sampling of the entire comoving-distance
-        range being considered. (The latter is needed for Finger-of-God damping
-        to be incorporated.)
+        Method for integrating within radial bins:
+        - "gauss-legendre": Gauss-Legendre quadrature
+        - "uniform": uses uniform sampling of the entire comoving-distance range
+        being considered. Uses a combination of Simpson's rule and the trapezoid
+        rule if `overlapping_channels` is `False` (see below), or Simpson's rule
+        if `overlapping_channels` is `True`. ("uniform is needed for Finger-of-God
+        damping to be incorporated.)
     chi1_2nd_derivative, chi2_2nd_derivative
         Whether to take finite-difference 2nd derivatives of the integrand in chi_1
         or chi_2 prior to integrating. This is useful for computing angular power
