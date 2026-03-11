@@ -27,12 +27,17 @@ def clarray(
 
     The zromb parameter controls whether to integrate the angular
     power spectrum over each frequency channel. Two schemes are
-    available: legacy Romberg integration that assumes each channel
-    has the same redshift width, or Gauss-Legendre quadrature that
-    can either assume a constant width or use the correct per-chennel
-    width. The Gauss-Legendre scheme is almost identical to the one
-    in cora.signal.corrfunc.corr_to_clarray, except that here the
-    integration is in redshift instead of comoving distance.
+    available:
+
+    1. Legacy Romberg integration that assumes each channel
+    has the same redshift width. Note that this is a bad approximation
+    if working within a sufficiently wide frequency band, so the
+    second scheme is strongly recommended in that case.
+
+    2. Gauss-Legendre quadrature that can either assume a constant width
+    or use the correct per-chennel width. This scheme is almost identical
+    to the one in `cora.signal.corrfunc.corr_to_clarray`, except that
+    here the integration is in redshift instead of comoving distance.
 
     Parameters
     ----------
