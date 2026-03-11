@@ -599,7 +599,7 @@ class InitialLSS(FZXContainer, containers.HealpixContainer):
 
         This is related to the linear gravitational potential :math:`\phi_G` by:
 
-        .. math:: \phi = \frac{3}{3 \mathcal{H}^2} \phi_G
+        .. math:: \phi = \frac{2}{3 \mathcal{H}^2} \phi_G
 
         If `d2phi` is set, the second radial derivative of phi is stored,
         rather than phi itself.
