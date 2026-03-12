@@ -2107,8 +2107,9 @@ class AddCorrelatedShotNoise(tasklib.random.RandomTask, tasklib.base.ContainerTa
 
         chi_local_bounds = input_field.delta[:].local_bounds
         ichi = input_field.chi[chi_local_bounds]
+        ichi_width = lssutil.calculate_width(input_field.chi)[chi_local_bounds]
 
-        volume = pixarea * (ichi**2) * lssutil.calculate_width(ichi)
+        volume = pixarea * ichi**2 * ichi_width
 
         std = (volume * self._n_eff_z[chi_local_bounds]) ** -0.5
         shot_noise = self.rng.normal(
