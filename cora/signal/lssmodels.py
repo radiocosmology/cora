@@ -182,7 +182,7 @@ class omega_HI(PolyModelSet):
 
 
 class sigma_P(PolyModelSet):
-    """Models for the virial velocity scale in Mpc/h.
+    r"""Models for the virial velocity scale in Mpc/h.
 
     Notes
     -----

@@ -675,7 +675,7 @@ def ps_to_aps_flat(
     n_k: int = 0,
     n_mu: int = 0,
 ) -> Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
-    """Calculate a multi-distance angular power spectrum from a 3D power spectrum.
+    r"""Calculate a multi-distance angular power spectrum from a 3D power spectrum.
 
     This uses a flat sky limit. See equation 21 of arXiv:astro-ph/0605546.
 
