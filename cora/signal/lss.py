@@ -453,7 +453,7 @@ class CalculateMultiFrequencyAngularPowerSpectrumBase(tasklib.base.ContainerTask
 
         if self.frequencies is None:
             redshift = self.redshift
-            self.frequencies = units.nu_21 / (1.0 + redshift)
+            self.frequencies = constants.nu21 / (1.0 + redshift)
         else:
             redshift = constants.nu21 / self.frequencies - 1.0
 
@@ -513,7 +513,7 @@ class CalculateMultiFrequencyAngularPowerSpectrumBase(tasklib.base.ContainerTask
         # If necessary, generate new comoving-distance array from padded frequencies
         nfreq_pad_for_kernel = None
         if nfreq_pad > 0:
-            redshift_new = units.nu21 / freqs_new - 1.0
+            redshift_new = constants.nu21 / freqs_new - 1.0
             xa = cosmology.comoving_distance(redshift_new)
 
             nfreq_pad_for_kernel = nfreq_pad
