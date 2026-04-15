@@ -130,7 +130,7 @@ class Cosmology(object):
         """
         h = H0 / 100.0
         H_si = H0 * 1000.0 / constants.mega_parsec
-        rhoc = 3.0 * H_si**2 * constants.c**2 / (8.0 * np.pi * constants.G_n)
+        rhoc = 3.0 * H_si**2 * constants.c**2 / (8.0 * np.pi * constants.G)
         rhorad = constants.a_rad * TCMB**4
         rhonu = nnu * rhorad * 7.0 / 8.0 * (4.0 / 11.0) ** (4.0 / 3.0)
         omkh2 = omk * h**2
