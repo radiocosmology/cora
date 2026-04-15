@@ -291,7 +291,7 @@ def legendre_array(lmax: int, mu: np.ndarray) -> np.ndarray:
     lm = np.zeros((lmax + 1, len(mu)), dtype=np.float64)
 
     for i, v in enumerate(mu):
-        lm[:, i] = ss.lpn(lmax, v)[0]
+        lm[:, i] = ss.legendre_p_all(lmax, v, diff_n=1)[0]
 
     return lm
 
