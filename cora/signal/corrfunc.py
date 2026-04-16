@@ -428,6 +428,10 @@ def corr_to_clarray(
                 "channel integration scheme"
             )
 
+    # If no damping scale is supplied, don't do any FoG convolution
+    if FoG_sigmaP is None:
+        FoG_convolve = False
+
     # The integration over mu will be performed by Gauss-Legendre quadrature.
     # Here we calculate the points that it will be evaluated at.
     M = q * lmax
