@@ -1171,7 +1171,7 @@ class GenerateDoubleTracerInitialLSSFromCl(GenerateSingleTracerInitialLSSFromCl)
         """
         # Stop if we've already generated enough realizations
         if self.num_sims == 0:
-            raise pipeline.PipelineStopIteration()
+            raise exceptions.PipelineStopIteration()
         self.num_sims -= 1
 
         nz = len(self.aps.chi)
