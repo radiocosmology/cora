@@ -729,13 +729,7 @@ class FluxCatPointSources(maps.Map3d):
             sky
             * 1e-26
             * constants.c**2
-            / (
-                2
-                * constants.k_B
-                * freq[:, np.newaxis, np.newaxis] ** 2
-                * 1e12
-                * pxarea
-            )
+            / (2 * constants.k_B * freq[:, np.newaxis, np.newaxis] ** 2 * 1e12 * pxarea)
         )
 
         self._used_collections = [name for name, _ in FluxCatalog.loaded_collections()]
@@ -803,13 +797,7 @@ class SingleFluxCatSource(maps.Map3d):
             sky
             * 1e-26
             * constants.c**2
-            / (
-                2
-                * constants.k_B
-                * freq[:, np.newaxis, np.newaxis] ** 2
-                * 1e12
-                * pxarea
-            )
+            / (2 * constants.k_B * freq[:, np.newaxis, np.newaxis] ** 2 * 1e12 * pxarea)
         )
 
         self._used_collections = [name for name, _ in FluxCatalog.loaded_collections()]
@@ -874,13 +862,7 @@ class FluxCatCatalogMap(maps.Map3d):
             sky
             * 1e-26
             * constants.c**2
-            / (
-                2
-                * constants.k_B
-                * freq[:, np.newaxis, np.newaxis] ** 2
-                * 1e12
-                * pxarea
-            )
+            / (2 * constants.k_B * freq[:, np.newaxis, np.newaxis] ** 2 * 1e12 * pxarea)
         )
 
         self._used_collections = [name for name, _ in FluxCatalog.loaded_collections()]
