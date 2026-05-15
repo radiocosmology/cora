@@ -545,7 +545,9 @@ class CombinedPointSources(maps.Map3d):
         A = 3.55e-5
         nu_0 = 408.0
         l_0 = 100.0
-        oversample = 0  # disable oversampling for performance; not needed at this flux level
+        oversample = (
+            0  # disable oversampling for performance; not needed at this flux level
+        )
 
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
@@ -613,7 +615,9 @@ class CombinedFluxCatPointSources(maps.Map3d):
         A = 3.55e-5
         nu_0 = 408.0
         l_0 = 100.0
-        oversample = 0  # disable oversampling for performance; not needed at this flux level
+        oversample = (
+            0  # disable oversampling for performance; not needed at this flux level
+        )
 
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
