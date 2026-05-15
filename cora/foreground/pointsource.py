@@ -539,11 +539,13 @@ class CombinedPointSources(maps.Map3d):
 
     ## Internal classes for creating PS simulation
     class _UnresolvedBackground(gaussianfg.PointSources):
+        # SCK parameters (Santos, Cooray & Knox 2005, arXiv:astro-ph/0408515, Table 1)
+        # re-parameterized at nu_0=408 MHz (Haslam map frequency) and l_0=100, with
+        # amplitude A rescaled to represent only sources below the S < 0.1 Jy flux cut.
         A = 3.55e-5
         nu_0 = 408.0
         l_0 = 100.0
-
-        oversample = 0
+        oversample = 0  # disable oversampling for performance; not needed at this flux level
 
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
@@ -590,7 +592,7 @@ class CombinedFluxCatPointSources(maps.Map3d):
 
     After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
     the list of fluxcat collection names that contributed to the map, which is
-    also written into the output HDF5 file as ``index_map/catalog``.
+    also written into the output HDF5 file as the ``catalog`` file attribute.
 
     Attributes
     ----------
@@ -605,10 +607,13 @@ class CombinedFluxCatPointSources(maps.Map3d):
     catalog_file = None
 
     class _UnresolvedBackground(gaussianfg.PointSources):
+        # SCK parameters (Santos, Cooray & Knox 2005, arXiv:astro-ph/0408515, Table 1)
+        # re-parameterized at nu_0=408 MHz (Haslam map frequency) and l_0=100, with
+        # amplitude A rescaled to represent only sources below the S < 0.1 Jy flux cut.
         A = 3.55e-5
         nu_0 = 408.0
         l_0 = 100.0
-        oversample = 0
+        oversample = 0  # disable oversampling for performance; not needed at this flux level
 
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
@@ -662,7 +667,7 @@ class FluxCatPointSources(maps.Map3d):
 
     After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
     the list of fluxcat collection names that contributed to the map, which is
-    also written into the output HDF5 file as ``index_map/catalog``.
+    also written into the output HDF5 file as the ``catalog`` file attribute.
 
     Attributes
     ----------
@@ -745,7 +750,7 @@ class SingleFluxCatSource(maps.Map3d):
 
     After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
     the list of fluxcat collection names that contributed to the map, which is
-    also written into the output HDF5 file as ``index_map/catalog``.
+    also written into the output HDF5 file as the ``catalog`` file attribute.
 
     Attributes
     ----------
@@ -813,7 +818,7 @@ class FluxCatCatalogMap(maps.Map3d):
 
     After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
     the list of fluxcat collection names that contributed to the map, which is
-    also written into the output HDF5 file as ``index_map/catalog``.
+    also written into the output HDF5 file as the ``catalog`` file attribute.
 
     Attributes
     ----------

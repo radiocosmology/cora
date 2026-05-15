@@ -270,8 +270,8 @@ def foreground_fluxcat(fstate, nside, pol, filename, maxflux, catalog_file):
     synthetic DiMatteo population and unresolved Gaussian background are used
     as before. The requested map must have more than two frequencies.
 
-    The fluxcat collections used are recorded in the output file under
-    index_map/catalog.
+    The fluxcat collections used are recorded in the output file as the
+    ``catalog`` file attribute.
     """
     if fstate.frequencies.shape[0] < 2:
         print("Number of frequencies must be more than two.")
@@ -463,7 +463,7 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
     write_map(filename, map_, fstate.frequencies, fstate.freq_width, pol != "none")
 
 
-@cli.command("fluxcatpoints")
+@cli.command("pointsource-fluxcat")
 @map_options
 @click.option(
     "--flux-min",
@@ -483,13 +483,13 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
     type=click.Path(exists=True),
     help="Path to an additional JSON catalog file to load into fluxcat.",
 )
-def fluxcatpoints(fstate, nside, pol, filename, flux_min, flux_max, catalog_file):
+def pointsource_fluxcat(fstate, nside, pol, filename, flux_min, flux_max, catalog_file):
     """Generate a point source map from the fluxcat catalog.
 
     Uses the fluxcat catalog to look up source positions and predict flux
     densities at each frequency. Sources outside the flux range are excluded.
     No polarisation is included (Q = U = V = 0). The fluxcat collections used
-    are recorded in the output file under index_map/catalog.
+    are recorded in the output file as the ``catalog`` file attribute.
     """
     from cora.foreground import pointsource
 
@@ -531,8 +531,8 @@ def singlesource_fluxcat(fstate, nside, pol, filename, source_name, catalog_file
 
     Looks up the source position and flux density in the fluxcat catalog and
     places it in a HEALPix map. No polarisation is included (Q = U = V = 0).
-    The fluxcat collections used are recorded in the output file under
-    index_map/catalog.
+    The fluxcat collections used are recorded in the output file as the
+    ``catalog`` file attribute.
     """
     from cora.foreground import pointsource
 
@@ -554,7 +554,7 @@ def singlesource_fluxcat(fstate, nside, pol, filename, source_name, catalog_file
     )
 
 
-@cli.command("fluxcatcatalog")
+@cli.command("catalog-fluxcat")
 @map_options
 @click.option(
     "--catalog-file",
@@ -562,12 +562,13 @@ def singlesource_fluxcat(fstate, nside, pol, filename, source_name, catalog_file
     type=click.Path(exists=True),
     help="Path to an additional JSON catalog file to load into fluxcat.",
 )
-def fluxcatcatalog(fstate, nside, pol, filename, catalog_file):
+def catalog_fluxcat(fstate, nside, pol, filename, catalog_file):
     """Generate a map of all sources in the loaded fluxcat catalog.
 
     Maps every source in the fluxcat catalog to a HEALPix sky map without any
     flux filtering. No polarisation is included (Q = U = V = 0). The fluxcat
-    collections used are recorded in the output file under index_map/catalog.
+    collections used are recorded in the output file as the ``catalog`` file
+    attribute.
     """
     from cora.foreground import pointsource
 
@@ -629,6 +630,4 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True, catalog_info=
         dset.attrs["__memh5_distributed_dset"] = False
 
         if catalog_info is not None:
-            catalog_arr = np.array(catalog_info)
-            dset = f.create_dataset("index_map/catalog", data=catalog_arr.astype(dt))
-            dset.attrs["__memh5_distributed_dset"] = False
+            f.attrs["catalog"] = np.array(catalog_info).astype(dt)
