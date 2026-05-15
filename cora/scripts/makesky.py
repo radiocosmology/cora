@@ -248,6 +248,60 @@ def foreground(fstate, nside, pol, filename, maxflux):
     write_map(filename, cs, gal.frequencies, fstate.freq_width, pol != "none")
 
 
+@cli.command("foreground-fluxcat")
+@map_options
+@click.option(
+    "--maxflux",
+    default=1e6,
+    type=float,
+    help="Maximum flux of included point sources (in Jy). Default is 1 MJy.",
+)
+@click.option(
+    "--catalog-file",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to an additional JSON catalog file to load into fluxcat.",
+)
+def foreground_fluxcat(fstate, nside, pol, filename, maxflux, catalog_file):
+    """Generate a full foreground sky map using fluxcat for bright point sources.
+
+    Same structure as the foreground command but replaces the old real-source
+    catalog with fluxcat above 4 Jy (at 600 MHz). Below that threshold the
+    synthetic DiMatteo population and unresolved Gaussian background are used
+    as before. The requested map must have more than two frequencies.
+
+    The fluxcat collections used are recorded in the output file as the
+    ``catalog`` file attribute.
+    """
+    if fstate.frequencies.shape[0] < 2:
+        print("Number of frequencies must be more than two.")
+        return
+
+    from cora.foreground import galaxy, pointsource
+
+    gal = galaxy.ConstrainedGalaxy()
+    gal.nside = nside
+    gal.frequencies = fstate.frequencies
+
+    cs = gal.getpolsky() if pol == "full" else gal.getsky()
+
+    ps = pointsource.CombinedFluxCatPointSources.like_map(gal)
+    ps.flux_max = maxflux
+    if catalog_file is not None:
+        ps.catalog_file = catalog_file
+
+    cs = cs + (ps.getpolsky() if pol == "full" else ps.getsky())
+
+    write_map(
+        filename,
+        cs,
+        gal.frequencies,
+        fstate.freq_width,
+        pol != "none",
+        catalog_info=ps._used_collections,
+    )
+
+
 @cli.command()
 @map_options
 @click.option("--spectral-index", default="md", type=click.Choice(["md", "gsm", "gd"]))
@@ -409,7 +463,133 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
     write_map(filename, map_, fstate.frequencies, fstate.freq_width, pol != "none")
 
 
-def write_map(filename, data, freq, fwidth=None, include_pol=True):
+@cli.command("pointsource-fluxcat")
+@map_options
+@click.option(
+    "--flux-min",
+    default=1.0,
+    type=float,
+    help="Minimum flux (in Jy at 600 MHz) of sources to include. Default is 1.0 Jy.",
+)
+@click.option(
+    "--flux-max",
+    default=None,
+    type=float,
+    help="Maximum flux (in Jy at 600 MHz) of sources to include. Default is no upper limit.",
+)
+@click.option(
+    "--catalog-file",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to an additional JSON catalog file to load into fluxcat.",
+)
+def pointsource_fluxcat(fstate, nside, pol, filename, flux_min, flux_max, catalog_file):
+    """Generate a point source map from the fluxcat catalog.
+
+    Uses the fluxcat catalog to look up source positions and predict flux
+    densities at each frequency. Sources outside the flux range are excluded.
+    No polarisation is included (Q = U = V = 0). The fluxcat collections used
+    are recorded in the output file as the ``catalog`` file attribute.
+    """
+    from cora.foreground import pointsource
+
+    ps = pointsource.FluxCatPointSources()
+    ps.nside = nside
+    ps.frequencies = fstate.frequencies
+    ps.flux_min = flux_min
+    ps.flux_max = flux_max
+    if catalog_file is not None:
+        ps.catalog_file = catalog_file
+
+    cs = ps.getpolsky() if pol == "full" else ps.getsky()
+    write_map(
+        filename,
+        cs,
+        ps.frequencies,
+        fstate.freq_width,
+        pol != "none",
+        catalog_info=ps._used_collections,
+    )
+
+
+@cli.command("singlesource-fluxcat")
+@map_options
+@click.option(
+    "--source-name",
+    default="CYG_A",
+    type=str,
+    help="Name of the source in the fluxcat catalog. Default is CYG_A.",
+)
+@click.option(
+    "--catalog-file",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to an additional JSON catalog file to load into fluxcat.",
+)
+def singlesource_fluxcat(fstate, nside, pol, filename, source_name, catalog_file):
+    """Generate a map with a single source from the fluxcat catalog.
+
+    Looks up the source position and flux density in the fluxcat catalog and
+    places it in a HEALPix map. No polarisation is included (Q = U = V = 0).
+    The fluxcat collections used are recorded in the output file as the
+    ``catalog`` file attribute.
+    """
+    from cora.foreground import pointsource
+
+    ps = pointsource.SingleFluxCatSource()
+    ps.nside = nside
+    ps.frequencies = fstate.frequencies
+    ps.source_name = source_name
+    if catalog_file is not None:
+        ps.catalog_file = catalog_file
+
+    cs = ps.getpolsky() if pol == "full" else ps.getsky()
+    write_map(
+        filename,
+        cs,
+        ps.frequencies,
+        fstate.freq_width,
+        pol != "none",
+        catalog_info=ps._used_collections,
+    )
+
+
+@cli.command("catalog-fluxcat")
+@map_options
+@click.option(
+    "--catalog-file",
+    default=None,
+    type=click.Path(exists=True),
+    help="Path to an additional JSON catalog file to load into fluxcat.",
+)
+def catalog_fluxcat(fstate, nside, pol, filename, catalog_file):
+    """Generate a map of all sources in the loaded fluxcat catalog.
+
+    Maps every source in the fluxcat catalog to a HEALPix sky map without any
+    flux filtering. No polarisation is included (Q = U = V = 0). The fluxcat
+    collections used are recorded in the output file as the ``catalog`` file
+    attribute.
+    """
+    from cora.foreground import pointsource
+
+    ps = pointsource.FluxCatCatalogMap()
+    ps.nside = nside
+    ps.frequencies = fstate.frequencies
+    if catalog_file is not None:
+        ps.catalog_file = catalog_file
+
+    cs = ps.getpolsky() if pol == "full" else ps.getsky()
+    write_map(
+        filename,
+        cs,
+        ps.frequencies,
+        fstate.freq_width,
+        pol != "none",
+        catalog_info=ps._used_collections,
+    )
+
+
+def write_map(filename, data, freq, fwidth=None, include_pol=True, catalog_info=None):
     # Write out the map into an HDF5 file.
 
     import h5py
@@ -448,3 +628,6 @@ def write_map(filename, data, freq, fwidth=None, include_pol=True):
         dset.attrs["__memh5_distributed_dset"] = False
         dset = f.create_dataset("index_map/pixel", data=np.arange(data.shape[2]))
         dset.attrs["__memh5_distributed_dset"] = False
+
+        if catalog_info is not None:
+            f.attrs["catalog"] = np.array(catalog_info).astype(dt)

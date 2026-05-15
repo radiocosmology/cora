@@ -539,11 +539,15 @@ class CombinedPointSources(maps.Map3d):
 
     ## Internal classes for creating PS simulation
     class _UnresolvedBackground(gaussianfg.PointSources):
+        # SCK parameters (Santos, Cooray & Knox 2005, arXiv:astro-ph/0408515, Table 1)
+        # re-parameterized at nu_0=408 MHz (Haslam map frequency) and l_0=100, with
+        # amplitude A rescaled to represent only sources below the S < 0.1 Jy flux cut.
         A = 3.55e-5
         nu_0 = 408.0
         l_0 = 100.0
-
-        oversample = 0
+        oversample = (
+            0  # disable oversampling for performance; not needed at this flux level
+        )
 
     class _RandomResolved(DiMatteo):
         flux_min = 0.1
@@ -576,3 +580,299 @@ class CombinedPointSources(maps.Map3d):
         ps_all += obj_real.getpolsky()
 
         return ps_all
+
+
+class CombinedFluxCatPointSources(maps.Map3d):
+    """Combined point source map using fluxcat for bright resolved sources.
+
+    Identical structure to :class:`CombinedPointSources` but replaces the
+    old real-source catalog with the fluxcat catalog above the flux cut:
+
+    - S < 0.1 Jy (at 151 MHz): Gaussian approximation for the unresolved background.
+    - 0.1 Jy < S < 4 Jy (at 600 MHz): synthetic DiMatteo population.
+    - S > 4 Jy (at 600 MHz): real sources from the fluxcat catalog.
+
+    After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
+    the list of fluxcat collection names that contributed to the map, which is
+    also written into the output HDF5 file as the ``catalog`` file attribute.
+
+    Attributes
+    ----------
+    flux_max : float or None
+        Maximum flux (in Jy at 600 MHz) to include. Default is None (no limit).
+    catalog_file : str or None
+        Path to an additional JSON catalog file to load into fluxcat before
+        generating the map. Default is None.
+    """
+
+    flux_max = None
+    catalog_file = None
+
+    class _UnresolvedBackground(gaussianfg.PointSources):
+        # SCK parameters (Santos, Cooray & Knox 2005, arXiv:astro-ph/0408515, Table 1)
+        # re-parameterized at nu_0=408 MHz (Haslam map frequency) and l_0=100, with
+        # amplitude A rescaled to represent only sources below the S < 0.1 Jy flux cut.
+        A = 3.55e-5
+        nu_0 = 408.0
+        l_0 = 100.0
+        oversample = (
+            0  # disable oversampling for performance; not needed at this flux level
+        )
+
+    class _RandomResolved(DiMatteo):
+        flux_min = 0.1
+        flux_max = (
+            4.0 * (151.0 / 600.0) ** DiMatteo.spectral_mean
+        )  # Convert 4 Jy at 600 MHz to a flux cut at 151 MHz
+
+    def getsky(self):
+        """Simulate a combined point source map.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        return self.getpolsky()[:, 0]
+
+    def getpolsky(self):
+        """Simulate a combined point source map.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, 4, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        obj_unresolved = self._UnresolvedBackground.like_map(self)
+        obj_random = self._RandomResolved.like_map(self)
+
+        obj_fluxcat = FluxCatPointSources.like_map(self)
+        obj_fluxcat.flux_min = 4.0
+        obj_fluxcat.flux_max = self.flux_max
+        obj_fluxcat.catalog_file = self.catalog_file
+
+        if self.flux_max is not None and self.flux_max < obj_random.flux_max:
+            obj_random.flux_max = self.flux_max
+
+        ps_all = obj_unresolved.getpolsky()
+        ps_all += obj_random.getpolsky()
+        ps_all += obj_fluxcat.getpolsky()
+
+        self._used_collections = obj_fluxcat._used_collections
+        return ps_all
+
+
+class FluxCatPointSources(maps.Map3d):
+    r"""Creates maps of point sources from the fluxcat catalog.
+
+    Uses the fluxcat catalog to look up source positions (RA, DEC) and predict
+    their flux densities at each frequency. Sources are optionally filtered by
+    their predicted flux at 600 MHz. No polarisation is included (Q = U = V = 0).
+
+    After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
+    the list of fluxcat collection names that contributed to the map, which is
+    also written into the output HDF5 file as the ``catalog`` file attribute.
+
+    Attributes
+    ----------
+    flux_min : float or None
+        Minimum flux (in Jy at 600 MHz) of sources to include. Default is 1.0 Jy.
+        Set to None for no lower limit.
+    flux_max : float or None
+        Maximum flux (in Jy at 600 MHz) of sources to include. Default is None
+        (no upper limit).
+    catalog_file : str or None
+        Path to an additional JSON catalog file to load into fluxcat before
+        generating the map. Default is None.
+    """
+
+    flux_min = 1.0
+    flux_max = None
+    catalog_file = None
+
+    _ref_freq = 600.0  # MHz, reference frequency for flux filtering
+
+    def getsky(self):
+        """Simulate a map of point sources from the fluxcat catalog.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        return self.getpolsky()[:, 0]
+
+    def getpolsky(self):
+        """Simulate a map of point sources from the fluxcat catalog.
+
+        Stokes Q, U and V are set to zero since fluxcat has no polarisation
+        information.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, 4, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        from fluxcat import FluxCatalog
+
+        if self.catalog_file is not None:
+            FluxCatalog.load(self.catalog_file, overwrite=1)
+
+        freq = self.nu_pixels
+        sky = np.zeros((len(freq), 4, 12 * self.nside**2), dtype=np.float64)
+        pxarea = healpy.nside2pixarea(self.nside)
+
+        for name in FluxCatalog:
+            src = FluxCatalog.get(name)
+            flux_ref = src.predict_flux(self._ref_freq)
+
+            if self.flux_min is not None and flux_ref < self.flux_min:
+                continue
+            if self.flux_max is not None and flux_ref > self.flux_max:
+                continue
+
+            ix = healpy.ang2pix(self.nside, src.ra, src.dec, lonlat=True)
+            sky[:, 0, ix] += src.predict_flux(freq)
+
+        sky = (
+            sky
+            * 1e-26
+            * constants.c**2
+            / (2 * constants.k_B * freq[:, np.newaxis, np.newaxis] ** 2 * 1e12 * pxarea)
+        )
+
+        self._used_collections = [name for name, _ in FluxCatalog.loaded_collections()]
+        return sky
+
+
+class SingleFluxCatSource(maps.Map3d):
+    r"""Creates a map with a single point source from the fluxcat catalog.
+
+    Looks up the source position (RA, DEC) and flux density from fluxcat and
+    places it in a HEALPix map at each frequency. No polarisation is included
+    (Q = U = V = 0).
+
+    After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
+    the list of fluxcat collection names that contributed to the map, which is
+    also written into the output HDF5 file as the ``catalog`` file attribute.
+
+    Attributes
+    ----------
+    source_name : str
+        Name of the source in the fluxcat catalog (e.g. ``'CYG_A'``).
+        Default is ``'CYG_A'``.
+    catalog_file : str or None
+        Path to an additional JSON catalog file to load into fluxcat before
+        generating the map. Default is None.
+    """
+
+    source_name = "CYG_A"
+    catalog_file = None
+
+    def getsky(self):
+        """Simulate a map with a single point source.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        return self.getpolsky()[:, 0]
+
+    def getpolsky(self):
+        """Simulate a map with a single point source.
+
+        Stokes Q, U and V are set to zero.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, 4, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        from fluxcat import FluxCatalog
+
+        if self.catalog_file is not None:
+            FluxCatalog.load(self.catalog_file, overwrite=1)
+
+        src = FluxCatalog.get(self.source_name)
+        freq = self.nu_pixels
+        sky = np.zeros((len(freq), 4, 12 * self.nside**2), dtype=np.float64)
+        pxarea = healpy.nside2pixarea(self.nside)
+
+        ix = healpy.ang2pix(self.nside, src.ra, src.dec, lonlat=True)
+        sky[:, 0, ix] = src.predict_flux(freq)
+
+        sky = (
+            sky
+            * 1e-26
+            * constants.c**2
+            / (2 * constants.k_B * freq[:, np.newaxis, np.newaxis] ** 2 * 1e12 * pxarea)
+        )
+
+        self._used_collections = [name for name, _ in FluxCatalog.loaded_collections()]
+        return sky
+
+
+class FluxCatCatalogMap(maps.Map3d):
+    r"""Creates a HEALPix map of all sources in the loaded fluxcat catalog.
+
+    Maps every source in the fluxcat catalog to a HEALPix sky map without any
+    flux filtering. This is useful for generating a complete catalog-based sky
+    model. No polarisation is included (Q = U = V = 0).
+
+    After calling :meth:`getpolsky`, the attribute ``_used_collections`` holds
+    the list of fluxcat collection names that contributed to the map, which is
+    also written into the output HDF5 file as the ``catalog`` file attribute.
+
+    Attributes
+    ----------
+    catalog_file : str or None
+        Path to an additional JSON catalog file to load into fluxcat before
+        generating the map. Default is None.
+    """
+
+    catalog_file = None
+
+    def getsky(self):
+        """Simulate a map of all sources in the fluxcat catalog.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        return self.getpolsky()[:, 0]
+
+    def getpolsky(self):
+        """Simulate a map of all sources in the fluxcat catalog.
+
+        Stokes Q, U and V are set to zero.
+
+        Returns
+        -------
+        sky : np.ndarray[nfreq, 4, npix]
+            Map of brightness temperature on the sky (in K).
+        """
+        from fluxcat import FluxCatalog
+
+        if self.catalog_file is not None:
+            FluxCatalog.load(self.catalog_file, overwrite=1)
+
+        freq = self.nu_pixels
+        sky = np.zeros((len(freq), 4, 12 * self.nside**2), dtype=np.float64)
+        pxarea = healpy.nside2pixarea(self.nside)
+
+        for name in FluxCatalog:
+            src = FluxCatalog.get(name)
+            ix = healpy.ang2pix(self.nside, src.ra, src.dec, lonlat=True)
+            sky[:, 0, ix] += src.predict_flux(freq)
+
+        sky = (
+            sky
+            * 1e-26
+            * constants.c**2
+            / (2 * constants.k_B * freq[:, np.newaxis, np.newaxis] ** 2 * 1e12 * pxarea)
+        )
+
+        self._used_collections = [name for name, _ in FluxCatalog.loaded_collections()]
+        return sky
