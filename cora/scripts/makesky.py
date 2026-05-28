@@ -483,7 +483,6 @@ def pointsource_fluxcat(fstate, nside, pol, filename, maxflux, catalog_file):
     Same three-tier structure as the pointsource command but replaces the old
     real-source catalog with fluxcat above 4 Jy (at 600 MHz):
 
-    \b
     - S < 0.1 Jy (at 151 MHz): Gaussian approximation for the unresolved background.
     - 0.1 Jy < S < 4 Jy (at 600 MHz): synthetic DiMatteo population.
     - S > 4 Jy (at 600 MHz): real sources from the fluxcat catalog.
