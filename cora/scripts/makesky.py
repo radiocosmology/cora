@@ -466,16 +466,10 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
 @cli.command("pointsource-fluxcat")
 @map_options
 @click.option(
-    "--flux-min",
-    default=1.0,
+    "--maxflux",
+    default=1e6,
     type=float,
-    help="Minimum flux (in Jy at 600 MHz) of sources to include. Default is 1.0 Jy.",
-)
-@click.option(
-    "--flux-max",
-    default=None,
-    type=float,
-    help="Maximum flux (in Jy at 600 MHz) of sources to include. Default is no upper limit.",
+    help="Maximum flux of included point sources (in Jy). Default is 1 MJy.",
 )
 @click.option(
     "--catalog-file",
@@ -483,21 +477,26 @@ def singlesource(fstate, nside, pol, filename, ra, dec):
     type=click.Path(exists=True),
     help="Path to an additional JSON catalog file to load into fluxcat.",
 )
-def pointsource_fluxcat(fstate, nside, pol, filename, flux_min, flux_max, catalog_file):
-    """Generate a point source map from the fluxcat catalog.
+def pointsource_fluxcat(fstate, nside, pol, filename, maxflux, catalog_file):
+    """Generate a point source only foreground map using fluxcat for bright sources.
 
-    Uses the fluxcat catalog to look up source positions and predict flux
-    densities at each frequency. Sources outside the flux range are excluded.
-    No polarisation is included (Q = U = V = 0). The fluxcat collections used
-    are recorded in the output file as the ``catalog`` file attribute.
+    Same three-tier structure as the pointsource command but replaces the old
+    real-source catalog with fluxcat above 4 Jy (at 600 MHz):
+
+    \b
+    - S < 0.1 Jy (at 151 MHz): Gaussian approximation for the unresolved background.
+    - 0.1 Jy < S < 4 Jy (at 600 MHz): synthetic DiMatteo population.
+    - S > 4 Jy (at 600 MHz): real sources from the fluxcat catalog.
+
+    The fluxcat collections used are recorded in the output file as the
+    ``catalog`` file attribute.
     """
     from cora.foreground import pointsource
 
-    ps = pointsource.FluxCatPointSources()
+    ps = pointsource.CombinedFluxCatPointSources()
     ps.nside = nside
     ps.frequencies = fstate.frequencies
-    ps.flux_min = flux_min
-    ps.flux_max = flux_max
+    ps.flux_max = maxflux
     if catalog_file is not None:
         ps.catalog_file = catalog_file
 
