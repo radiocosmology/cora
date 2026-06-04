@@ -1,0 +1,241 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.util.cubicspline &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.util.fftutil" href="cora.util.fftutil.html" />
+    <link rel="prev" title="cora.util.cosmology" href="cora.util.cosmology.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="cora.core.html">cora.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.foreground.html">cora.foreground</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="cora.util.html">cora.util</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="cora.util.bilinearmap.html">cora.util.bilinearmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.cosmology.html">cora.util.cosmology</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.util.cubicspline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.fftutil.html">cora.util.fftutil</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.hputil.html">cora.util.hputil</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.nputil.html">cora.util.nputil</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.util.html">cora.util</a></li>
+      <li class="breadcrumb-item active">cora.util.cubicspline</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.util.cubicspline.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.util.cubicspline">
+<span id="cora-util-cubicspline"></span><h1>cora.util.cubicspline<a class="headerlink" href="#module-cora.util.cubicspline" title="Link to this heading"></a></h1>
+<p>Module for interpolating sampled functions.</p>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.cubicspline.Interpolater" title="cora.util.cubicspline.Interpolater"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Interpolater</span></code></a></p></td>
+<td><p>A class to interpolate data sets.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.cubicspline.LogInterpolater" title="cora.util.cubicspline.LogInterpolater"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LogInterpolater</span></code></a></p></td>
+<td><p>Perform a cubic spline interpolation in log-space.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.cubicspline.SinhInterpolater" title="cora.util.cubicspline.SinhInterpolater"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SinhInterpolater</span></code></a></p></td>
+<td><p>Perform a cubic spline interpolation in a sinh scaled space.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Exceptions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.cubicspline.InterpolationException" title="cora.util.cubicspline.InterpolationException"><code class="xref py py-obj docutils literal notranslate"><span class="pre">InterpolationException</span></code></a></p></td>
+<td><p>Exceptions in the Interpolation module.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.util.cubicspline.Interpolater">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.util.cubicspline.</span></span><span class="sig-name descname"><span class="pre">Interpolater</span></span><a class="headerlink" href="#cora.util.cubicspline.Interpolater" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A class to interpolate data sets.</p>
+<p>This class performs cubic spline interpolation. See
+Numerical Recipes for details. Uses Natural spline conditions,
+y’’[0] = y’’[-1] = 0. Written using Cython for massive speedup.</p>
+<p>Constructor to initialise from data.</p>
+<p>Need to supply a 2d data array of X-Y pairs to
+interpolate. i.e. [[x0,y0], [x1,y1], …]</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cubicspline.Interpolater.data">
+<span class="sig-name descname"><span class="pre">data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.cubicspline.Interpolater.data" title="Link to this definition"></a></dt>
+<dd><p>Return the data array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cubicspline.Interpolater.fromfile">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromfile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colspec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.cubicspline.Interpolater.fromfile" title="Link to this definition"></a></dt>
+<dd><p>Perform Interpolation from given file.</p>
+<p>Load up the file and generate an Interpolater.</p>
+<p>colspec - 2 element list of columns to interpolate</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cubicspline.Interpolater.test">
+<span class="sig-name descname"><span class="pre">test</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">samp</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.cubicspline.Interpolater.test" title="Link to this definition"></a></dt>
+<dd><p>Take regular samples from the Interpolater.</p>
+<p>Take the interpolater, and take samp samples between min and
+max. Returning an array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cubicspline.Interpolater.value">
+<span class="sig-name descname"><span class="pre">value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.cubicspline.Interpolater.value" title="Link to this definition"></a></dt>
+<dd><p>Returns the value of the function at x.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="cora.util.cubicspline.InterpolationException">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.util.cubicspline.</span></span><span class="sig-name descname"><span class="pre">InterpolationException</span></span><a class="headerlink" href="#cora.util.cubicspline.InterpolationException" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+<p>Exceptions in the Interpolation module.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.util.cubicspline.LogInterpolater">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.util.cubicspline.</span></span><span class="sig-name descname"><span class="pre">LogInterpolater</span></span><a class="headerlink" href="#cora.util.cubicspline.LogInterpolater" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.util.cubicspline.Interpolater" title="cora.util.cubicspline.Interpolater"><code class="xref py py-class docutils literal notranslate"><span class="pre">Interpolater</span></code></a></p>
+<p>Perform a cubic spline interpolation in log-space.</p>
+<p>Initialise the interpolater. Data must not be negative or zero,
+otherwise logarithmic interpolation blows up.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cubicspline.LogInterpolater.value">
+<span class="sig-name descname"><span class="pre">value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.cubicspline.LogInterpolater.value" title="Link to this definition"></a></dt>
+<dd><p>Return the value of the log-interpolated function.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.util.cubicspline.SinhInterpolater">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.util.cubicspline.</span></span><span class="sig-name descname"><span class="pre">SinhInterpolater</span></span><a class="headerlink" href="#cora.util.cubicspline.SinhInterpolater" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.util.cubicspline.Interpolater" title="cora.util.cubicspline.Interpolater"><code class="xref py py-class docutils literal notranslate"><span class="pre">Interpolater</span></code></a></p>
+<p>Perform a cubic spline interpolation in a sinh scaled space.</p>
+<p>The interpolation is done within the space of <cite>arcsinh(x / x_t)</cite> and <cite>arcsinh(f /
+f_t)</cite>, this gives an effective log interpolation for absolute values greater than
+the threshold and linear when less than the threshold. This allows an effective
+log interpolation which will handle zero and negative values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>np.ndarray</em><em>[</em><em>:</em><em>, </em><em>2</em><em>]</em>) – The data points packed as [[x0, f0], …].</p></li>
+<li><p><strong>x_t</strong> – The sinc threshold value for the positions.</p></li>
+<li><p><strong>f_t</strong> – The function value threshold.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.util.cubicspline.SinhInterpolater.value">
+<span class="sig-name descname"><span class="pre">value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.cubicspline.SinhInterpolater.value" title="Link to this definition"></a></dt>
+<dd><p>Return the value of the log-interpolated function.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.util.cosmology.html" class="btn btn-neutral float-left" title="cora.util.cosmology" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.util.fftutil.html" class="btn btn-neutral float-right" title="cora.util.fftutil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

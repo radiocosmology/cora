@@ -1,0 +1,589 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.util.hputil &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.util.nputil" href="cora.util.nputil.html" />
+    <link rel="prev" title="cora.util.fftutil" href="cora.util.fftutil.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="cora.core.html">cora.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.foreground.html">cora.foreground</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="cora.util.html">cora.util</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="cora.util.bilinearmap.html">cora.util.bilinearmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.cosmology.html">cora.util.cosmology</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.cubicspline.html">cora.util.cubicspline</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.fftutil.html">cora.util.fftutil</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.util.hputil</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.util.nputil.html">cora.util.nputil</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.util.html">cora.util</a></li>
+      <li class="breadcrumb-item active">cora.util.hputil</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.util.hputil.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.util.hputil">
+<span id="cora-util-hputil"></span><h1>cora.util.hputil<a class="headerlink" href="#module-cora.util.hputil" title="Link to this heading"></a></h1>
+<p>Convenience functions for dealing with Healpix maps.</p>
+<p>Makes heavy use of the <a class="reference external" href="http://github.com/healpy">healpy</a> module.</p>
+<section id="forward-transform-routines">
+<h2>Forward Transform Routines<a class="headerlink" href="#forward-transform-routines" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_real" title="cora.util.hputil.sphtrans_real"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_real()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_complex" title="cora.util.hputil.sphtrans_complex"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_complex()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_real_pol" title="cora.util.hputil.sphtrans_real_pol"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_real_pol()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_complex_pol" title="cora.util.hputil.sphtrans_complex_pol"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_complex_pol()</span></code></a></p></li>
+</ul>
+</section>
+<section id="backward-transforms">
+<h2>Backward Transforms<a class="headerlink" href="#backward-transforms" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_real" title="cora.util.hputil.sphtrans_inv_real"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_inv_real()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_complex" title="cora.util.hputil.sphtrans_inv_complex"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_inv_complex()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_real_pol" title="cora.util.hputil.sphtrans_inv_real_pol"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_inv_real_pol()</span></code></a></p></li>
+</ul>
+</section>
+<section id="sky-transforms">
+<h2>Sky Transforms<a class="headerlink" href="#sky-transforms" title="Link to this heading"></a></h2>
+<p>Transform sets of polarised maps at multiple frequencies.</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_sky" title="cora.util.hputil.sphtrans_sky"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_sky()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_sky" title="cora.util.hputil.sphtrans_inv_sky"><code class="xref py py-meth docutils literal notranslate"><span class="pre">sphtrans_inv_sky()</span></code></a></p></li>
+</ul>
+</section>
+<section id="miscellaneous">
+<h2>Miscellaneous<a class="headerlink" href="#miscellaneous" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="#cora.util.hputil.ang_positions" title="cora.util.hputil.ang_positions"><code class="xref py py-meth docutils literal notranslate"><span class="pre">ang_positions()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.nside_for_lmax" title="cora.util.hputil.nside_for_lmax"><code class="xref py py-meth docutils literal notranslate"><span class="pre">nside_for_lmax()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.pack_alm" title="cora.util.hputil.pack_alm"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pack_alm()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.unpack_alm" title="cora.util.hputil.unpack_alm"><code class="xref py py-meth docutils literal notranslate"><span class="pre">unpack_alm()</span></code></a></p></li>
+</ul>
+</section>
+<section id="co-ordinate-transform">
+<h2>Co-ordinate Transform<a class="headerlink" href="#co-ordinate-transform" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="#cora.util.hputil.coord_x2y" title="cora.util.hputil.coord_x2y"><code class="xref py py-meth docutils literal notranslate"><span class="pre">coord_x2y()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.coord_g2c" title="cora.util.hputil.coord_g2c"><code class="xref py py-meth docutils literal notranslate"><span class="pre">coord_g2c()</span></code></a></p></li>
+<li><p><a class="reference internal" href="#cora.util.hputil.coord_c2g" title="cora.util.hputil.coord_c2g"><code class="xref py py-meth docutils literal notranslate"><span class="pre">coord_c2g()</span></code></a></p></li>
+</ul>
+</section>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.ang_positions" title="cora.util.hputil.ang_positions"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ang_positions</span></code></a>(nside)</p></td>
+<td><p>Fetch the angular position of each pixel in a map.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.coord_c2g" title="cora.util.hputil.coord_c2g"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord_c2g</span></code></a>(map_)</p></td>
+<td><p>Rotate a map from celestial co-ordinates into galactic co-ordinates.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.coord_g2c" title="cora.util.hputil.coord_g2c"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord_g2c</span></code></a>(map_)</p></td>
+<td><p>Rotate a map from galactic co-ordinates into celestial co-ordinates.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.coord_x2y" title="cora.util.hputil.coord_x2y"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coord_x2y</span></code></a>(map, x, y)</p></td>
+<td><p>Rotate a map from galactic co-ordinates into celestial co-ordinates.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.nside_for_lmax" title="cora.util.hputil.nside_for_lmax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">nside_for_lmax</span></code></a>(lmax[, accuracy_boost])</p></td>
+<td><p>Return an nside appropriate for a spherical harmonic decomposition.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.pack_alm" title="cora.util.hputil.pack_alm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pack_alm</span></code></a>(almarray[, lmax])</p></td>
+<td><p>Pack <span class="math notranslate nohighlight">\(a_{lm}\)</span> into Healpix format from 2D [l,m] array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sph_ps</span></code>(map1[, map2, lmax])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_complex" title="cora.util.hputil.sphtrans_complex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_complex</span></code></a>(hpmap[, lmax, centered, lside])</p></td>
+<td><p>Spherical harmonic transform of a complex function.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_complex_pol" title="cora.util.hputil.sphtrans_complex_pol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_complex_pol</span></code></a>(hpmaps[, lmax, ...])</p></td>
+<td><p>Spherical harmonic transform of the polarisation on the sky (can be complex).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_complex" title="cora.util.hputil.sphtrans_inv_complex"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_inv_complex</span></code></a>(alm, nside)</p></td>
+<td><p>Inverse spherical harmonic transform onto a complex field.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_real" title="cora.util.hputil.sphtrans_inv_real"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_inv_real</span></code></a>(alm, nside)</p></td>
+<td><p>Inverse spherical harmonic transform onto a real field.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_real_pol" title="cora.util.hputil.sphtrans_inv_real_pol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_inv_real_pol</span></code></a>(alm, nside)</p></td>
+<td><p>Inverse spherical harmonic transform onto a real polarised field.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_inv_sky" title="cora.util.hputil.sphtrans_inv_sky"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_inv_sky</span></code></a>(alm, nside)</p></td>
+<td><p>Invert a set of alms back into a 3d sky.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_real" title="cora.util.hputil.sphtrans_real"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_real</span></code></a>(hpmap[, lmax, lside])</p></td>
+<td><p>Spherical Harmonic transform of a real map.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_real_pol" title="cora.util.hputil.sphtrans_real_pol"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_real_pol</span></code></a>(hpmaps[, lmax, lside])</p></td>
+<td><p>Spherical Harmonic transform of polarisation functions on the sky.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.util.hputil.sphtrans_sky" title="cora.util.hputil.sphtrans_sky"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sphtrans_sky</span></code></a>(skymap[, lmax])</p></td>
+<td><p>Transform a 3d skymap, slice by slice.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.util.hputil.unpack_alm" title="cora.util.hputil.unpack_alm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unpack_alm</span></code></a>(alm, lmax[, fullm])</p></td>
+<td><p>Unpack <span class="math notranslate nohighlight">\(a_{lm}\)</span> from Healpix format into 2D [l,m] array.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.ang_positions">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">ang_positions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.ang_positions" title="Link to this definition"></a></dt>
+<dd><p>Fetch the angular position of each pixel in a map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>nside</strong> (<em>scalar</em>) – The size of the map (nside is a definition specific to Healpix).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>angpos</strong> – The angular position (in spherical polars), of each pixel in a
+Healpix map. Packed at <cite>[ [theta1, phi1], [theta2, phi2], …]</cite></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.nside_for_lmax">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">nside_for_lmax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accuracy_boost</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.nside_for_lmax" title="Link to this definition"></a></dt>
+<dd><p>Return an nside appropriate for a spherical harmonic decomposition.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>lmax</strong> (<em>integer</em>) – Maximum multipole in decomposition.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>nside</strong> – Appropriate nside for decomposition. Is power of two.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>integer</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.unpack_alm">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">unpack_alm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fullm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.unpack_alm" title="Link to this definition"></a></dt>
+<dd><p>Unpack <span class="math notranslate nohighlight">\(a_{lm}\)</span> from Healpix format into 2D [l,m] array.</p>
+<p>This only unpacks into the</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alm</strong> (<em>np.ndarray</em>) – a_lm packed in Healpix format.</p></li>
+<li><p><strong>lmax</strong> (<em>integer</em>) – The maximum multipole in the a_lm’s.</p></li>
+<li><p><strong>fullm</strong> (<em>boolean</em><em>, </em><em>optional</em>) – Write out the negative m values.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>almarray</strong> – a_lm in a 2D array packed as [l,m]. If <cite>fullm</cite> write out the negative
+m’s, packed into the second half of the array (they can be indexed as
+[l,-m]).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.pack_alm">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">pack_alm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">almarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.pack_alm" title="Link to this definition"></a></dt>
+<dd><p>Pack <span class="math notranslate nohighlight">\(a_{lm}\)</span> into Healpix format from 2D [l,m] array.</p>
+<p>This only unpacks into the</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>almarray</strong> (<em>np.ndarray</em>) – a_lm packed in a 2D array as [l,m].</p></li>
+<li><p><strong>lmax</strong> (<em>integer</em><em>, </em><em>optional</em>) – The maximum multipole in the a_lm’s. If <cite>None</cite> (default) work it out
+from the first index.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>alm</strong> – a_lm in Healpix packing. If <cite>fullm</cite> write out the negative
+m’s, packed into the second half of the array (they can be indexed as
+[l,-m]).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_real">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_real</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hpmap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_real" title="Link to this definition"></a></dt>
+<dd><p>Spherical Harmonic transform of a real map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hpmap</strong> (<em>np.ndarray</em><em>[</em><em>npix</em><em>]</em>) – A Healpix map.</p></li>
+<li><p><strong>lmax</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The maximum l to calculate. If <cite>None</cite> (default), calculate up
+to <code class="docutils literal notranslate"><span class="pre">3*NSIDE</span> <span class="pre">-</span> <span class="pre">1</span></code>.</p></li>
+<li><p><strong>lside</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Size of array to return minus one, i.e.  what would be lmax if the array was
+filled.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>alm</strong> – A 2d array of alms, packed as <code class="docutils literal notranslate"><span class="pre">alm[l,m]</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[lside+1, lside+1]</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This only includes m &gt; 0. As this is the transform of a real field:</p>
+<div class="math notranslate nohighlight">
+\[a_{l -m} = (-1)^m a_{lm}^*\]</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_complex">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_complex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hpmap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centered</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_complex" title="Link to this definition"></a></dt>
+<dd><p>Spherical harmonic transform of a complex function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hpmap</strong> (<em>np.ndarray</em>) – A complex Healpix map.</p></li>
+<li><p><strong>lmax</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The maximum l to calculate. If <cite>None</cite> (default), calculate up to 3*nside
+- 1.</p></li>
+<li><p><strong>centered</strong> (<em>boolean</em><em>, </em><em>optional</em>) – If False (default) similar to an FFT, alm[l,:lmax+1] contains m &gt;= 0,
+and the latter half alm[l,lmax+1:], contains m &lt; 0. If True the first
+half of alm[l,:] contains m &lt; 0, and the second half m &gt; 0. m = 0 is
+the central column.</p></li>
+<li><p><strong>lside</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Size of array to return minus one, i.e.  what would be lmax if the array was
+filled.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>alm</strong> – A 2d array of alms, packed as alm[l,m].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_real_pol">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_real_pol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hpmaps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_real_pol" title="Link to this definition"></a></dt>
+<dd><p>Spherical Harmonic transform of polarisation functions on the sky.</p>
+<p>Accepts real T, Q, U and optionally V like maps, and returns <span class="math notranslate nohighlight">\(a^T_{lm}\)</span>,
+<span class="math notranslate nohighlight">\(a^E_{lm}\)</span>, <span class="math notranslate nohighlight">\(a^B_{lm}\)</span> and <span class="math notranslate nohighlight">\(a^V_{lm}\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hpmaps</strong> (<em>np.ndarray</em><em>[</em><em>npol</em><em>, </em><em>npix</em><em>]</em>) – An array of Healpix maps, assumed to be T, Q, U and potentially V.</p></li>
+<li><p><strong>lmax</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The maximum l to calculate. If <cite>None</cite> (default), calculate up to 3*nside
+- 1.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>alms[npol, lmax+1, lmax+1]</strong> – A 3d array of alms, packed as alm[pol, l, m].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This only includes m &gt;= 0. As these are the transforms of a real field:</p>
+<div class="math notranslate nohighlight">
+\[a_{l -m} = (-1)^m a_{lm}^*\]</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_complex_pol">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_complex_pol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hpmaps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">centered</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_complex_pol" title="Link to this definition"></a></dt>
+<dd><p>Spherical harmonic transform of the polarisation on the sky (can be
+complex).</p>
+<p>Accepts complex T, Q, U and optionally V like maps, and returns <span class="math notranslate nohighlight">\(a^T_{lm}\)</span>,
+<span class="math notranslate nohighlight">\(a^E_{lm}\)</span>, <span class="math notranslate nohighlight">\(a^B_{lm}\)</span> and <span class="math notranslate nohighlight">\(a^V_{lm}\)</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hpmaps</strong> (<em>np.ndarray</em>) – A list of complex Healpix maps, assumed to be T, Q, U (and optionally V).</p></li>
+<li><p><strong>lmax</strong> (<em>scalar</em><em>, </em><em>optional</em>) – The maximum l to calculate. If <cite>None</cite> (default), calculate up to 3*nside
+- 1.</p></li>
+<li><p><strong>centered</strong> (<em>boolean</em><em>, </em><em>optional</em>) – If False (default) similar to an FFT, alm[l,:lmax+1] contains m &gt;= 0,
+and the latter half alm[l,lmax+1:], contains m &lt; 0. If True the first
+half opf alm[l,:] contains m &lt; 0, and the second half m &gt; 0. m = 0 is
+the central column.</p></li>
+<li><p><strong>lside</strong> (<em>scalar</em><em>, </em><em>optional</em>) – Size of array to return minus one, i.e.  what would be lmax if the array was
+filled.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>alm_T, alm_E, alm_B</strong> – A 2d array of alms, packed as alm[l,m].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_inv_real">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_inv_real</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_inv_real" title="Link to this definition"></a></dt>
+<dd><p>Inverse spherical harmonic transform onto a real field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alm</strong> (<em>np.ndarray</em>) – The array of alms. Only expects the real half of the array.</p></li>
+<li><p><strong>nside</strong> (<em>integer</em>) – The Healpix resolution of the final map.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>hpmaps</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_inv_real_pol">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_inv_real_pol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_inv_real_pol" title="Link to this definition"></a></dt>
+<dd><p>Inverse spherical harmonic transform onto a real polarised field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alm</strong> (<em>np.ndarray</em><em>[</em><em>npol</em><em>, </em><em>lmax+1</em><em>, </em><em>lmax+1</em><em>]</em>) – The array of alms. Only expects the real half of the array. The first
+index is over polarisation T, Q, U (and optionally V).</p></li>
+<li><p><strong>nside</strong> (<em>integer</em>) – The Healpix resolution of the final map.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>hpmaps</strong> – The T, Q, U and optionally V maps of the sky.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[npol, 12*nside**2]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_inv_complex">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_inv_complex</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_inv_complex" title="Link to this definition"></a></dt>
+<dd><p>Inverse spherical harmonic transform onto a complex field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alm</strong> (<em>np.ndarray</em>) – The array of alms. Expects both positive and negative alm.</p></li>
+<li><p><strong>nside</strong> (<em>integer</em>) – The Healpix resolution of the final map.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>hpmaps</strong> – Complex Healpix maps.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_sky">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_sky</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">skymap</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_sky" title="Link to this definition"></a></dt>
+<dd><p>Transform a 3d skymap, slice by slice.</p>
+<p>This will perform the polarised transformation if there are three
+dimensions, and one is the appropriate length (3 or 4).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>skymap</strong> (<em>np.ndarray</em><em>[</em><em>freq</em><em>, </em><em>healpix_index</em><em>] or </em><em>np.ndarray</em><em>[</em><em>freq</em><em>, </em><em>pol</em><em>, </em><em>healpix_index</em><em>]</em>)</p></li>
+<li><p><strong>lmax</strong> (<em>integer</em><em>, </em><em>optional</em>) – Maximum l to transform.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>alms</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[frequencies, pol, l, m]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.sphtrans_inv_sky">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">sphtrans_inv_sky</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.sphtrans_inv_sky" title="Link to this definition"></a></dt>
+<dd><p>Invert a set of alms back into a 3d sky.</p>
+<p>If the polarisation dimension is length is 3 or 4, this will automatically
+do the polarised transform.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>alm</strong> (<em>np.ndarray</em><em>[</em><em>freq</em><em>, </em><em>pol</em><em>, </em><em>l</em><em>, </em><em>m</em><em>]</em>) – Expects the full range (both positive and negative m).</p></li>
+<li><p><strong>nside</strong> (<em>integer</em>) – Resolution of final Healpix maps.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>skymaps</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[freq, npol, healpix_index]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.coord_x2y">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">coord_x2y</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.coord_x2y" title="Link to this definition"></a></dt>
+<dd><p>Rotate a map from galactic co-ordinates into celestial co-ordinates.</p>
+<p>This will operate on a series of maps (provided the Healpix index is last).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>map</strong> (<em>np.ndarray</em><em>[</em><em>...</em><em>, </em><em>npix</em><em>]</em>) – Healpix map.</p></li>
+<li><p><strong>x</strong> (<em>{'C'</em><em>, </em><em>'G'</em><em>, </em><em>'E'}</em>) – Coordinate system to transform to/from. Celestial, ‘C’; Galactic ‘G’; or
+Ecliptic ‘E’.</p></li>
+<li><p><strong>y</strong> (<em>{'C'</em><em>, </em><em>'G'</em><em>, </em><em>'E'}</em>) – Coordinate system to transform to/from. Celestial, ‘C’; Galactic ‘G’; or
+Ecliptic ‘E’.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>rotmap</strong> – The rotated map.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.coord_g2c">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">coord_g2c</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.coord_g2c" title="Link to this definition"></a></dt>
+<dd><p>Rotate a map from galactic co-ordinates into celestial co-ordinates.</p>
+<p>This will operate on a series of maps (provided the Healpix index is last).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>map</strong> (<em>np.ndarray</em><em>[</em><em>...</em><em>, </em><em>npix</em><em>]</em>) – Healpix map.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>rotmap</strong> – The rotated map.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="cora.util.hputil.coord_c2g">
+<span class="sig-prename descclassname"><span class="pre">cora.util.hputil.</span></span><span class="sig-name descname"><span class="pre">coord_c2g</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.util.hputil.coord_c2g" title="Link to this definition"></a></dt>
+<dd><p>Rotate a map from celestial co-ordinates into galactic co-ordinates.</p>
+<p>This will operate on a series of maps (provided the Healpix index is last).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>map</strong> (<em>np.ndarray</em><em>[</em><em>...</em><em>, </em><em>npix</em><em>]</em>) – Healpix map.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>rotmap</strong> – The rotated map.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.util.fftutil.html" class="btn btn-neutral float-left" title="cora.util.fftutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.util.nputil.html" class="btn btn-neutral float-right" title="cora.util.nputil" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulating the Radio Sky &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="reference.html" />
+    <link rel="prev" title="cora - Cosmology in the Radio Band" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Simulating the Radio Sky</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-tools">Command Line Tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#map-format">Map Format</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Simulating the Radio Sky</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/simulation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="simulating-the-radio-sky">
+<h1>Simulating the Radio Sky<a class="headerlink" href="#simulating-the-radio-sky" title="Link to this heading"></a></h1>
+<p>One of the main purposes of <code class="docutils literal notranslate"><span class="pre">cora</span></code> is for generating simulations of the
+radio sky with a particular focus on cosmological 21cm observations
+(frequencies in the range 100 MHz up to 1.4 GHz). It focuses on three
+different sources of radio emission:</p>
+<ul class="simple">
+<li><p>21cm radiation from neutral hydrogen at cosmological distances. Currently
+the support for reionisation is poor.</p></li>
+<li><p>Synchrotron from our galaxy, including the effect of emission from a broad
+range of Faraday depths within our galaxy.</p></li>
+<li><dl class="simple">
+<dt>Radio emission from point sources. This incluces multiple components:</dt><dd><ul>
+<li><p>Real point sources derived from NVSS and VLSS.</p></li>
+<li><p>A synthetic population of dimmer point sources.</p></li>
+<li><p>A gaussian random field to model an unresolved background of sources.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>These models are described in more detail in <a class="reference external" href="http://arxiv.org/abs/1302.0327">arXiv:1302.0327</a> and <a class="reference external" href="http://arxiv.org/abs/1401.2095">arXiv:1401.2095</a></p>
+<section id="command-line-tools">
+<h2>Command Line Tools<a class="headerlink" href="#command-line-tools" title="Link to this heading"></a></h2>
+<p>The primary way of generating simulations is to use the command line tool
+<code class="docutils literal notranslate"><span class="pre">cora-makesky</span></code>, which is able to generate maps of each of these components.
+If you installed <code class="docutils literal notranslate"><span class="pre">cora</span></code> with <code class="docutils literal notranslate"><span class="pre">easy_install</span></code>, <code class="docutils literal notranslate"><span class="pre">pip</span></code> or used the
+<code class="docutils literal notranslate"><span class="pre">setup.py</span></code> this command should be in your path.</p>
+<p>A typical call takes the form of:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cora-makesky COMPONENT NSIDE FREQ_LOWER FREQ_UPPER NFREQ outputmap.hdf5
+</pre></div>
+</div>
+<p>where the required options are:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">COMPONENT</span></code> is the type of sky to simulate. Must be one of:</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">galaxy</span></code> - synchrotron from our galaxy.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pointsource</span></code> - emission from radio point sources.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">foreground</span></code> - both of the above.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">21cm</span></code> - cosmological 21cm emission.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NSIDE</span></code> is the Healpix resolution. Must be a power of two. 256 is a good value to start with.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FREQ_LOWER</span></code> the lowest frequency in MHz.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FREQ_UPPER</span></code> the highest frequency in MHz.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NFREQ</span></code> gives the number of evenly spaced frequency channels with in the band.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">outmap.hdf5</span></code> replace with your desired output filename.</p></li>
+</ul>
+</section>
+<section id="map-format">
+<h2>Map Format<a class="headerlink" href="#map-format" title="Link to this heading"></a></h2>
+<p>Maps are stored as <code class="docutils literal notranslate"><span class="pre">hdf5</span></code> files which can be easily read in Python using
+<code class="docutils literal notranslate"><span class="pre">healpy</span></code>. Currently there is minimal structure to the written files. There
+is a single dataset called <code class="docutils literal notranslate"><span class="pre">map</span></code> which contains <code class="docutils literal notranslate"><span class="pre">Healpix</span></code> maps of the
+whole sky for each frequency and polarisation. Within this the files are
+packed by frequency, polarisation and Healpix pixel.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="cora - Cosmology in the Radio Band" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="reference.html" class="btn btn-neutral float-right" title="API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

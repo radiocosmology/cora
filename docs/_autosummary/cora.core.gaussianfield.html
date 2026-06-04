@@ -1,0 +1,319 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cora.core.gaussianfield &mdash; cora 0.0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=d45e8c67"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cora.core.maps" href="cora.core.maps.html" />
+    <link rel="prev" title="cora.core" href="cora.core.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            cora
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../simulation.html">Simulating the Radio Sky</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../reference.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../reference.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="cora.core.html">cora.core</a><ul class="current">
+<li class="toctree-l4 current"><a class="current reference internal" href="#">cora.core.gaussianfield</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.core.maps.html">cora.core.maps</a></li>
+<li class="toctree-l4"><a class="reference internal" href="cora.core.skysim.html">cora.core.skysim</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="cora.foreground.html">cora.foreground</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.scripts.html">cora.scripts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.signal.html">cora.signal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="cora.util.html">cora.util</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">cora</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../reference.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="cora.core.html">cora.core</a></li>
+      <li class="breadcrumb-item active">cora.core.gaussianfield</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/_autosummary/cora.core.gaussianfield.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-cora.core.gaussianfield">
+<span id="cora-core-gaussianfield"></span><h1>cora.core.gaussianfield<a class="headerlink" href="#module-cora.core.gaussianfield" title="Link to this heading"></a></h1>
+<p class="rubric">Classes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.core.gaussianfield.Cmb" title="cora.core.gaussianfield.Cmb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Cmb</span></code></a>([psfile, cambnorm])</p></td>
+<td><p>Simulate a patch of the CMB.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.core.gaussianfield.RandomField" title="cora.core.gaussianfield.RandomField"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomField</span></code></a>([npix, wsize])</p></td>
+<td><p>Generate a realisation a n-dimensional gaussian field.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.core.gaussianfield.RandomFieldA2" title="cora.core.gaussianfield.RandomFieldA2"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomFieldA2</span></code></a>([npix, wsize])</p></td>
+<td><p>Generate a realisation of a 2d gaussian field.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#cora.core.gaussianfield.RandomFieldA2F" title="cora.core.gaussianfield.RandomFieldA2F"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RandomFieldA2F</span></code></a>([npix, wsize])</p></td>
+<td><p>Generate a realisation of a 3d gaussian field.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#cora.core.gaussianfield.TestF" title="cora.core.gaussianfield.TestF"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TestF</span></code></a>([npix, wsize])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomField">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.gaussianfield.</span></span><span class="sig-name descname"><span class="pre">RandomField</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">npix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomField" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Generate a realisation a n-dimensional gaussian field.</p>
+<p>An appropriate <cite>powerspectrum</cite> function must be implemented to use
+this class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>npix</strong> (<em>list</em><em> of </em><em>ints</em>) – Number of pixels along each axis.</p></li>
+<li><p><strong>wsize</strong> (<em>list</em><em> of </em><em>floats</em><em>, </em><em>optional</em>) – Width along each axis (in arbitrary units). If not given, each
+pixel has length one (i.e. wsize = npix).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomField.powerspectrum">
+<span class="sig-name descname"><span class="pre">powerspectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">karray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomField.powerspectrum" title="Link to this definition"></a></dt>
+<dd><p>Get the power spectrum value at each wavevector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>karray</strong> (<em>ndarray</em>) – An array filled with k-vectors. The last axis gives the
+components of each vector, the rest of the array can be of
+any shape.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>psarray</strong> – An array containing the power spectrum values for each
+vector in <cite>karray</cite>. Must be the same shape as <cite>karray</cite>
+with its last axis removed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Frequencies are in terms of wavenumber. That is the positive
+frequencies for one axis are:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">0,</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0],</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0],</span> <span class="pre">3</span> <span class="pre">*</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0]....</span>
+<span class="pre">`</span></code></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomField.generate_kweight">
+<span class="sig-name descname"><span class="pre">generate_kweight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">regen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomField.generate_kweight" title="Link to this definition"></a></dt>
+<dd><p>Pregenerate the k weights array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>regen</strong> (<em>boolean</em><em>, </em><em>optional</em>) – If True, force regeneration of the weights, to be used if
+parameters have been changed,</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomField.getfield">
+<span class="sig-name descname"><span class="pre">getfield</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomField.getfield" title="Link to this definition"></a></dt>
+<dd><p>Generate a new realisation of the 3d field.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>field</strong> – A realisation of the power spectrum. Shape is self._n.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomFieldA2F">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.gaussianfield.</span></span><span class="sig-name descname"><span class="pre">RandomFieldA2F</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">npix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomFieldA2F" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.core.gaussianfield.RandomField" title="cora.core.gaussianfield.RandomField"><code class="xref py py-class docutils literal notranslate"><span class="pre">RandomField</span></code></a>, <a class="reference internal" href="cora.core.maps.html#cora.core.maps.Map3d" title="cora.core.maps.Map3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map3d</span></code></a></p>
+<p>Generate a realisation of a 3d gaussian field.</p>
+<p>This routine is to generate simulated 3d observations. It is
+tailored for situations where there are two angular dimensions,
+and the third is frequency. The <cite>powerspectrum</cite> function must be
+implemented to use this class.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomFieldA2F.generate_kweight">
+<span class="sig-name descname"><span class="pre">generate_kweight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomFieldA2F.generate_kweight" title="Link to this definition"></a></dt>
+<dd><p>Pregenerate the power spectrum values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomFieldA2">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.gaussianfield.</span></span><span class="sig-name descname"><span class="pre">RandomFieldA2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">npix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomFieldA2" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.core.gaussianfield.RandomField" title="cora.core.gaussianfield.RandomField"><code class="xref py py-class docutils literal notranslate"><span class="pre">RandomField</span></code></a>, <a class="reference internal" href="cora.core.maps.html#cora.core.maps.Map2d" title="cora.core.maps.Map2d"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map2d</span></code></a></p>
+<p>Generate a realisation of a 2d gaussian field.</p>
+<p>This routine is to generate simulated 2d observations. It is
+tailored for situations where there are two angular
+dimensions. The <cite>powerspectrum</cite> function must be implemented to
+use this class.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.RandomFieldA2.generate_kweight">
+<span class="sig-name descname"><span class="pre">generate_kweight</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.RandomFieldA2.generate_kweight" title="Link to this definition"></a></dt>
+<dd><p>Pregenerate the power spectrum values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.Cmb">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.gaussianfield.</span></span><span class="sig-name descname"><span class="pre">Cmb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">psfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cambnorm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.Cmb" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.core.gaussianfield.RandomFieldA2" title="cora.core.gaussianfield.RandomFieldA2"><code class="xref py py-class docutils literal notranslate"><span class="pre">RandomFieldA2</span></code></a></p>
+<p>Simulate a patch of the CMB.</p>
+<p>Initialise the CMB field class.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.Cmb.powerspectrum">
+<span class="sig-name descname"><span class="pre">powerspectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">karray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.Cmb.powerspectrum" title="Link to this definition"></a></dt>
+<dd><p>Get the power spectrum value at each wavevector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>karray</strong> (<em>ndarray</em>) – An array filled with k-vectors. The last axis gives the
+components of each vector, the rest of the array can be of
+any shape.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>psarray</strong> – An array containing the power spectrum values for each
+vector in <cite>karray</cite>. Must be the same shape as <cite>karray</cite>
+with its last axis removed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Frequencies are in terms of wavenumber. That is the positive
+frequencies for one axis are:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">0,</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0],</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0],</span> <span class="pre">3</span> <span class="pre">*</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0]....</span>
+<span class="pre">`</span></code></p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.TestF">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cora.core.gaussianfield.</span></span><span class="sig-name descname"><span class="pre">TestF</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">npix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.TestF" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cora.core.gaussianfield.RandomFieldA2F" title="cora.core.gaussianfield.RandomFieldA2F"><code class="xref py py-class docutils literal notranslate"><span class="pre">RandomFieldA2F</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cora.core.gaussianfield.TestF.powerspectrum">
+<span class="sig-name descname"><span class="pre">powerspectrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">karray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#cora.core.gaussianfield.TestF.powerspectrum" title="Link to this definition"></a></dt>
+<dd><p>Get the power spectrum value at each wavevector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>karray</strong> (<em>ndarray</em>) – An array filled with k-vectors. The last axis gives the
+components of each vector, the rest of the array can be of
+any shape.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>psarray</strong> – An array containing the power spectrum values for each
+vector in <cite>karray</cite>. Must be the same shape as <cite>karray</cite>
+with its last axis removed.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Frequencies are in terms of wavenumber. That is the positive
+frequencies for one axis are:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">0,</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0],</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0],</span> <span class="pre">3</span> <span class="pre">*</span> <span class="pre">2*math.pi</span> <span class="pre">/</span> <span class="pre">self._w[0]....</span>
+<span class="pre">`</span></code></p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="cora.core.html" class="btn btn-neutral float-left" title="cora.core" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="cora.core.maps.html" class="btn btn-neutral float-right" title="cora.core.maps" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2013, J. Richard Shaw.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
