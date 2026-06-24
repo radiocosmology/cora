@@ -1,6 +1,9 @@
 from typing import Callable, Union, Tuple, Optional
 
 import numpy as np
+from scipy.fftpack import dct
+import scipy.integrate as si
+import scipy.sparse as ssparse
 
 import healpy
 
@@ -9,6 +12,8 @@ from caput import algorithms, config
 from ..util import cubicspline as cs
 from ..util import hputil
 from ..util.nputil import FloatArrayLike
+from ..util import bilinearmap
+from ..util import cosmology as cora_cosmology
 
 
 def linspace(x: Union[dict, list, np.ndarray]) -> np.ndarray:
@@ -515,8 +520,344 @@ def calculate_width(centres: np.ndarray) -> np.ndarray:
     return np.abs(widths)
 
 
+def integrate_uniform_into_bins(
+    y: np.ndarray,
+    x: np.ndarray,
+    xedges: np.ndarray,
+    axis: Optional[int] = -1,
+    norm: Optional[np.ndarray] = None,
+    window: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Integrate a uniformly-sampled function into bins with arbitrary edges.
+
+    This function uses Simpson's rule to integrate over the
+    samples falling within each bin, and then uses the trapezoid
+    rule to add the contributions between the lowest/highest samples
+    per bin and the bin boundaries.
+
+    The user can optionally provide an array of window function values
+    that the function should be multiplied by prior to integration.
+    (The hybrid Simpson-trapezoid scheme does not work if the product
+    of the window and function is passed directly to this routine.)
+
+    X values and bin edges must be strictly increasing.
+
+    Parameters
+    ----------
+    y
+        Function values on uniform grid.
+    x
+        Grid values on which function was evaluated.
+    xedges
+        Edges of bins to integrate within.
+    axis
+        Axis to integrate over.
+    norm
+        Array of values to divide each bin by after integration.
+        If no window is used, passing `norm=np.diff(xedges)` will
+        compute the mean over each bin. Default: None.
+    window
+        Array of window function values. Must have the same shape as `x`.
+
+    Returns
+    -------
+    y_int
+        Bin-integrated function.
+    """
+
+    if window is None:
+        window = np.ones_like(x)
+
+    nbins = len(xedges) - 1
+    dx = x[1] - x[0]
+
+    # Move integration axis to the end, to make slicing easier
+    axis = axis % y.ndim
+    y = np.moveaxis(y, axis, -1)
+
+    # Determine array indices corresponding to x values that are
+    # just above each lower bin boundary and just below each upper
+    # bin boundary. (The lowest idx_lo and highest idx_hi
+    # indices will correspond to lowest and highest bin boundaries.)
+    idx_lo = np.searchsorted(x, xedges[:-1], side="left")
+    idx_hi = np.concatenate([idx_lo[1:] - 1, [len(x) - 1]])
+
+    # Perform cumulative Simpson integration over full x range, with
+    # the integrand multiplied by the window if one is provided.
+    y_int = si.cumulative_simpson(y * window, dx=dx, axis=-1, initial=0)
+
+    # Compute differences between cumulative-integral values at indices
+    # corresponding to highest and lowest x values within each bin, to obtain
+    # integrals over samples that lie solely within each bin.
+    y_int = y_int[..., idx_hi] - y_int[..., idx_lo]
+
+    # The above differences will miss contributions to each bin integral
+    # between the lowest/highest samples and the bin boundaries.
+    # To incorporate these contributions, we first use linear interpolation
+    # to estimate the y values at the bin boundaries, excluding the
+    # lower boundary of the lowest bin and the upper boundary of the higest
+    # bin (since they correspond to the first and last y samples).
+    # This interpolation is done on the unwindowed function values, because
+    # the window may vary more rapidly than the function, and this would
+    # make interpolation of the windowed function unreliable.
+    y_at_bounds = (
+        y[..., idx_lo[1:]]
+        - (y[..., idx_lo[1:]] - y[..., idx_lo[1:] - 1])
+        * (x[idx_lo[1:]] - xedges[1:-1])
+        / dx
+    )
+
+    # We then use these interpolated y values, along with the y values
+    # at the lowest and highest samples within the bin, to integrate
+    # the missing edge contributions using the trapezoid rule, and add
+    # them to the results from above. If specified, the appropriate
+    # window values are incorporated here.
+    w_edge = window[0]
+    y_int[..., 1:nbins] += (
+        0.5
+        * (x[idx_lo[1:]] - xedges[1:-1])
+        * (w_edge * y_at_bounds + window[idx_lo[1:]] * y[..., idx_lo[1:]])
+    )
+    y_int[..., : nbins - 1] += (
+        0.5
+        * (xedges[1:-1] - x[idx_hi[:-1]])
+        * (w_edge * y_at_bounds + window[idx_hi[:-1]] * y[..., idx_hi[:-1]])
+    )
+
+    # Divide by normalization factors, if specified
+    if norm is not None:
+        y_int /= norm
+
+    # Move integration axis back to original position
+    return np.moveaxis(y_int, -1, axis)
+
+
+def integrate_uniform_into_tapered_channels(
+    y: np.ndarray,
+    x: np.ndarray,
+    xcenters: np.ndarray,
+    xwidths: np.ndarray,
+    channel_profile: Callable[[np.ndarray], np.ndarray],
+    axis: Optional[int] = -1,
+    n_overlap: Optional[int] = 1,
+    use_cached_weights: Optional[bool] = False,
+):
+    """Integrate a uniformly-sampled function into channels with tapered profiles.
+
+    This function uses Simpson's rule to integrate a uniformly-sampled
+    function against a set of identical profiles defined with respect
+    to a list of profile centers. The profile must taper smoothly to
+    a small amplitude, such that the results are not sensitive to
+    the precise integration bounds as long as they enclose most of
+    the profile's support. The profiles are allowed to overlap; otherwise,
+    `integrate_uniform_into_bins` should be used instead.
+
+    X values and centers must be strictly increasing.
+
+    The integration weights can be cached and re-used in subsequent
+    calls if `use_cached_weights` is set. The weights will be recomputed
+    if the function is evaluated with different coordinate arguments
+    or a different profile.
+
+    Parameters
+    ----------
+    y
+        Function values on uniform grid.
+    x
+        Grid values on which function was evaluated.
+    xcenters
+        Coordinates of channel centers. These values don't need
+        to be elements of `x`.
+    xwidths
+        Coordinate widths of each channel.
+    channel_profile
+        Channel profile to use in the channel integration.
+        The profile function must be defined in terms of coordinate relative
+        to channel center, in units of channel width (e.g. center = 0,
+        edges = [-0.5, 0.5]). The profile can extend beyond the
+        channel width, but is still defined relative to this width.
+    axis
+        Axis to integrate over.
+    n_overlap
+        Number of channels on either side of the channel of interest
+        to integrate over. Should be chosen to cover most of profile's
+        support.
+    use_cached_weights
+        Store integration weights for subsequent re-use if function is
+        called again with same coordinate arguments and profile.
+
+    Returns
+    -------
+    y_int
+        Bin-integrated function.
+    """
+
+    nx = len(x)
+    dx = x[1] - x[0]
+    nchan = len(xcenters)
+
+    if not use_cached_weights or not hasattr(
+        integrate_uniform_into_tapered_channels, "_weights"
+    ):
+        recompute_weights = True
+    else:
+        recompute_weights = (
+            not np.isclose(integrate_uniform_into_tapered_channels._x0, x[0])
+            or not np.isclose(integrate_uniform_into_tapered_channels._dx, dx)
+            or integrate_uniform_into_tapered_channels._nx != nx
+            or not np.allclose(
+                integrate_uniform_into_tapered_channels._xcenters, xcenters
+            )
+            or not np.allclose(
+                integrate_uniform_into_tapered_channels._xwidths, xwidths
+            )
+            or integrate_uniform_into_tapered_channels._channel_profile
+            is not channel_profile
+            or integrate_uniform_into_tapered_channels._n_overlap != n_overlap
+        )
+
+    # Generate weights for each channel integral, if not cached
+    # and/or not using cache
+    if recompute_weights:
+
+        # Compute channel edges based on centers and widths
+        xedges = np.concatenate(
+            [xcenters - 0.5 * xwidths, [xcenters[-1] + 0.5 * xwidths[-1]]]
+        )
+
+        # Determine the channel index of each point in x
+        chan_idx = np.searchsorted(xedges, x, side="right") - 1
+        chan_idx = np.clip(chan_idx, 0, nx - 1)
+
+        # Create arrays for building sparse weight array
+        weight_vals = []
+        weight_idx = []
+        weight_idxptr = [0]
+
+        # Loop over channels
+        for c in range(nchan):
+            # Find indices of elements in x that are within
+            # n_overlap channels of current channel
+            x_mask = (chan_idx >= c - n_overlap) & (chan_idx <= c + n_overlap)
+            x_idx = np.where(x_mask)[0]
+
+            # Ensure set of indices has odd length (so we can apply
+            # Simpson's rule). If even, remove lowest index from set.
+            # As long as we're probing far enough into the tail of
+            # the channel profile, this should incur a small amount
+            # of numerical error.
+            if len(x_idx) % 2 == 0:
+                x_idx = x_idx[1:]
+
+            # Compute distance of each point from center of current
+            # channel, divided by the channel width
+            rel_dx_full = (x[x_idx] - xcenters[c]) / xwidths[c]
+
+            # Evaluate the channel profile at these values
+            w = channel_profile(rel_dx_full)
+
+            # Multiply channel profile by Simpson-rule weights:
+            # [1, 4, 2, 4, ..., 1] * dx / 3
+            w[1:-1:2] *= 4
+            w[2:-1:2] *= 2
+            w *= dx / 3
+
+            # Integrate channel profile within each channel, using
+            # Simpson's rule, and use this to normalize the weights.
+            # (This ensures that the final integrals are means over
+            # each channel's profile.)
+            norm = np.sum(w)
+            w /= norm
+
+            # Store weights and indices in format appropriate for
+            # sparse (CSR) array
+            weight_vals.append(w)
+            weight_idx.append(x_idx)
+            weight_idxptr.append(weight_idxptr[-1] + len(x_idx))
+
+        # Concatenate weight values and index arrays
+        weight_vals = np.concatenate(weight_vals)
+        weight_idx = np.concatenate(weight_idx)
+
+        # Construct sparse array of weights
+        integrate_uniform_into_tapered_channels._weights = ssparse.csr_array(
+            (weight_vals, weight_idx, weight_idxptr), dtype=np.float64
+        )
+
+        # Save relevant input arguments
+        integrate_uniform_into_tapered_channels._x0 = x[0]
+        integrate_uniform_into_tapered_channels._dx = dx
+        integrate_uniform_into_tapered_channels._nx = nx
+        integrate_uniform_into_tapered_channels._xcenters = xcenters
+        integrate_uniform_into_tapered_channels._xwidths = xwidths
+        integrate_uniform_into_tapered_channels._channel_profile = channel_profile
+        integrate_uniform_into_tapered_channels._n_overlap = n_overlap
+
+    # Move integration axis to the beginning, in preparation for multiplication
+    # by sparse array
+    axis = axis % y.ndim
+    y = np.moveaxis(y, axis, 0)
+    shp = y.shape
+
+    # Multiply y by matrix of weights. In the result, the first axis is
+    # channel number. Need to first reshape y, because only 2d x 2d matrix
+    # multiplication is supported for sparse arrays.
+    y_int = integrate_uniform_into_tapered_channels._weights @ y.reshape(shp[0], -1)
+    y_int = y_int.reshape((y_int.shape[0],) + shp[1:])
+
+    # Move channel axis back to original position
+    return np.moveaxis(y_int, 0, axis)
+
+
+def exponential_FoG_kernel_1d(
+    dchi: np.ndarray,
+    sigmaP: float,
+    cut: Optional[float] = 1e-5,
+    normalize: Optional[bool] = False,
+) -> np.ndarray:
+    """Compute analytical position-space Finger-of-God kernel.
+
+    Parameters
+    ----------
+    dchi
+        Comoving distance differences at which to evaluate kernel.
+    sigmaP
+        Damping scale parameter.
+    cut
+        Only compute kernel values that are above this fraction of the maximum
+        kernel value (to avoid underflow errors). Zeros are returned for lower
+        values.
+    normalize
+        Whether to normalize the returned kernel values by their sum.
+
+    Returns
+    -------
+    kernel
+        Array of kernel values evaluated at input dchi values.
+    """
+    a = 2**0.5 / sigmaP
+    denom = a * sigmaP**2
+
+    kernel = np.zeros_like(dchi, dtype=np.float64)
+
+    # Make mask that selects kernel values above cut
+    arg = a * np.abs(dchi)
+    mask = arg <= -np.log(cut)
+
+    # Compute relevant kernel values
+    kernel[mask] = np.exp(-arg[mask]) / denom
+
+    if normalize:
+        kernel[mask] /= np.sum(kernel[mask])
+
+    return kernel
+
+
 def exponential_FoG_kernel(
-    chi: np.ndarray, sigmaP: FloatArrayLike, D: FloatArrayLike
+    chi: np.ndarray,
+    sigmaP: FloatArrayLike,
+    D: FloatArrayLike,
+    full_channel_kernel: bool = False,
 ) -> np.ndarray:
     r"""Get a smoothing kernel for approximating Fingers of God.
 
@@ -528,6 +869,11 @@ def exponential_FoG_kernel(
         The smooth parameter for each radial bin.
     D
         The growth factor for each radial bin.
+    full_channel_kernel
+        Whether to integrate the continuous kernel over each radial bin for both
+        the "input" and "output" channel (True), or just the "input" channel
+        (False). The former is more correct, but the latter is the default for
+        legacy purposes. Default. False.
 
     Returns
     -------
@@ -556,11 +902,13 @@ def exponential_FoG_kernel(
 
     # This is the main parameter of the exponential kernel and comes from the FT of the
     # canonically defined Lorentzian
-    a = 2**0.5 / sigmaP
-    ar = a[:, np.newaxis]
+    a_1D = 2**0.5 / sigmaP
+    a_r = a_1D[:, np.newaxis]
 
     # Get bin widths for the radial axis
-    dchi = calculate_width(chi)[np.newaxis, :]
+    dchi_1D = calculate_width(chi)
+    dchi_r = dchi_1D[:, np.newaxis]
+    dchi_rp = dchi_1D[np.newaxis, :]
 
     chi_sep = np.abs(chi[:, np.newaxis] - chi[np.newaxis, :])
 
@@ -568,14 +916,32 @@ def exponential_FoG_kernel(
         return np.sinh(x) / x
 
     # Create a matrix to apply the smoothing with an exponential kernel.
-    # NOTE: because of the finite radial bins we should calculate the average
-    # contribution over the width of each bin. That gives rise to the sinhc terms which
-    # slightly boost the weights of the non-zero bins
-    K = np.exp(-ar * chi_sep) * sinhc(ar * dchi / 2.0)
+    if full_channel_kernel:
+        # See CHIME doclib:XXXX for derivations of these expressions
+        K = (
+            (2.0 / dchi_rp)
+            * np.exp(-a_r * chi_sep)
+            * np.sinh(a_r * dchi_r / 2.0)
+            * np.sinh(a_r * dchi_rp / 2.0)
+        )
+        np.fill_diagonal(
+            K,
+            a_1D
+            - (2.0 / dchi_1D)
+            * np.exp(-a_1D * dchi_1D / 2.0)
+            * np.sinh(a_1D * dchi_1D / 2.0),
+        )
+    else:
+        # NOTE: because of the finite radial bins we should calculate the average
+        # contribution over the width of each bin. That gives rise to the sinhc terms which
+        # slightly boost the weights of the non-zero bins
+        K = np.exp(-a_r * chi_sep) * sinhc(a_r * dchi_rp / 2.0)
 
-    # The zero-lag bins are a special case because of the reflection about zero
-    # Here the weight is slightly less than if we evaluated exactly at zero
-    np.fill_diagonal(K, np.diagonal(np.exp(-ar * dchi / 4) * sinhc(ar * dchi / 4)))
+        # The zero-lag bins are a special case because of the reflection about zero
+        # Here the weight is slightly less than if we evaluated exactly at zero
+        np.fill_diagonal(
+            K, np.diagonal(np.exp(-a_r * dchi_rp / 4) * sinhc(a_r * dchi_rp / 4))
+        )
 
     # Normalise each row to ensure conservation of mass
     K /= np.sum(K, axis=1)[:, np.newaxis]
@@ -587,6 +953,119 @@ def exponential_FoG_kernel(
     K *= D[:, np.newaxis]
 
     return K
+
+
+def pad_frequencies(
+    frequencies: np.ndarray,
+    num: int = 1,
+    use_FoG_kernel: bool = False,
+    cosmology: cora_cosmology.Cosmology = None,
+    sigma_P: float = None,
+    FoG_threshold: float = 0.99,
+    maxnum: int = None,
+):
+    """Pad list of frequencies.
+
+    Input frequency list will be extended by an equal number of frequencies
+    at the high and low ends.
+
+    Parameters
+    ----------
+    frequencies
+        Array of frequencies to pad.
+    num
+        Number of frequencies to pad by. If determining padding using FoG
+        kernel, this number is treated as the minimum number of frequencies
+        to pad by.
+    use_FoG_kernel
+        Whether to use the FoG kernel to determine the number of padding
+        frequencies. The number of extra frequencies is computed such that the
+        FoG convolution for lowest frequency in the input list captures
+        contributions from some fraction of the integral of the FoG kernel,
+        specified by `FoG_threshold`.
+    cosmology
+        Cosmology object to use for computing comoving distances.
+    sigma_P
+        FoG damping scale for kernel.
+    FoG_threshold
+        See description of `use_FoG_kernel`.
+    maxnum
+        Maximum number of padding frequencies.
+
+    Returns
+    -------
+    padded_frequencies
+        Padded list of frequencies.
+    n_pad
+        Number of frequencies added at each end of input list.
+    n_pad_raw
+        Number of frequencies that would have been if `maxnum` was not set.
+    kernel_frac
+        Fraction of kernel integral covered by padded frequencies at lowest
+        input frequency. (Can be compared with `FoG_threshold` to determine
+        how much of the kernel was cut off by the specified `maxnum`.)
+    """
+
+    if use_FoG_kernel and ((cosmology is None) or (sigma_P is None)):
+        raise RuntimeError(
+            "If using FoG kernel to determine padding, "
+            "cosmology and sigmaP must both be specified"
+        )
+
+    # Sort frequencies and find spacing
+    nfreq = len(frequencies)
+    freqs_sorted = np.sort(frequencies)
+    dfreq = np.median(np.diff(freqs_sorted))
+
+    if not use_FoG_kernel:
+        n_pad_raw = num
+        n_pad = num
+        kernel_frac = 1.0
+    else:
+        # Generate list of frequencies that's extended by a factor
+        # of 2 at the low end
+        freqs_extended = np.concatenate([freqs_sorted - nfreq * dfreq, freqs_sorted])
+
+        # Compute corresponding extended list of comoving-distance
+        # differences from lowest frequency in original list
+        dx_extended = cosmology.comoving_distance(freqs_extended)
+        dx_extended -= dx_extended[nfreq]
+
+        # Evaluate normalized FoG kernel at values in this list
+        # and evaluate cumulative sum
+        kernel_extended = exponential_FoG_kernel_1d(
+            dx_extended, sigma_P, normalize=True
+        )
+        kernel_cumsum = np.cumsum(kernel_extended)
+
+        # Find number of extra frequencies required to cover
+        # requested fraction of kernel integral
+        n_pad_raw = max(
+            np.sum(kernel_cumsum > 1 - FoG_threshold) - nfreq,
+            0,
+        )
+        if maxnum is None:
+            maxnum = nfreq + 1
+        n_pad = min(n_pad_raw, maxnum)
+
+        # Save fraction of kernel covered by padded frequencies
+        # at lowest input frequency
+        kernel_frac = (1 - kernel_cumsum)[nfreq - n_pad]
+
+    # Make new frequency list
+    padded_frequencies = np.concatenate(
+        [
+            freqs_sorted[0] - np.arange(1, n_pad + 1)[::-1] * dfreq,
+            freqs_sorted,
+            freqs_sorted[-1] + np.arange(1, n_pad + 1) * dfreq,
+        ]
+    )
+
+    # Reverse order if initial sorting had an effect
+    if not np.array_equal(padded_frequencies, frequencies):
+        padded_frequencies = padded_frequencies[::-1]
+
+    return padded_frequencies, n_pad, n_pad_raw, kernel_frac
 
 
 def lognormal_transform(
@@ -638,3 +1117,119 @@ def assert_shape(arr, shape, name):
         raise ValueError(
             f"Array {name} has the wrong shape (got {arr.shape}, expected {shape}"
         )
+
+
+class Pk2d_to_Cl:
+    """Converter from 2d power spectrum to multi-frequency angular power spectrum.
+
+    This class packages the algorithm from the angular_powerspectrum_fft
+    method from the cora.signal.corr.RedshiftCorrelation class in a
+    self-contained way, suitable for working with an externally-defined
+    power spectrum in terms of k_parallel and k_perp. These different
+    implementations should eventually be refactored, but will remain
+    separate for now.
+
+    Parameters
+    ----------
+    pk2d : function
+        Power spectrum function, with arguments (k_parallel, k_perp).
+    chi_of_z : function
+        Function to convert redshift to comoving distance.
+    kparmax : float, optional
+        Maximum k_parallel for integration. (Note that the minimum
+        k_parallel is 0.) Default: 50.
+    nkpar : int, optional
+        Number of k_parallel values to use in discrete cosine transform.
+        Default: 32768.
+    kperpmin, kperpmax : float, optional
+        Minimum and maximum k_perp values. These determine the minimum
+        and maximum ell values that are accessible. Default: 1e-4 and 40.
+    nkperp : int, optional
+        Number of k_perp values to interpolate between. Default: 500.
+    k_meshgrid : bool, optional
+        Whether pk2d function can accept (kpar, kperp) values evaluated
+        on a numpy meshgrid. Default: True.
+    """
+
+    def __init__(
+        self,
+        pk2d,
+        chi_of_z,
+        kparmax=50.0,
+        nkpar=32768,
+        kperpmin=1e-4,
+        kperpmax=40.0,
+        nkperp=500,
+        k_meshgrid=True,
+    ):
+
+        self.kparmax = kparmax
+        self.nkpar = nkpar
+        self.kperpmin = kperpmin
+        self.kperpmax = kperpmax
+        self.nkperp = nkperp
+        self.chi_of_z = chi_of_z
+
+        kperp = np.logspace(np.log10(kperpmin), np.log10(kperpmax), nkperp)
+        kpar = np.linspace(0, kparmax, nkpar)
+
+        if k_meshgrid:
+            kperp, kpar = np.meshgrid(kperp, kpar, indexing="ij")
+        else:
+            kperp = kperp[:, np.newaxis]
+            kpar = kpar[np.newaxis, :]
+
+        dd = pk2d(kpar, kperp)
+
+        self.aps_cache = dct(dd, type=1) * kparmax / (2 * nkpar)
+
+    def eval(self, la, za1, za2, const_chi=False):
+        """Evaluate C_ell(z, z').
+
+        Parameters
+        ----------
+        la : array_like
+            Ell values to evaluate at.
+        za1, za2 : array_like
+            Redshifts to evaluate at
+        const_chi : bool, optional
+            Evaluate k-ell relationship and prefactor at
+            constant comoving distance. Default: False.
+
+        Returns
+        -------
+        cl : array_like
+            Array of C_ell(z, z') values.
+        """
+
+        xa1 = self.chi_of_z(za1)
+        xa2 = self.chi_of_z(za2)
+
+        xc = 0.5 * (xa1 + xa2)
+        if const_chi:
+            xc = np.mean(xc)
+        rpar = np.abs(xa2 - xa1)
+
+        # Bump anything that is zero upwards to avoid a log zero warning.
+        la = np.where(la == 0.0, 1e-10, la)
+
+        x = (
+            (np.log10(la) - np.log10(xc * self.kperpmin))
+            / np.log10(self.kperpmax / self.kperpmin)
+            * (self.nkperp - 1)
+        )
+        y = rpar / (np.pi / self.kparmax)
+
+        def _interp2d(arr, x, y):
+            x, y = np.broadcast_arrays(x, y)
+            sh = x.shape
+
+            x, y = x.flatten(), y.flatten()
+            v = np.zeros_like(x)
+            bilinearmap.interp(arr, x, y, v)
+
+            return v.reshape(sh)
+
+        psdd = _interp2d(self.aps_cache, x, y)
+
+        return 1 / (xc**2 * np.pi) * psdd

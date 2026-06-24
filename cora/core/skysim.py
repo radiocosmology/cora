@@ -1,34 +1,104 @@
 import numpy as np
 import scipy.linalg as la
 import scipy.integrate as si
+import scipy.special as ss
 import healpy
 
 from caput import mpiarray
 from cora.util import hputil, nputil
+from cora.signal.lssutil import diff2
 
 
-def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
+def clarray(
+    aps,
+    lmax,
+    zarray,
+    gauss_legendre=False,
+    zromb=3,
+    zwidth=None,
+    chunksize=5,
+    second_chi_deriv=False,
+    chi_func=None,
+    channel_profile=None,
+    channel_profile_limit=0.5,
+    verbose=False,
+):
     """Calculate an array of C_l(z, z').
+
+    The zromb parameter controls whether to integrate the angular
+    power spectrum over each frequency channel. Two schemes are
+    available:
+
+    1. Legacy Romberg integration that assumes each channel
+    has the same redshift width. Note that this is a bad approximation
+    if working within a sufficiently wide frequency band, so the
+    second scheme is strongly recommended in that case.
+
+    2. Gauss-Legendre quadrature that can either assume a constant width
+    or use the correct per-chennel width. This scheme is almost identical
+    to the one in `cora.signal.corrfunc.corr_to_clarray`, except that
+    here the integration is in redshift instead of comoving distance.
 
     Parameters
     ----------
     aps : function
-        The angular power spectrum to calculate.
+        The angular power spectrum to calculate, with arguments
+        (ell, z, z').
     lmax : integer
         Maximum l to calculate up to.
-    zarray : array_like
-        Array of z's to calculate at.
-    zromb : integer
-        The Romberg order for integrating over frequency samples.
+    zarray : array_like, optional
+        Array of redshifts to calculate at.
+    gauss_legendre : bool, optional
+        Use Gauss-Legendre quadrature for channel integration (as in
+        cora.signal.corrfunc.corr_to_clarray). If False, use older
+        Romberg scheme. Default: False.
+    zromb : integer, optional
+        The Romberg or Gauss-Legendre order for integrating over
+        each channel. If 0, this integration is turned off.
+        5 is recommended for roughly percent-level accuracy in final
+        spectrum, given CHIME frequency channels. Default: 3.
     zwidth : scalar, optional
-        Width of frequency channel to integrate over. If None (default),
-        calculate from the separation of the first two bins.
+        Constant redshift width of frequency channel to integrate over.
+        If None, calculated from the separation of the first two bins
+        for the Romberg scheme, or computed separately for each channel
+        in the Gauss-Legendre scheme. Default: None.
+    chunksize : int, optional
+        Chunk size for performing channel integral in batches of ell values.
+        Default: 5.
+    second_chi_deriv : bool, optional
+        Whether to compute second derivative of computed C_l(z,z') in each
+        of z and z', as derivatives in comoving distance. This can be used
+        for testing computations involving the Kaiser redshift-space
+        distorition term. Default: False.
+    chi_func : function, optional
+        If `second_chi_deriv` is True, this is the function that converts
+        redshift to comoving distance that is used in the finite-difference
+        computation. Default: None.
+    channel_profile : function, optional
+        Frequency channel profile to use in the channel integration.
+        The profile function must be defined in terms of frequency relative
+        to channel center, in units of channel width (e.g. center = 0,
+        edges = [-0.5, 0.5]). The input profile must integrate to unity
+        over the range [-channel_profile_limit, channel_profile_limit].
+        If None, a top-hat profile is used. Default: None.
+    channel_profile_limit : float, optional
+        Determines within which to integrate the channel profile.
+        Default: 0.5.
+    verbose : bool, optional
+        Whether to print status messages to track progress as a function of
+        ell. Default: False.
 
     Returns
     -------
     aps : np.ndarray[lmax+1, len(zarray), len(zarray)]
         Array of the C_l(z,z') values.
     """
+
+    if second_chi_deriv and chi_func is None:
+        raise RuntimeError("Must specify chi_func if using second_chi_deriv")
+
+    # Set coordinate rescaling factor based on channel integration limits
+    coord_scale = channel_profile_limit / 0.5
 
     if zromb == 0:
         return aps(
@@ -38,33 +108,126 @@ def clarray(aps, lmax, zarray, zromb=3, zwidth=None):
         )
 
     else:
-        zsort = np.sort(zarray)
-        zhalf = np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
-        zlen = zarray.size
-        zint = 2**zromb + 1
-        zspace = 2.0 * zhalf / 2**zromb
+        # Gauss-Legendre scheme
+        if gauss_legendre:
 
-        za = (
-            zarray[:, np.newaxis] + np.linspace(-zhalf, zhalf, zint)[np.newaxis, :]
-        ).flatten()
+            # Get number of redshifts
+            zlen = zarray.size
 
-        lsections = np.array_split(np.arange(lmax + 1), lmax // 5)
+            # Calculate the half-bin width
+            if zwidth is None:
+                zhalf = np.ndarray(shape=zarray.shape)
+                # Compute width for each channel, using same width for first
+                # and second channel
+                zhalf[0] = np.abs(zarray[1] - zarray[0]) / 2.0
+                zhalf[1:] = np.abs(zarray[1:] - zarray[:-1]) / 2.0
+            else:
+                # Use constant channel width
+                zhalf = np.ones(shape=zarray.shape) * zwidth / 2.0
 
-        cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
+            # Set number of quadrature points, and get points and weights
+            zint = 2**zromb + 1
+            z_r, z_w, z_wsum = ss.roots_legendre(zint, mu=True)
+            z_w /= z_wsum
+            z_w *= coord_scale
 
-        for lsec in lsections:
-            clt = aps(
-                lsec[:, np.newaxis, np.newaxis],
-                za[np.newaxis, :, np.newaxis],
-                za[np.newaxis, np.newaxis, :],
+            # Calculate the extended xarray with the extra intervals to integrate over
+            za = (
+                zarray[:, np.newaxis] + coord_scale * zhalf[:, np.newaxis] * z_r
+            ).flatten()
+
+            # If using a channel profile, evaluate it at the integrand sampling points
+            if channel_profile is not None:
+                za_profile = (
+                    np.zeros_like(zarray)[:, np.newaxis]
+                    + 0.5 * coord_scale * np.ones_like(zhalf)[:, np.newaxis] * z_r
+                ).flatten()
+                profile = channel_profile(za_profile)
+
+            # Make array to store final results
+            cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
+
+            # Determine ell chunks
+            lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
+
+            for lsec in lsections:
+                if verbose:
+                    print(f"Computing for ell={lsec} out of {lmax}")
+
+                # Get C_ell(z, z') values for this chunk
+                clt = aps(
+                    lsec[:, np.newaxis, np.newaxis],
+                    za[np.newaxis, :, np.newaxis],
+                    za[np.newaxis, np.newaxis, :],
+                )
+
+                if second_chi_deriv:
+                    xarray = chi_func(za)
+                    clt = diff2(clt, xarray, axis=1)
+                    clt = diff2(clt, xarray, axis=2)
+
+                if channel_profile is not None:
+                    clt *= profile[np.newaxis, :, np.newaxis]
+                    clt *= profile[np.newaxis, np.newaxis, :]
+
+                # Perform Gauss-Legendre quandrature via matrix multiplications
+                clt = clt.reshape(-1, zint)
+                clt = np.matmul(clt, z_w).reshape(-1, zlen, zint, zlen)
+                clt = np.matmul(clt.transpose(0, 1, 3, 2), z_w)
+
+                cla[lsec] = clt
+
+        # Romberg scheme
+        else:
+            zsort = np.sort(zarray)
+            zhalf = (
+                np.abs(zsort[1] - zsort[0]) / 2.0 if zwidth is None else zwidth / 2.0
             )
+            zlen = zarray.size
+            zint = 2**zromb + 1
+            zspace = 2.0 * zhalf / 2**zromb
 
-            clt = clt.reshape(-1, zlen, zint, zlen, zint)
+            za = (
+                zarray[:, np.newaxis]
+                + np.linspace(-coord_scale * zhalf, coord_scale * zhalf, zint)[
+                    np.newaxis, :
+                ]
+            ).flatten()
 
-            clt = si.romb(clt, dx=zspace, axis=4)
-            clt = si.romb(clt, dx=zspace, axis=2)
+            # If using a channel profile, evaluate it at the integrand sampling points
+            if channel_profile is not None:
+                za_profile = (
+                    np.zeros_like(zarray)[:, np.newaxis]
+                    + np.linspace(-channel_profile_limit, channel_profile_limit, zint)[
+                        np.newaxis, :
+                    ]
+                ).flatten()
+                profile = channel_profile(za_profile)
 
-            cla[lsec] = clt / (2 * zhalf) ** 2  # Normalise
+            lsections = np.array_split(np.arange(lmax + 1), lmax // chunksize)
+
+            cla = np.zeros((lmax + 1, zlen, zlen), dtype=np.float64)
+
+            for lsec in lsections:
+                if verbose:
+                    print(f"Computing for ell={lsec} out of {lmax}")
+
+                clt = aps(
+                    lsec[:, np.newaxis, np.newaxis],
+                    za[np.newaxis, :, np.newaxis],
+                    za[np.newaxis, np.newaxis, :],
+                )
+
+                if channel_profile is not None:
+                    clt *= profile[np.newaxis, :, np.newaxis]
+                    clt *= profile[np.newaxis, np.newaxis, :]
+
+                clt = clt.reshape(-1, zlen, zint, zlen, zint)
+
+                clt = si.romb(clt, dx=zspace, axis=4)
+                clt = si.romb(clt, dx=zspace, axis=2)
+
+                cla[lsec] = clt / (2 * zhalf / coord_scale) ** 2  # Normalise
 
         return cla
 
@@ -157,8 +320,7 @@ def mkconstrained(corr, constraints, nside):
 
     numz = corr.shape[1]
     maxl = corr.shape[0] - 1
-    larr, marr = healpy.Alm.getlm(maxl)
-    matshape = larr.shape + (numz,)
+    larr, _ = healpy.Alm.getlm(maxl)
 
     # The number of constraints
     nmodes = len(constraints)
@@ -187,11 +349,11 @@ def mkconstrained(corr, constraints, nside):
 
     # Solve for the eigenmode amplitudes to satisfy constraints, and project
     # each mode across the whole frequency range.
-    for i, l in enumerate(larr):
-        if l == 0:
+    for i, ell in enumerate(larr):
+        if ell == 0:
             cv[:, i] = 0.0
         else:
-            cv[:, i] = np.dot(trans[l].T, la.solve(tmat[l].T, cmap[i]))
+            cv[:, i] = np.dot(trans[ell].T, la.solve(tmat[ell].T, cmap[i]))
 
     hpmaps = np.empty((numz, healpy.nside2npix(nside)))
 

@@ -1,8 +1,9 @@
-from typing import Callable, Union, Optional, Tuple, List
+from typing import Callable, Union, Tuple, List
 
 import numpy as np
 import scipy.integrate as si
 import scipy.special as ss
+import scipy.signal as ssig
 from scipy.fftpack import dct
 
 from caput import mpiarray
@@ -14,6 +15,14 @@ import pyfftlog
 
 from ..util import bilinearmap
 from ..util.nputil import FloatArrayLike
+
+from .lssutil import (
+    diff2,
+    calculate_width,
+    integrate_uniform_into_bins,
+    integrate_uniform_into_tapered_channels,
+    exponential_FoG_kernel_1d,
+)
 
 
 def richardson(
@@ -282,7 +291,7 @@ def legendre_array(lmax: int, mu: np.ndarray) -> np.ndarray:
     lm = np.zeros((lmax + 1, len(mu)), dtype=np.float64)
 
     for i, v in enumerate(mu):
-        lm[:, i] = ss.lpn(lmax, v)[0]
+        lm[:, i] = ss.legendre_p_all(lmax, v, diff_n=1)[0]
 
     return lm
 
@@ -292,97 +301,355 @@ def corr_to_clarray(
     lmax: int,
     xarray: np.ndarray,
     xromb: int = 3,
-    xwidth: Optional[float] = None,
+    xwidth: float = None,
     q: int = 2,
     chunksize: int = 50,
+    channel_method: str = "gauss-legendre",
+    chi1_2nd_derivative: bool = False,
+    chi2_2nd_derivative: bool = False,
+    FoG_convolve: bool = False,
+    FoG_sigmaP: float = None,
+    FoG_sigmaP_other: float = None,
+    FoG_kernel_max_nchannels: int = None,
+    channel_profile: Callable[[np.ndarray], np.ndarray] = None,
+    overlapping_channels: int = 0,
 ):
-    """Calculate an array of :math:`C_l(\chi_1, \chi_2)`.
+    r"""Calculate an array of :math:`C_\ell(\chi_1, \chi_2)`.
+
+    This routine computes the following triple integral:
+
+    .. math::
+        C_\ell(\chi_1, \chi_2) = 2\pi \int_{-1}^1 P_\ell(\mu)
+        \int d\chi_1' W_1(\chi_1') \int d\chi_2' W_2(\chi_2')
+        \xi(r[\mu, \chi_1', \chi_2'])
+
+    where :math:`W_1` and :math:`W_2` are normalized channel profiles centered on
+    :math:`\chi_1` and :math:`\chi_2`.
 
     Parameters
     ----------
     corr
         The real space correlation function.
-    c
-        The cosmology object.
     lmax
-        Maximum l to calculate up to.
+        Maximum ell to calculate up to.
     xarray
         Array of comoving distances to calculate at.
     xromb
-        The order for integrating over radial bins, uses `2**xromb + 1` points. This
-        generates an exponentially increasing amount of work, so increase carefully.
-        Note that despite the parameter name this no longer uses a Romberg integrator,
-        but a Gauss-Legendre quadrature rule.
+        The order for integrating within radial bins, related to the number of samples
+        within each bin by `2**xromb + 1`. This generates an exponentially increasing
+        amount of work, so increase carefully. Note that despite the parameter name
+        this no longer uses a Romberg integrator; see `channel_method` for details.
     xwidth
-        Width of radial bin to integrate over. If None (default),
-        calculate from the separation of the first two bins.
+        Assume each radial bin has this width when integrating. If None (default),
+        use nonuniform bin width determined from `xarray`.
     q
-        Integration accuracy parameter for the Legendre transform
+        Integration accuracy parameter for the integral over mu. The number of mu
+        samples is equal to `q * lmax`.
     chunksize
         Chunk size for evaluating discrete samples of angular integrand in batches.
         Default: 50.
+    channel_method
+        Method for integrating within radial bins:
+        - "gauss-legendre": Gauss-Legendre quadrature
+        - "uniform": uses uniform sampling of the entire comoving-distance range
+        being considered. Uses a combination of Simpson's rule and the trapezoid
+        rule if `overlapping_channels` is `False` (see below), or Simpson's rule
+        if `overlapping_channels` is `True`. ("uniform is needed for Finger-of-God
+        damping to be incorporated.)
+    chi1_2nd_derivative, chi2_2nd_derivative
+        Whether to take finite-difference 2nd derivatives of the integrand in chi_1
+        or chi_2 prior to integrating. This is useful for computing angular power
+        spectra involving the Kaiser redshift-space distortion term by
+        differentiating power spectra of the gravitational potential.
+    FoG_convolve
+        Whether to convolve the integrand with the Finger-of-God damping kernel
+        prior to integration. Must choose `channel_method = "uniform"`.
+    FoG_sigmaP
+        Finger-of-God damping scale to use in kernel.
+    FoG_sigmaP_other
+        Finger-of-God damping scale to use in kernel corresponding to `chi_2`.
+        If None, `FoG_sigmaP` is used for both `chi_1` and `chi_2`.
+    FoG_kernel_max_nchannels
+        Restrict the width of the Finger-of-God kernel to the comoving distance
+        interval equal to twice this number of frequency channels. This reduces
+        the computational cost of the convolution.
+    channel_profile
+        Frequency channel profile to use in the channel integration.
+        The profile function must be defined in terms of frequency relative
+        to channel center, in units of channel width (e.g. center = 0,
+        edges = [-0.5, 0.5]). If None, a top-hat profile is used.
+        Default: None.
+    overlapping_channels
+        If > 0, use a special algorithm that integrates the channel profile
+        over this number of neighboring channels on either side of the channel
+        of interest, to capture contributions from the channel profile that
+        extend beyond the nominal channel boundaries. Default: 0.
 
     Returns
     -------
     clxx
-        Array of the :math:`C_l(\chi_1, \chi_2)` values, with l as the first axis.
+        Array of the :math:`C_\ell(\chi_1, \chi_2)` values, with l as the first axis.
+
+    Notes
+    -----
+    The integration scheme over radial bins evaluates a point at :math:`\xi(r=0)`,
+    which can have an outsized influence for very blue input power spectra, because
+    the number of samples in the integration is quite small and the correlation
+    function can diverge quite strongly as :math:`r \to 0`. While this could
+    make a difference in the point variance, in practice this doesn't seem to make
+    much difference to the output maps, as the transform from :math:`\theta \to \ell`
+    seems to wash out this impact.
     """
 
-    # The integration over angle will be performed by Gauss-Legendre integration. Here
-    # we calculate the points that it will be evaluated at....
+    if channel_method not in ["gauss-legendre", "uniform"]:
+        raise RuntimeError("channel method must be one of 'gauss-legendre', 'uniform'")
+
+    # Catch combinations of parameters that are not implemented
+    if channel_method == "gauss-legendre":
+        if FoG_convolve:
+            raise NotImplementedError(
+                "Finger-of-God damping is not implemented for Gauss-Legendre "
+                "channel integration"
+            )
+        if channel_profile is not None:
+            raise NotImplementedError(
+                "Integration over a nontrivial channel profile is not implemented "
+                "for Gauss-Legendre channel integration"
+            )
+
+    elif channel_method == "uniform":
+        if xromb == 0:
+            raise NotImplementedError(
+                "Need xromb > 0 if using Simpson-trapezoid channel integration scheme"
+            )
+        if xwidth is not None:
+            raise NotImplementedError(
+                "Uniform channel width not implemented for Simpson-trapezoid "
+                "channel integration scheme"
+            )
+
+    # If no damping scale is supplied, don't do any FoG convolution
+    if FoG_sigmaP is None:
+        FoG_convolve = False
+
+    # The integration over mu will be performed by Gauss-Legendre quadrature.
+    # Here we calculate the points that it will be evaluated at.
     M = q * lmax
     mu, w, wsum = ss.roots_legendre(M, mu=True)
 
-    # If xromb > 0 we need to integrate over the radial bin width, start by modifying
-    # the array of distances to add extra points over which we'll integrate
-    #
-    # NOTE: the integration scheme over radial bins evaluates a point at C(r=0) which
-    # can have an outsized influence for very blue input power spectra because the
-    # number of samples in the integration is quite small and the correlation function
-    # can diverge quite strongly as r->0. While this could make a difference in the
-    # point variance, in practice this doesn't seem to make much difference to the
-    # *output* maps as it the transform from theta -> l seems to wash it out
-    if xromb > 0:
-        # Calculate the half bin width
-        if xwidth is None:
-            xhalf = np.ndarray(shape=xarray.shape)
-            # width for first and second bin are same
-            xhalf[0] = np.abs(xarray[1] - xarray[0]) / 2.0
-            xhalf[1:] = np.abs(xarray[1:] - xarray[:-1]) / 2.0
-        else:
-            # for continuity with previous convention of allowing to choose xwidth
-            xhalf = np.ones(shape=xarray.shape) * xwidth / 2.0
-
-        xint = 2**xromb + 1
-
-        # Get the quadrature points and weights.
-        x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
-        x_w /= x_wsum
-
-        # Calculate the extended z-array with the extra intervals to integrate over
-        xa = (xarray[:, np.newaxis] + xhalf[:, np.newaxis] * x_r).flatten()
-
+    # Some of the logic below depends on xarray being in increasing order,
+    # so if it's not, we operate on a reversed version and then reverse
+    # the final results at the end
+    sorted_xarray = np.sort(xarray)
+    if np.array_equal(xarray, sorted_xarray):
+        flipped_xarray = False
+    elif np.array_equal(xarray[::-1], sorted_xarray):
+        flipped_xarray = True
     else:
-        xa = xarray
+        raise RuntimeError("xarray must be strictly increasing or decreasing")
 
+    # Make MPIArray to store channel-integrated correlation function
     xlen = xarray.size
     corr_array = mpiarray.zeros((M, xlen, xlen), axis=0)
     clo = corr_array.local_offset[0]
     _len = corr_array.local_array.shape[0]
 
-    # Split thetas into chunks, otherwise memory will blow up
+    # Determine full set of chi values for integrand
+    if channel_method == "gauss-legendre":
+
+        if xromb > 0:
+            # Calculate the half bin width
+            if xwidth is None:
+                xhalf = 0.5 * calculate_width(sorted_xarray)
+            else:
+                xhalf = np.ones(shape=xarray.shape) * xwidth / 2.0
+
+            xint = 2**xromb + 1
+
+            # Get the quadrature points and weights
+            x_r, x_w, x_wsum = ss.roots_legendre(xint, mu=True)
+            x_w /= x_wsum
+
+            # Calculate the extended chi array, with the extra intervals
+            # to integrate over
+            xarray_full = (
+                sorted_xarray[:, np.newaxis] + xhalf[:, np.newaxis] * x_r
+            ).flatten()
+
+        else:
+            xarray_full = sorted_xarray
+
+    else:
+
+        # Determine half-channel widths and channel boundaries in chi
+        xhalf = 0.5 * calculate_width(sorted_xarray)
+        xedges = np.concatenate(
+            [sorted_xarray - xhalf, [sorted_xarray[-1] + xhalf[-1]]]
+        )
+
+        # Generate uniformly-spaced array of chi values over full chi range
+        xint = 2**xromb + 1
+        xarray_full = np.linspace(
+            xedges[0], xedges[-1], len(xarray) * xint, endpoint=True
+        )
+
+        # If we're using a channel profile with overlap of neighboring channels,
+        # we'll use a routine that accepts the profile function as an argument.
+        # If our profile has no overlap, we need to precompute some profile
+        # quantities here.
+        if channel_profile is not None and overlapping_channels == 0:
+            # Determine the channel index of each point in xarray_full
+            chan_idx = np.searchsorted(xedges, xarray_full, side="right") - 1
+            chan_idx = np.clip(chan_idx, 0, xlen - 1)
+
+            # Compute the distance of each point from the channel center,
+            # divided by the channel width
+            rel_dx_full = (xarray_full - sorted_xarray[chan_idx]) / (
+                2 * xhalf[chan_idx]
+            )
+
+            # Evaluate the channel profile at these values
+            profile_full = channel_profile(rel_dx_full)
+
+            # Integrate channel profile within each channel.
+            # (We'll use these values to normalize our final channel
+            # integrals.)
+            norm = 2 * xhalf * si.quad(channel_profile, -0.5, 0.5)[0]
+        else:
+            profile_full = None
+
+            # For top-hat profile, normalization factors are just the
+            # channel widths
+            norm = 2 * xhalf
+
+        # If convolving with Finger-of-God kernel, precompute kernel
+        if FoG_convolve:
+
+            # Compute the maximum number of |dchi| values at which to
+            # evaluate the kernel
+            if FoG_kernel_max_nchannels is None:
+                # Just use half of the full xarray
+                n_dx = len(xarray_full) // 2
+            else:
+                # Compute the maximum number of xarray_full elements
+                # corresponding to the number of padding channels,
+                # considering the higher and lower sets of padding
+                # channels
+                n_dx = max(
+                    np.sum(xarray_full < xedges[FoG_kernel_max_nchannels + 1]),
+                    np.sum(xarray_full > xedges[-FoG_kernel_max_nchannels]),
+                )
+
+            # Make array of dchi for evaluating kernel
+            dxarray = xarray_full[:n_dx] - xarray_full[0]
+            dxarray = np.concatenate([-dxarray[1:][::-1], dxarray])
+
+            # Evaluate kernel, and downselect to nonzero elements.
+            # (Some elements may be zero due to small-value truncation
+            # within exponential_FoG_kernel_1d.)
+            FoG_kernel = exponential_FoG_kernel_1d(dxarray, FoG_sigmaP)
+            FoG_kernel = FoG_kernel[FoG_kernel > 0.0]
+
+            # Compute sum of kernel values that will be used in convolution
+            # at every element of xarray_full. This will be used to normalize
+            # the kernel later.
+            FoG_kernel_norm = ssig.oaconvolve(
+                np.ones_like(xarray_full),
+                FoG_kernel,
+                mode="same",
+            )
+
+            # If FoG_sigmaP_other is specified, evaluate corresponding kernel
+            if FoG_sigmaP_other is not None:
+                FoG_kernel_other = exponential_FoG_kernel_1d(dxarray, FoG_sigmaP_other)
+                FoG_kernel_other = FoG_kernel_other[FoG_kernel_other > 0.0]
+                FoG_kernel_other_norm = ssig.oaconvolve(
+                    np.ones_like(xarray_full),
+                    FoG_kernel_other,
+                    mode="same",
+                )
+            else:
+                FoG_kernel_other = FoG_kernel
+                FoG_kernel_other_norm = FoG_kernel_norm
+
+    # Split mu values into chunks, to avoid memory usage blowing up
     for msec in np.array_split(np.arange(_len), _len // chunksize):
-        # Index into the global index in mu
-        rc = coordinates.spherical.cosine_rule(mu[clo + msec], xa, xa)
+        # Index into the global index in mu, and evaluate the correlation
+        # function at the relevant (mu,chi_1,chi_2) values
+        rc = coordinates.spherical.cosine_rule(mu[clo + msec], xarray_full, xarray_full)
         corr1 = corr(rc)
 
-        # If xromb then we need to integrate over the redshift bins which we do using
-        # Gauss-Legendre quadrature implemented as a matrix multiply
-        if xromb > 0:
-            corr1 = corr1.reshape(-1, xint)
-            corr1 = np.matmul(corr1, x_w).reshape(-1, xlen, xint, xlen)
-            corr1 = np.matmul(corr1.transpose(0, 1, 3, 2), x_w)
+        # If desired, compute second derivatives in chi_1 and/or chi_2.
+        # (Numerical stability is better if this is done before the FoG
+        # convolution rather than after.)
+        if chi1_2nd_derivative:
+            corr1 = diff2(corr1, xarray_full, axis=1)
+        if chi2_2nd_derivative:
+            corr1 = diff2(corr1, xarray_full, axis=2)
 
+        # Integrate over each channel
+        if channel_method == "gauss-legendre":
+            # If xromb>0, we integrate using Gauss-Legendre quadrature,
+            # implemented as a matrix multiply
+            if xromb > 0:
+                corr1 = corr1.reshape(-1, xint)
+                corr1 = np.matmul(corr1, x_w).reshape(-1, xlen, xint, xlen)
+                corr1 = np.matmul(corr1.transpose(0, 1, 3, 2), x_w)
+        else:
+            # If desired, convolve with Finger-of-God kernel in chi_1 and
+            # chi_2. We normalize the kernel such that it integrates to
+            # unity, by dividing by the sums computed earlier.
+            if FoG_convolve:
+                corr1 = (
+                    ssig.oaconvolve(
+                        corr1,
+                        FoG_kernel[np.newaxis, :, np.newaxis],
+                        axes=(1,),
+                        mode="same",
+                    )
+                    / FoG_kernel_norm[np.newaxis, :, np.newaxis]
+                )
+                corr1 = (
+                    ssig.oaconvolve(
+                        corr1,
+                        FoG_kernel_other[np.newaxis, np.newaxis, :],
+                        axes=(2,),
+                        mode="same",
+                    )
+                    / FoG_kernel_other_norm[..., :]
+                )
+
+            # Perform channel integrals in chi_1, then chi_2
+            if overlapping_channels == 0:
+                corr1 = integrate_uniform_into_bins(
+                    corr1, xarray_full, xedges, axis=1, norm=norm, window=profile_full
+                )
+                corr1 = integrate_uniform_into_bins(
+                    corr1, xarray_full, xedges, axis=2, norm=norm, window=profile_full
+                )
+            else:
+                corr1 = integrate_uniform_into_tapered_channels(
+                    corr1,
+                    xarray_full,
+                    sorted_xarray,
+                    2 * xhalf,
+                    channel_profile,
+                    axis=1,
+                    n_overlap=overlapping_channels,
+                    use_cached_weights=True,
+                )
+                corr1 = integrate_uniform_into_tapered_channels(
+                    corr1,
+                    xarray_full,
+                    sorted_xarray,
+                    2 * xhalf,
+                    channel_profile,
+                    axis=2,
+                    n_overlap=overlapping_channels,
+                    use_cached_weights=True,
+                )
+
+        # Save results
         corr_array.local_array[msec] = corr1
 
     # Perform the dot product split over ranks for
@@ -394,10 +661,17 @@ def corr_to_clarray(
     # perform the dot product
     corr_array = corr_array.reshape(None, -1).redistribute(axis=1)
 
+    # Carry out Gauss-Legendre integration over mu, via matrix multiplication
     clxx = np.dot(lm, corr_array.local_array)
     clxx = mpiarray.MPIArray.wrap(clxx, axis=1).redistribute(axis=0)
+    clxx = clxx.reshape(None, xlen, xlen)
 
-    return clxx.reshape(None, xlen, xlen)
+    # If we reversed the input order of xarray, reverse the x axes
+    # in the final output
+    if flipped_xarray:
+        clxx = clxx[:, ::-1, ::-1]
+
+    return clxx
 
 
 def ps_to_aps_flat(
@@ -405,7 +679,7 @@ def ps_to_aps_flat(
     n_k: int = 0,
     n_mu: int = 0,
 ) -> Callable[[np.ndarray, np.ndarray, np.ndarray], np.ndarray]:
-    """Calculate a multi-distance angular power spectrum from a 3D power spectrum.
+    r"""Calculate a multi-distance angular power spectrum from a 3D power spectrum.
 
     This uses a flat sky limit. See equation 21 of arXiv:astro-ph/0605546.
 

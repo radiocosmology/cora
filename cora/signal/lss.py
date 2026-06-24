@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 from functools import cache
 
 import healpy
@@ -8,6 +8,7 @@ import numpy as np
 from caput import config, mpiarray
 from caput.astro import constants
 from caput.pipeline import exceptions, tasklib
+from caput.util import pfb
 
 from ..core import containers, skysim
 from ..util import hputil
@@ -21,9 +22,11 @@ from ..util.pmesh import (
 from ..util.nputil import FloatArrayLike
 from . import corrfunc, lssutil, lssmodels
 from .lsscontainers import (
+    InterpolatedFunction,
     BiasedLSS,
     CorrelationFunction,
     MultiFrequencyAngularPowerSpectrum,
+    MultiTracerMultiFrequencyAngularPowerSpectrum,
     InitialLSS,
     MatterPowerSpectrum,
     _INTERP_TYPES,
@@ -243,11 +246,85 @@ class BlendNonLinearPowerSpectrum(tasklib.base.ContainerTask):
         return ps_linear
 
 
-class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
-    """Calculate C_l(chi,chi') from a real-space correlation function.
+class CalculatePFBChannelProfile(tasklib.base.ContainerTask):
+    """Compute frequency channel profile for CASPER PFB.
+
+    The output is an `InterpolatedFunction` container containing
+    the squared magnitude of the profile computed by
+    `caput.util.pfb.PFB.compute_channel_profile`, which corresponds
+    to the frequency channel profile associataed with a measured
+    visibility.
+
+    Attributes
+    ----------
+    ntap : int
+        Number of taps (i.e. blocks) used in one step of the PFB.
+    lblock : int
+        The length of a block that gets transformed. This is twice the number
+        of output frequencies.
+    window : str, optional
+        The window function being used. Must be one of "sinc", "sinc_hann",
+        or "sinc_hamming". Default: "sinc-hamming" (which is used for CHIME).
+    oversample : int, optional
+        The amount to oversample when calculating the decorrelation ratio.
+        This will improve accuracy. The default (16) is typically
+        sufficient for CHIME.
+    """
+
+    ntap = config.Property(proptype=int)
+    lblock = config.Property(proptype=int)
+    window = config.enum(["sinc", "sinc_hann", "sinc_hamming"], default="sinc_hamming")
+    oversample = config.Property(proptype=int, default=16)
+
+    def process(self) -> InterpolatedFunction:
+        """Construct the profile interpolating function.
+
+        Returns
+        -------
+        profile_cont
+            Container with interpolating function for profile.
+        """
+
+        # Mapping from input string to window routine in caput.pfb
+        _window_function = {
+            "sinc": pfb.sinc_window,
+            "sinc_hann": pfb.sinc_hann,
+            "sinc_hamming": pfb.sinc_hamming,
+        }
+
+        # Instantiate PFB object
+        pfb_ = pfb.PFB(
+            self.ntap,
+            self.lblock,
+            _window_function[self.window],
+            oversample=self.oversample,
+        )
+
+        # Compute voltage profile and square to obtain profile for visibility
+        rel_freq, profile_vals = pfb_.compute_channel_profile(norm=True)
+        profile_vals = np.abs(profile_vals) ** 2
+
+        # Create output container
+        profile_cont = InterpolatedFunction()
+        profile_cont.add_function("profile", rel_freq, profile_vals, type="linear")
+
+        self.done = True
+
+        return profile_cont
+
+
+class CalculateMultiFrequencyAngularPowerSpectrumBase(tasklib.base.ContainerTask):
+    """Base class for calculating C_l(chi,chi') (non-functional).
 
     The output will be evaluated at constant redshift, corresponding
     to the redshift of the input correlation functions.
+
+    Spectra will be calculated for delta-delta, phi-delta, and phi-phi,
+    where delta is the matter overdensity and phi is the gravitational
+    potential (including numerical prefactors from the Poisson equation).
+    If `use_d2phi` is set, the second line-of-sight derivative of phi
+    will be used instead of phi. (This is useful for simulating maps of
+    the Kaiser redshift-space distortion term.)
 
     Attributes
     ----------
@@ -258,37 +335,99 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
     frequencies : np.ndarray
         The frequencies to evaulate at. Overrides redshift property if
         specified.
+    channel_method : str, one of ["gauss_legendre", "uniform"]
+        Method for integrating within radial bins: Gauss-Legendre quadrature
+        ("gauss-legendre") or a combination of Simpson's rule and the trapezoid rule
+        ("uniform") based on uniform sampling of the entire comoving-distance
+        range being considered. (The latter is needed for Finger-of-God damping
+        to be incorporated.)
     xromb : int, optional
-        Gauss-Legendre quadrature order for integrating C_ell over radial
-        bins. (Used Romberg integration in a previous version, hence the
-        name xromb.) xromb=0 turns off this integral. When dealing with
-        nonlinear matter power spectrum, for sub-percent accuracy up to
-        l ~ 1500, xromb = 3 is recommended. Default: 2.
+        The order for integrating within radial bins, related to the number of samples
+        within each bin by `2**xromb + 1`. This generates an exponentially increasing
+        amount of work, so increase carefully. Note that despite the parameter name
+        this no longer uses a Romberg integrator, but either a Gauss-Legendre
+        quadrature rule or a combination of Simpson's rule and the trapezoid rule,
+        depending on `channel_method`. xromb = 0 turns off this integral. When
+        dealing with a nonlinear matter power spectrum, for sub-percent accuracy
+        up to l ~ 1500 with nside = 1024, xromb = 3 is recommended. Default: 2.
     leg_q : int, optional
         Integration accuracy parameter for Legendre transform for C_ell
         computation. When dealing with nonlinear matter power spectrum,
         for sub-percent accuracy up to l ~ 1500, leg_q = 16 is recommended.
         Default: 4.
-    leg_chunksize: int, optional
+    leg_chunksize : int, optional
         Chunk size for evaluating samples of C_ell integrand. Changing
         from default value is unlikely to affect performance. Default: 50.
-    corrfunc_interp_type: str, optional
+    corrfunc_interp_type : str, optional
         Interpolation method to use for correlation function in C_ell
         integrand. If None, the default method stored in the
         CorrelationFunction container is used. Default: None.
+    use_d2phi : bool, optional
+        Compute spectra corresponding to the second line-of-sight
+        derivative of phi instead of phi itself. Default: False.
+    freq_padding : bool, optional
+        Add extra high and low frequencies so that Kaiser-term derivatives and
+        FoG convolution are accurately performed at highest and lowest frequencies
+        specified in `frequencies` or `redshift`. If `FoG_convolve` is False,
+        `d2phi_freq_padding` extra frequencies are added at each end.
+        If `FoG_convolve` is True, the number of extra frequencies is computed
+        such that the FoG convolution for the requested edge frequencies captures
+        contributions from some fraction of the integral of the FoG kernel,
+        specified by `FoG_freq_padding_threshold`. Default: False.
+    d2phi_freq_padding : int, optional
+        Fixed number of padding frequencies. Overridden if `FoG_convolve` is True.
+        Default: 1.
+    FoG_freq_padding_threshold : float, optional
+        Requested frequency range is padded such that this fraction of the
+        integral of the FoG kernel is captured. Default: 0.99.
+    FoG_freq_padding_maxnum : int, optional
+        Maximum number of frequencies to pad by (to limit the maximum computational
+        cost). Default: None.
+    overlapping_channels : int, optional
+        If using frequency channel profile, number of neighboring channels
+        to integrate over to capture tails of profile. Default: 0.
     """
 
     nside = config.Property(proptype=int)
     redshift = config.Property(proptype=lssutil.linspace, default=None)
     frequencies = config.Property(proptype=lssutil.linspace, default=None)
+
+    channel_method = config.enum(
+        ["gauss-legendre", "uniform"], default="gauss-legendre"
+    )
     xromb = config.Property(proptype=int, default=2)
     leg_q = config.Property(proptype=int, default=4)
     leg_chunksize = config.Property(proptype=int, default=50)
     corrfunc_interp_type = config.enum(_INTERP_TYPES, default=None)
 
-    def process(
-        self, correlation_functions: CorrelationFunction
-    ) -> MultiFrequencyAngularPowerSpectrum:
+    use_d2phi = config.Property(proptype=bool, default=False)
+
+    freq_padding = config.Property(proptype=bool, default=False)
+    d2phi_freq_padding = config.Property(proptype=int, default=1)
+
+    FoG_freq_padding_threshold = config.Property(proptype=float, default=0.99)
+    FoG_freq_padding_maxnum = config.Property(proptype=int, default=None)
+
+    overlapping_channels = config.Property(proptype=int, default=0)
+
+    def setup(self, profile_cont: Optional[InterpolatedFunction] = None):
+        """Set up frequency channel profile.
+
+        Parameters
+        ----------
+        profile_cont: InterpolatedFunction, optional
+            `InterpolatedFunction` container with frequency channel profile.
+            If None, a top-hat is used. Default: None.
+        """
+
+        self.channel_profile_func = None
+        if profile_cont is not None:
+            self.channel_profile_func = profile_cont.get_function("profile")
+
+    def process(self, correlation_functions: CorrelationFunction) -> Union[
+        MultiFrequencyAngularPowerSpectrum,
+        MultiTracerMultiFrequencyAngularPowerSpectrum,
+    ]:
         """Compute the angular power spectra.
 
         Returns
@@ -314,14 +453,185 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
 
         if self.frequencies is None:
             redshift = self.redshift
+            self.frequencies = constants.nu21 / (1.0 + redshift)
         else:
             redshift = constants.nu21 / self.frequencies - 1.0
 
         xa = cosmology.comoving_distance(redshift)
 
+        nfreq_pad = 0
+
+        # If padding frequencies, set number to default to ensure accurate
+        # Kaiser-term derivatives at lowest and highest frequency. This is
+        # overridden below if FoG convolution is turned on.
+        if self.freq_padding:
+            nfreq_pad = self.d2phi_freq_padding
+
         # NOTE: it is important not to set this any higher. Otherwise,
         # power will alias back down when the map is transformed later on
         lmax = 3 * self.nside - 1
+
+        # Compute FoG damping scale(s). "None" corresponds to no damping.
+        sigma_P_arr = self._compute_FoG_damping_scales(redshift)
+
+        # Pad frequencies
+        if all(x is None for x in sigma_P_arr):
+            # If all sigma_P values are None, there's no FoG damping,
+            # pad by nfreq_pad frequencies if nonzero
+            if nfreq_pad > 0:
+                freqs_new, nfreq_pad, _, _ = lssutil.pad_frequencies(
+                    self.frequencies, num=nfreq_pad
+                )
+        else:
+            # If there's at least one nontrivial sigma_P, find the maximum
+            # value, and pad frequencies based on this value
+            nonzero_sigma_P_arr = np.array([x for x in sigma_P_arr if x is not None])
+            sigma_P_max = np.max(nonzero_sigma_P_arr)
+
+            if self.freq_padding:
+                # Pad frequencies to ensure adequate coverage of widest FoG kernel
+                freqs_new, nfreq_pad, nfreq_pad_raw, FoG_kernel_frac = (
+                    lssutil.pad_frequencies(
+                        self.frequencies,
+                        use_FoG_kernel=True,
+                        cosmology=cosmology,
+                        sigma_P=sigma_P_max,
+                        FoG_threshold=self.FoG_freq_padding_threshold,
+                        maxnum=self.FoG_freq_padding_maxnum,
+                    )
+                )
+                self.log.info(
+                    "Fraction of widest FoG kernel with covered by "
+                    f"padded frequencies: {FoG_kernel_frac}"
+                )
+                if nfreq_pad != nfreq_pad_raw:
+                    self.log.info(
+                        "Number of raw padding frequencies, "
+                        f"prior to cutting off: {nfreq_pad_raw}"
+                    )
+
+        # If necessary, generate new comoving-distance array from padded frequencies
+        nfreq_pad_for_kernel = None
+        if nfreq_pad > 0:
+            redshift_new = constants.nu21 / freqs_new - 1.0
+            xa = cosmology.comoving_distance(redshift_new)
+
+            nfreq_pad_for_kernel = nfreq_pad
+
+            self.log.info(f"Number of padding frequencies: {nfreq_pad}")
+
+        # Compute angular power spectra and assemble into output container
+        out_cont = self._compute_spectra(
+            cosmology,
+            redshift,
+            corr0,
+            corr2,
+            corr4,
+            lmax,
+            xa,
+            nfreq_pad,
+            nfreq_pad_for_kernel,
+            sigma_P_arr,
+        )
+
+        return out_cont
+
+
+class CalculateSingleTracerMultiFrequencyAngularPowerSpectrum(
+    CalculateMultiFrequencyAngularPowerSpectrumBase
+):
+    """Calculate C_l(chi,chi') for a single tracer.
+
+    If `FoG_convolve` is set, the integrand of the C_l expression will
+    be convolved with the position-space Finger-of-God damping kernel.
+    Sky maps generated with the output C_l will then include this
+    damping.
+
+    See docstring for `CalculateMultiFrequencyAngularPowerSpectrumBase`
+    for other attributes not listed below.
+
+    Attributes
+    ----------
+    FoG_convolve : bool, optional
+        Whether to convolve the integrand with the Finger-of-God damping kernel
+        prior to integration. Must choose `channel_method = "uniform"`.
+        Default: False.
+    alpha_FoG : float
+        A parameter to control the strength of the effect by adjusting the damping
+        scale. A value of 1 (default) applies the nominal damping, 0 turns the
+        damping off entirely, and any other values adjust the scale appropriately.
+    FoG_model : str, optional
+        Use an inbuilt model for the Finger-of-God damping. If None (default), a
+        specific model is expected to be set via `FoG_coeff` and `z_eff`. See
+        `lssmodels.sigma_P` for available models and details about them.
+    FoG_coeff : list, optional
+        A list of coefficients in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`.
+        If None (default), `FoG_model` must be set.
+    FoG_z_eff : float, optional
+        The effective redshift of the polynomial expansion. Default: None.
+    FoG_z_eval : float, optional
+        Redshift at which to evaluate FoG damping model. If not set, mean redshift
+        of input container is used. Default: None.
+    """
+
+    FoG_convolve = config.Property(proptype=bool, default=False)
+    alpha_FoG = config.Property(proptype=float, default=1.0)
+    FoG_model = config.enum(lssmodels.sigma_P.models(), default=None)
+    FoG_coeff = config.list_type(type_=float, default=None)
+    FoG_z_eff = config.Property(proptype=float, default=None)
+    FoG_z_eval = config.Property(proptype=float, default=None)
+
+    def _compute_FoG_damping_scales(self, redshift: np.ndarray) -> np.ndarray:
+        """Compute FoG damping scale for desired tracer."""
+
+        # If alpha_FoG is 0, return "None" for damping scale,
+        # indicating that damping should not be applied
+        if self.alpha_FoG == 0 or not self.FoG_convolve:
+            return np.array([None])
+
+        # Set redshift at which to evaluate model for damping scale
+        if self.FoG_z_eval is not None:
+            z_eval = self.FoG_z_eval
+        else:
+            z_eval = np.mean(redshift)
+
+        # Compute damping scale
+        if self.FoG_z_eff is not None and self.FoG_coeff is not None:
+
+            def s(z):
+                return lssmodels.PolyModelSet.evaluate_poly(
+                    z, self.FoG_z_eff, self.FoG_coeff
+                )
+
+            sigma_P = self.alpha_FoG * s(z_eval)
+
+        elif self.FoG_model is not None:
+            sigma_P = self.alpha_FoG * lssmodels.sigma_P[self.FoG_model](z_eval)
+        else:
+            raise config.CaputConfigError(
+                "Either `FoG_model`, or `FoG_z_eff` and `FoG_coeff`, must be set"
+            )
+
+        return np.array([sigma_P])
+
+    def _compute_spectra(
+        self,
+        cosmology,
+        redshift,
+        corr0,
+        corr2,
+        corr4,
+        lmax,
+        xa,
+        nfreq_pad,
+        nfreq_pad_for_kernel,
+        sigma_P_arr,
+    ):
+        """Compute angular power spectra for desired tracer."""
+
+        phi_label = "d2phi" if self.use_d2phi else "phi"
+
+        sigma_P = sigma_P_arr[0]
 
         self.log.debug("Generating C_l(x, x') for delta-delta")
         cla0 = corrfunc.corr_to_clarray(
@@ -331,9 +641,15 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_P,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
         )
 
-        self.log.debug("Generating C_l(x, x') for phi-delta")
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}-delta")
         cla2 = corrfunc.corr_to_clarray(
             corr2,
             lmax,
@@ -341,9 +657,16 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_P,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+            chi1_2nd_derivative=self.use_d2phi,
         )
 
-        self.log.debug("Generating C_l(x, x') for phi-phi")
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}-{phi_label}")
         cla4 = corrfunc.corr_to_clarray(
             corr4,
             lmax,
@@ -351,6 +674,14 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
             xromb=self.xromb,
             q=self.leg_q,
             chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_P,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+            chi1_2nd_derivative=self.use_d2phi,
+            chi2_2nd_derivative=self.use_d2phi,
         )
 
         if self.frequencies is not None:
@@ -358,22 +689,362 @@ class CalculateMultiFrequencyAngularPowerSpectrum(tasklib.base.ContainerTask):
                 cosmology=cosmology,
                 freq=self.frequencies,
                 lmax=lmax,
+                d2phi=self.use_d2phi,
+                nfreq_pad=nfreq_pad,
             )
         else:
             out_cont = MultiFrequencyAngularPowerSpectrum(
                 cosmology=cosmology,
                 redshift=redshift,
                 lmax=lmax,
+                d2phi=self.use_d2phi,
+                nfreq_pad=nfreq_pad,
             )
 
-        out_cont.Cl_delta_delta[:] = cla0
-        out_cont.Cl_phi_delta[:] = cla2
-        out_cont.Cl_phi_phi[:] = cla4
+        # If extra frequencies were added, slice back to original
+        # set of frequencies
+        if nfreq_pad > 0:
+            slc = slice(nfreq_pad, -nfreq_pad)
+        else:
+            slc = slice(None)
+
+        out_cont.Cl_delta_delta[:] = cla0[:, slc, slc]
+        out_cont.Cl_phi_delta[:] = cla2[:, slc, slc]
+        out_cont.Cl_phi_phi[:] = cla4[:, slc, slc]
 
         return out_cont
 
 
-class GenerateInitialLSSFromCl(tasklib.base.ContainerTask):
+# Alias for legacy compatibility
+CalculateMultiFrequencyAngularPowerSpectrum = (
+    CalculateSingleTracerMultiFrequencyAngularPowerSpectrum
+)
+
+
+class CalculateDoubleTracerMultiFrequencyAngularPowerSpectrum(
+    CalculateMultiFrequencyAngularPowerSpectrumBase
+):
+    """Calculate C_l(chi,chi') for two correlated tracers.
+
+    If `FoG_convolve` is set, the integrand of the C_l expression will
+    be convolved with the position-space Finger-of-God damping kernel.
+    Sky maps generated with the output C_l will then include this
+    damping.
+
+    See docstring for `CalculateMultiFrequencyAngularPowerSpectrumBase`
+    for other attributes not listed below.
+
+    Attributes
+    ----------
+    FoG_convolve : bool, optional
+        Whether to convolve the integrand with the Finger-of-God damping kernel
+        prior to integration. Must choose `channel_method = "uniform"`.
+        Default: False.
+    alpha_FoG_A, alpha_FoG_B : float
+        A parameter to control the strength of the effect by adjusting the damping
+        scale for each tracer. A value of 1 (default) applies the nominal damping,
+        0 turns the damping off entirely, and any other values adjust the scale
+        appropriately.
+    FoG_model_A, FoG_model_B : str, optional
+        Use an inbuilt model for the Finger-of-God damping. If None (default), a
+        specific model is expected to be set via `FoG_coeff` and `z_eff`. See
+        `lssmodels.sigma_P` for available models and details about them.
+    FoG_coeff_A, FoG_coeff_B : list, optional
+        A list of coefficients in a polynomial of `FoG_coeff[i] * (z - z_eff)**i`.
+        If None (default), `FoG_model` must be set.
+    FoG_z_eff_A, FoG_z_eff_B : float, optional
+        The effective redshift of the polynomial expansion. Default: None.
+    FoG_z_eval_A, FoG_z_eval_B : float, optional
+        Redshift at which to evaluate FoG damping model. If not set, mean redshift
+        of input container is used. Default: None.
+    """
+
+    FoG_convolve = config.Property(proptype=bool, default=False)
+
+    alpha_FoG_A = config.Property(proptype=float, default=1.0)
+    FoG_model_A = config.enum(lssmodels.sigma_P.models(), default=None)
+    FoG_coeff_A = config.list_type(type_=float, default=None)
+    FoG_z_eff_A = config.Property(proptype=float, default=None)
+    FoG_z_eval_A = config.Property(proptype=float, default=None)
+
+    alpha_FoG_B = config.Property(proptype=float, default=1.0)
+    FoG_model_B = config.enum(lssmodels.sigma_P.models(), default=None)
+    FoG_coeff_B = config.list_type(type_=float, default=None)
+    FoG_z_eff_B = config.Property(proptype=float, default=None)
+    FoG_z_eval_B = config.Property(proptype=float, default=None)
+
+    def _compute_FoG_damping_scales(self, redshift: np.ndarray) -> np.ndarray:
+        """Compute FoG damping scales for both tracers."""
+
+        sigma_P_arr = [None, None]
+
+        for i, (alpha_FoG, FoG_model, FoG_coeff, FoG_z_eff, FoG_z_eval) in enumerate(
+            zip(
+                [self.alpha_FoG_A, self.alpha_FoG_B],
+                [self.FoG_model_A, self.FoG_model_B],
+                [self.FoG_coeff_A, self.FoG_coeff_B],
+                [self.FoG_z_eff_A, self.FoG_z_eff_B],
+                [self.FoG_z_eval_A, self.FoG_z_eval_B],
+            )
+        ):
+            # If alpha_FoG is 0, leave damping scale as "None",
+            # indicating that damping should not be applied
+            if alpha_FoG == 0 or not self.FoG_convolve:
+                continue
+
+            # Set redshift at which to evaluate model for damping scale
+            if FoG_z_eval is not None:
+                z_eval = FoG_z_eval
+            else:
+                z_eval = np.mean(redshift)
+
+            # Compute damping scale
+            if FoG_z_eff is not None and FoG_coeff is not None:
+
+                def s(z):
+                    return lssmodels.PolyModelSet.evaluate_poly(z, FoG_z_eff, FoG_coeff)
+
+                sigma_P_arr[i] = alpha_FoG * s(z_eval)
+
+            elif FoG_model is not None:
+                sigma_P_arr[i] = alpha_FoG * lssmodels.sigma_P[FoG_model](z_eval)
+            else:
+                raise config.CaputConfigError(
+                    "Either `FoG_model`, or `FoG_z_eff` and `FoG_coeff`, must be set"
+                )
+
+        return np.array(sigma_P_arr)
+
+    def _compute_spectra(
+        self,
+        cosmology,
+        redshift,
+        corr0,
+        corr2,
+        corr4,
+        lmax,
+        xa,
+        nfreq_pad,
+        nfreq_pad_for_kernel,
+        sigma_P_arr,
+    ):
+        """Compute multi-tracer angular power spectra."""
+
+        _SMALL_NONZERO_DAMPING = 1e-5
+
+        phi_label = "d2phi" if self.use_d2phi else "phi"
+
+        # If extra frequencies were added, slice back to original
+        # set of frequencies
+        if nfreq_pad > 0:
+            slc = slice(nfreq_pad, -nfreq_pad)
+        else:
+            slc = slice(None)
+
+        # Create output container
+        if self.frequencies is not None:
+            out_cont = MultiTracerMultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                freq=self.frequencies,
+                lmax=lmax,
+                n_tracer=2,
+                d2phi=self.use_d2phi,
+                nfreq_pad=nfreq_pad,
+            )
+        else:
+            out_cont = MultiTracerMultiFrequencyAngularPowerSpectrum(
+                cosmology=cosmology,
+                redshift=redshift,
+                lmax=lmax,
+                n_tracer=2,
+                d2phi=self.use_d2phi,
+                nfreq_pad=nfreq_pad,
+            )
+
+        sigma_A, sigma_B = sigma_P_arr
+
+        # Convert "None" to 0.0 for purposes of numerical comparison
+        def _norm_sigma(x):
+            return 0.0 if x is None else x
+
+        sigma_A_num = _norm_sigma(sigma_A)
+        sigma_B_num = _norm_sigma(sigma_B)
+
+        # If one sigma is zero and the other is not, bump zero to small nonzero
+        # value
+        if (
+            np.isclose(sigma_A_num, 0.0) or np.isclose(sigma_B_num, 0.0)
+        ) and not np.isclose(sigma_A_num, sigma_B_num):
+            sigma_A = _SMALL_NONZERO_DAMPING if sigma_A is None else sigma_A
+            sigma_B = _SMALL_NONZERO_DAMPING if sigma_B is None else sigma_A
+
+        # Check whether the two damping scales are identical
+        identical_damping = np.isclose(sigma_A_num, sigma_B_num)
+
+        self.log.debug("Generating C_l(x, x') for deltaA-deltaA")
+        cla = corrfunc.corr_to_clarray(
+            corr0,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_A,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+        )
+        # Cl_delta_delta[0] -> A-A
+        out_cont.Cl_delta_delta[0, :] = cla[:, slc, slc]
+
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}A-deltaA")
+        cla = corrfunc.corr_to_clarray(
+            corr2,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_A,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+            chi1_2nd_derivative=self.use_d2phi,
+        )
+        # Cl_phi_delta[0] -> A-A
+        out_cont.Cl_phi_delta[0, :] = cla[:, slc, slc]
+
+        self.log.debug(f"Generating C_l(x, x') for {phi_label}A-{phi_label}A")
+        cla = corrfunc.corr_to_clarray(
+            corr4,
+            lmax,
+            xa,
+            xromb=self.xromb,
+            q=self.leg_q,
+            chunksize=self.leg_chunksize,
+            channel_method=self.channel_method,
+            FoG_convolve=self.FoG_convolve,
+            FoG_sigmaP=sigma_A,
+            FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+            channel_profile=self.channel_profile_func,
+            overlapping_channels=self.overlapping_channels,
+            chi1_2nd_derivative=self.use_d2phi,
+            chi2_2nd_derivative=self.use_d2phi,
+        )
+        # Cl_phi_phi[0] -> A-A
+        out_cont.Cl_phi_phi[0, :] = cla[:, slc, slc]
+
+        # If the FoG scales are identical for each tracer, then we can re-use the
+        # A auto spectra. Otherwise, we need to compute A-B and B-B spectra.
+        if identical_damping:
+
+            self.log.debug(
+                "Identical FoG damping scales detected "
+                "- re-using A-A spectra for A-B and B-B"
+            )
+            for i in range(1, 3):
+                out_cont.Cl_delta_delta[i, :] = out_cont.Cl_delta_delta[0, :]
+                out_cont.Cl_phi_phi[i, :] = out_cont.Cl_phi_phi[0, :]
+
+            for i in range(1, 4):
+                out_cont.Cl_phi_delta[i, :] = out_cont.Cl_phi_delta[0, :]
+
+        else:
+
+            # Cl_delta_delta[1] -> A-B
+            # Cl_delta_delta[2] -> B-B
+            for i, label, sigma_1, sigma_2 in zip(
+                [1, 2],
+                ["deltaA-deltaB", "deltaB-deltaB"],
+                [sigma_A, sigma_B],
+                [sigma_B, None],
+            ):
+                self.log.debug(f"Generating C_l(x, x') for {label}")
+                cla = corrfunc.corr_to_clarray(
+                    corr0,
+                    lmax,
+                    xa,
+                    xromb=self.xromb,
+                    q=self.leg_q,
+                    chunksize=self.leg_chunksize,
+                    channel_method=self.channel_method,
+                    FoG_convolve=self.FoG_convolve,
+                    FoG_sigmaP=sigma_1,
+                    FoG_sigmaP_other=sigma_2,
+                    FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+                    channel_profile=self.channel_profile_func,
+                    overlapping_channels=self.overlapping_channels,
+                )
+                out_cont.Cl_delta_delta[i, :] = cla[:, slc, slc]
+
+            # Cl_phi_delta[1] -> A-B
+            # Cl_phi_delta[2] -> B-A
+            # Cl_phi_delta[3] -> B-B
+            for i, label, sigma_1, sigma_2 in zip(
+                [1, 2, 3],
+                [
+                    f"{phi_label}A-deltaB",
+                    f"{phi_label}B-deltaA",
+                    f"{phi_label}B-deltaB",
+                ],
+                [sigma_A, sigma_B, sigma_B],
+                [sigma_B, sigma_A, sigma_B],
+            ):
+                self.log.debug(f"Generating C_l(x, x') for {label}")
+                cla = corrfunc.corr_to_clarray(
+                    corr2,
+                    lmax,
+                    xa,
+                    xromb=self.xromb,
+                    q=self.leg_q,
+                    chunksize=self.leg_chunksize,
+                    channel_method=self.channel_method,
+                    FoG_convolve=self.FoG_convolve,
+                    FoG_sigmaP=sigma_1,
+                    FoG_sigmaP_other=sigma_2,
+                    FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+                    channel_profile=self.channel_profile_func,
+                    overlapping_channels=self.overlapping_channels,
+                    chi1_2nd_derivative=self.use_d2phi,
+                )
+                out_cont.Cl_phi_delta[i, :] = cla[:, slc, slc]
+
+            # Cl_phi_phi[1] -> A-B
+            # Cl_phi_phi[2] -> B-B
+            for i, label, sigma_1, sigma_2 in zip(
+                [1, 2],
+                [f"{phi_label}A-{phi_label}B", f"{phi_label}B-{phi_label}B"],
+                [sigma_A, sigma_B],
+                [sigma_B, None],
+            ):
+                self.log.debug(f"Generating C_l(x, x') for {label}")
+                cla = corrfunc.corr_to_clarray(
+                    corr4,
+                    lmax,
+                    xa,
+                    xromb=self.xromb,
+                    q=self.leg_q,
+                    chunksize=self.leg_chunksize,
+                    channel_method=self.channel_method,
+                    FoG_convolve=self.FoG_convolve,
+                    FoG_sigmaP=sigma_1,
+                    FoG_sigmaP_other=sigma_2,
+                    FoG_kernel_max_nchannels=nfreq_pad_for_kernel,
+                    channel_profile=self.channel_profile_func,
+                    overlapping_channels=self.overlapping_channels,
+                    chi1_2nd_derivative=self.use_d2phi,
+                    chi2_2nd_derivative=self.use_d2phi,
+                )
+                out_cont.Cl_phi_phi[i, :] = cla[:, slc, slc]
+
+        return out_cont
+
+
+class GenerateSingleTracerInitialLSSFromCl(tasklib.base.ContainerTask):
     """Generate initial LSS maps from input angular power spectrum.
 
     Attributes
@@ -441,7 +1112,7 @@ class GenerateInitialLSSFromCl(tasklib.base.ContainerTask):
         cla = mpiarray.zeros((len(self.aps.ell), 2 * nz, 2 * nz), axis=0)
         cla[:, nz:, nz:] = self.aps.Cl_delta_delta[:]
         cla[:, :nz, nz:] = self.aps.Cl_phi_delta[:]
-        cla[:, nz:, :nz] = self.aps.Cl_phi_delta[:]
+        cla[:, nz:, :nz] = self.aps.Cl_phi_delta[:].transpose(0, 2, 1)
         cla[:, :nz, :nz] = self.aps.Cl_phi_phi[:]
 
         # Generate map
@@ -455,12 +1126,14 @@ class GenerateInitialLSSFromCl(tasklib.base.ContainerTask):
                 cosmology=self.cosmology,
                 nside=self.nside,
                 freq=self.aps.freq,
+                d2phi=self.aps.d2phi,
             )
         else:
             f = InitialLSS(
                 cosmology=self.cosmology,
                 nside=self.nside,
                 redshift=self.aps.redshift,
+                d2phi=self.aps.d2phi,
             )
 
         # Redistribute over the pixel axis to properly
@@ -478,9 +1151,120 @@ class GenerateInitialLSSFromCl(tasklib.base.ContainerTask):
         return f
 
 
+# Alias for legacy compatibility
+GenerateInitialLSSFromCl = GenerateSingleTracerInitialLSSFromCl
+
+
+class GenerateDoubleTracerInitialLSSFromCl(GenerateSingleTracerInitialLSSFromCl):
+    """Generate initial LSS maps for two correlated tracers.
+
+    See `GenerateSingleTracerInitialLSSFromCl` docstring for attribute descriptions.
+    """
+
+    def process(self) -> Tuple[InitialLSS, InitialLSS]:
+        """Generate correlated realisations of the LSS initial conditions.
+
+        Returns
+        -------
+        fA, fB
+            The LSS initial conditions for each tracer.
+        """
+        # Stop if we've already generated enough realizations
+        if self.num_sims == 0:
+            raise exceptions.PipelineStopIteration()
+        self.num_sims -= 1
+
+        nz = len(self.aps.chi)
+
+        # Create extended covariance matrix capturing cross-correlations
+        # between the phi and delta fields for the two tracers:
+        #  pA-pA dA-pA pB-pA dB-pA
+        #  pA-dA dA-dA pB-dA dB-dA
+        #  pA-pB dA-pB pB-pB dB-pB
+        #  pA-dB dA-dB pB-dB dB-dB
+        cla = mpiarray.zeros((len(self.aps.ell), 4 * nz, 4 * nz), axis=0)
+
+        cla[:, :nz, :nz] = self.aps.Cl_phi_phi[0, :]
+        cla[:, nz : 2 * nz, :nz] = self.aps.Cl_phi_delta[0, :]
+        cla[:, 2 * nz : 3 * nz, :nz] = self.aps.Cl_phi_phi[1, :]
+        cla[:, 3 * nz : 4 * nz, :nz] = self.aps.Cl_phi_delta[1, :]
+
+        cla[:, :nz, nz : 2 * nz] = self.aps.Cl_phi_delta[0, :].transpose(0, 2, 1)
+        cla[:, nz : 2 * nz, nz : 2 * nz] = self.aps.Cl_delta_delta[0, :]
+        cla[:, 2 * nz : 3 * nz, nz : 2 * nz] = self.aps.Cl_phi_delta[2, :].transpose(
+            0, 2, 1
+        )
+        cla[:, 3 * nz : 4 * nz, nz : 2 * nz] = self.aps.Cl_delta_delta[1, :]
+
+        cla[:, :nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_phi[1, :].transpose(0, 2, 1)
+        cla[:, nz : 2 * nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_delta[2, :]
+        cla[:, 2 * nz : 3 * nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_phi[2, :]
+        cla[:, 3 * nz : 4 * nz, 2 * nz : 3 * nz] = self.aps.Cl_phi_delta[3, :]
+
+        cla[:, :nz, 3 * nz : 4 * nz] = self.aps.Cl_phi_delta[1, :].transpose(0, 2, 1)
+        cla[:, nz : 2 * nz, 3 * nz : 4 * nz] = self.aps.Cl_delta_delta[1, :].transpose(
+            0, 2, 1
+        )
+        cla[:, 2 * nz : 3 * nz, 3 * nz : 4 * nz] = self.aps.Cl_phi_delta[
+            3, :
+        ].transpose(0, 2, 1)
+        cla[:, 3 * nz : 4 * nz, 3 * nz : 4 * nz] = self.aps.Cl_delta_delta[2, :]
+
+        # Generate map
+        self.log.info(f"Generating realisation of fields using seed {self.seed}")
+        rng = np.random.default_rng(self.seed)
+        sky = skysim.mkfullsky(cla, self.nside, rng=rng)
+
+        # Make container for output
+        if self.aps.freq is not None:
+            fA = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                freq=self.aps.freq,
+                d2phi=self.aps.d2phi,
+            )
+            fB = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                freq=self.aps.freq,
+                d2phi=self.aps.d2phi,
+            )
+        else:
+            fA = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                redshift=self.aps.redshift,
+                d2phi=self.aps.d2phi,
+            )
+            fB = InitialLSS(
+                cosmology=self.cosmology,
+                nside=self.nside,
+                redshift=self.aps.redshift,
+                d2phi=self.aps.d2phi,
+            )
+
+        # Redistribute over the pixel axis to properly
+        # index the sky nz axis
+        fA.redistribute("pixel")
+        fB.redistribute("pixel")
+        sky = sky.redistribute(axis=1)
+
+        fA.phi[:] = sky[:nz]
+        fA.delta[:] = sky[nz : 2 * nz]
+        fB.phi[:] = sky[2 * nz : 3 * nz]
+        fB.delta[:] = sky[3 * nz : 4 * nz]
+
+        fA.redistribute("chi")
+        fB.redistribute("chi")
+
+        self.seed += 1
+
+        return fA, fB
+
+
 class GenerateInitialLSS(
-    CalculateMultiFrequencyAngularPowerSpectrum,
-    GenerateInitialLSSFromCl,
+    CalculateSingleTracerMultiFrequencyAngularPowerSpectrum,
+    GenerateSingleTracerInitialLSSFromCl,
 ):
     """Generate initial LSS maps from a correlation function.
 
@@ -489,13 +1273,13 @@ class GenerateInitialLSS(
     """
 
     def setup(self, correlation_functions: CorrelationFunction):
-        aps = CalculateMultiFrequencyAngularPowerSpectrum.process(
+        aps = CalculateSingleTracerMultiFrequencyAngularPowerSpectrum.process(
             self, correlation_functions
         )
-        GenerateInitialLSSFromCl.setup(self, aps)
+        GenerateSingleTracerInitialLSSFromCl.setup(self, aps)
 
     def process(self):
-        return GenerateInitialLSSFromCl.process(self)
+        return GenerateSingleTracerInitialLSSFromCl.process(self)
 
 
 class GenerateBiasedFieldBase(tasklib.base.ContainerTask):
@@ -793,6 +1577,12 @@ class ZeldovichDynamics(DynamicsBase):
         initial_field.redistribute("chi")
         biased_field.redistribute("chi")
 
+        if initial_field.d2phi:
+            raise NotImplementedError(
+                "Cannot compute Zel'dovich dynamics from InitialLSS object that "
+                "stores phi radial derivative."
+            )
+
         lsel = initial_field.phi[:].local_bounds
 
         self._validate_fields(initial_field, biased_field)
@@ -857,7 +1647,16 @@ class ZeldovichDynamics(DynamicsBase):
 
 
 class LinearDynamics(DynamicsBase):
-    """Generate a simulated LSS field using first order standard perturbation theory."""
+    """Generate a simulated LSS field using first order standard perturbation theory.
+
+    Attributes
+    ----------
+    output_kaiser_only : bool
+        Only save the Kaiser velocity term instead of the full field. (Useful for
+        testing.) Default: False.
+    """
+
+    output_kaiser_only = config.Property(proptype=bool, default=False)
 
     def process(self, initial_field: InitialLSS, biased_field: BiasedLSS) -> BiasedLSS:
         """Apply Eulerian linear dynamics to the biased field to get the final field.
@@ -908,10 +1707,16 @@ class LinearDynamics(DynamicsBase):
 
         if self.redshift_space:
             fr = c.growth_rate(za)
-            vterm = lssutil.diff2(iphi, chi[:], axis=0)
+            if initial_field.d2phi:
+                vterm = iphi.copy()
+            else:
+                vterm = lssutil.diff2(iphi, chi[:], axis=0)
             vterm *= -(D * fr)[:, np.newaxis]
 
-            fdelta[:] += vterm
+            if self.output_kaiser_only:
+                fdelta[:] = vterm[:]
+            else:
+                fdelta[:] += vterm
 
         final_field.redistribute("chi")
 
@@ -1122,6 +1927,11 @@ class FingersOfGod(tasklib.base.ContainerTask):
         prior to applying the FoG kernel, and then reapplied afterwards. This should
         be done for a cosmological density field, but not for a shot-noise field.
         Default: True.
+    use_full_channel_kernel : bool
+        Whether to integrate the continuous FoG kernel over each radial bin for both
+        the "input" and "output" channel (True), or just the "input" channel
+        (False). The former is more correct, but the latter is the default for
+        legacy purposes. Default. False.
     """
 
     model = config.enum(lssmodels.sigma_P.models(), default=None)
@@ -1132,6 +1942,8 @@ class FingersOfGod(tasklib.base.ContainerTask):
     z_eff = config.Property(proptype=float, default=None)
 
     apply_growth_factor = config.Property(proptype=bool, default=True)
+
+    use_full_channel_kernel = config.Property(proptype=bool, default=False)
 
     def setup(self, cosmo_cont: Optional[containers.CosmologyContainer] = None):
         """Verify the config parameters and initialize cosmology."""
@@ -1195,7 +2007,12 @@ class FingersOfGod(tasklib.base.ContainerTask):
             D = np.full(redshift.shape, 1.0)
         sigmaP = self._sigma_P(redshift)
 
-        K = lssutil.exponential_FoG_kernel(chi, self.alpha_FoG * sigmaP, D)
+        K = lssutil.exponential_FoG_kernel(
+            chi,
+            self.alpha_FoG * sigmaP,
+            D,
+            full_channel_kernel=self.use_full_channel_kernel,
+        )
 
         smoothed_field = field.__class__(axes_from=field, attrs_from=field)
         # Distribute over pixels to apply the smoothing kernel
@@ -1290,8 +2107,9 @@ class AddCorrelatedShotNoise(tasklib.random.RandomTask, tasklib.base.ContainerTa
 
         chi_local_bounds = input_field.delta[:].local_bounds
         ichi = input_field.chi[chi_local_bounds]
+        ichi_width = lssutil.calculate_width(input_field.chi)[chi_local_bounds]
 
-        volume = pixarea * (ichi**2) * lssutil.calculate_width(ichi)
+        volume = pixarea * ichi**2 * ichi_width
 
         std = (volume * self._n_eff_z[chi_local_bounds]) ** -0.5
         shot_noise = self.rng.normal(
